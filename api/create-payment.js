@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
         email: email,
         product: 'VIN Report'
       },
-      description: Vehicle Report for VIN: ${vin.toUpperCase()}
+      description: `Vehicle Report for VIN: ${vin.toUpperCase()}`
     });
 
     // Return the client secret to the frontend
