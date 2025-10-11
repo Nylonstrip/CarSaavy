@@ -15,16 +15,14 @@ async function sendReportEmail({ to, vin, reportHTML, customerName }) {
   }
 
   async function sendWithResend({ to, vin, reportHTML, customerName }) {
-    // Uncomment when you have Resend API key
-    /*
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
   
     try {
       const data = await resend.emails.send({
-        from: 'Vehicle Reports reports@yourdomain.com', // Must be verified domain
+        from: 'Car-Saavy <onboarding@resend.dev>', // Must be verified domain
         to: [to],
-        subject: Your Vehicle Report - VIN: ${vin},
+        subject: Your Car-Saavy Vehicle Report - VIN: ${vin},
         html: reportHTML,
       });
   
@@ -34,9 +32,8 @@ async function sendReportEmail({ to, vin, reportHTML, customerName }) {
       console.error('Resend error:', error);
       throw error;
     }
-    */
   
     // For now, fall back to console logging
-    console.log('Resend not configured, using console output');
-    return await sendToConsole({ to, vin, reportHTML, customerName });
+    // console.log('Resend not configured, using console output');
+    // return await sendToConsole({ to, vin, reportHTML, customerName });
   }
