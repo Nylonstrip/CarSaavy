@@ -521,7 +521,7 @@
 
             try {
                 // Step 1: Create PaymentIntent on your backend
-                const response = await fetch(`${API_URL}/api/create-payment`, {
+                const response = await fetch(`/api/create-payment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
