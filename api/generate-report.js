@@ -8,6 +8,7 @@
 const { getAllVehicleData } = require('./services/vehicleData');
 const { generateReport } = require('./services/reportGenerator');
 const { sendEmail } = require('./services/emailService');
+const { logEvent } = require('./services/logger');
 
 module.exports = async (req, res) => {
   console.log("🚀 [GenerateReport] Endpoint hit");
@@ -17,6 +18,7 @@ module.exports = async (req, res) => {
   }
 
   try {
+    await logEvent({ vin, email, status: 'started', message: 'Report generation started' });
     const { vin, email } = req.body;
 
     if (!vin || !email) {
@@ -41,10 +43,16 @@ module.exports = async (req, res) => {
     // 4️⃣ Send the report via email
     const emailResponse = await sendEmail(email, reportFile, inline, vin);
 
-    if (!emailResponse.success) {
+    if (!emailResponse.success) { 
       console.error("❌ [GenerateReport] Email failed:", emailResponse.error);
       return res.status(500).json({ error: 'Email delivery failed.' });
     }
+
+    if (emailResponse.success) {
+        await logEvent({ vin, email, status: 'success', message: 'Report emailed successfully' });
+      } else {
+        await logEvent({ vin, email, status: 'failed', message: 'Email failed to send' });
+      }
 
     console.log(`✅ [GenerateReport] Report emailed successfully to ${email}`);
     return res.status(200).json({
@@ -55,6 +63,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
+    await logEvent({ vin, email, status: 'error', error.message });
     console.error("🔥 [GenerateReport] Error:", error);
     return res.status(500).json({ error: error.message });
   }
