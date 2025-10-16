@@ -9,7 +9,6 @@ const { getAllVehicleData } = require('./services/vehicleData');
 const { generateReport } = require('./services/reportGenerator');
 const { sendEmail } = require('./services/emailService');
 const { logEvent } = require('./services/logger');
-const DEV_BYPASS_TOKEN = process.env.DEV_BYPASS_TOKEN || '';
 
 module.exports = async (req, res) => {
   console.log("🚀 [GenerateReport] Endpoint hit");
@@ -24,14 +23,6 @@ module.exports = async (req, res) => {
 
   // Allow browser-origin requests (normal flow)
   const origin = req.headers.origin || '';
-
-  // Accept if request comes from your site OR if a valid dev-bypass header is present
-  const bypassHeader = req.headers['x-dev-bypass'] || req.headers['x-dev-bypass-token'] || '';
-
-  if (!origin.includes('car-saavy.vercel.app') && bypassHeader !== DEV_BYPASS_TOKEN) {
-    // Not from your site and no valid bypass token — block the request like Vercel does
-    return res.status(401).json({ error: 'Authentication required (dev bypass).' });
-  }
 
   try {
     await logEvent({ vin, email, status: 'started', message: 'Report generation started' });
