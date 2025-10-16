@@ -14,6 +14,14 @@ const DEV_BYPASS_TOKEN = process.env.DEV_BYPASS_TOKEN || '';
 module.exports = async (req, res) => {
   console.log("🚀 [GenerateReport] Endpoint hit");
 
+  // Quick method guard
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // parse body early so logs have context
+  const { vin, email } = req.body || {};
+
   // Allow browser-origin requests (normal flow)
   const origin = req.headers.origin || '';
 
@@ -25,16 +33,12 @@ module.exports = async (req, res) => {
     return res.status(401).json({ error: 'Authentication required (dev bypass).' });
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   try {
     await logEvent({ vin, email, status: 'started', message: 'Report generation started' });
-    const { vin, email } = req.body;
 
     if (!vin || !email) {
       console.warn("⚠️ [GenerateReport] Missing VIN or email in request");
+      await logEvent({ vin, email, status: 'failed', message: 'Missing VIN or email' });
       return res.status(400).json({ error: 'VIN and email are required.' });
     }
 
@@ -55,16 +59,14 @@ module.exports = async (req, res) => {
     // 4️⃣ Send the report via email
     const emailResponse = await sendEmail(email, reportFile, inline, vin);
 
-    if (!emailResponse.success) { 
+    if (!emailResponse.success) {
       console.error("❌ [GenerateReport] Email failed:", emailResponse.error);
+      await logEvent({ vin, email, status: 'failed', message: `Email failed: ${emailResponse.error || 'unknown'}` });
       return res.status(500).json({ error: 'Email delivery failed.' });
     }
 
-    if (emailResponse.success) {
-        await logEvent({ vin, email, status: 'success', message: 'Report emailed successfully' });
-      } else {
-        await logEvent({ vin, email, status: 'failed', message: 'Email failed to send' });
-      }
+    // success
+    await logEvent({ vin, email, status: 'success', message: 'Report emailed successfully' });
 
     console.log(`✅ [GenerateReport] Report emailed successfully to ${email}`);
     return res.status(200).json({
@@ -75,8 +77,8 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    await logEvent({ vin, email, status: 'error', error.message });
+    await logEvent({ vin, email, status: 'error', error: error?.message || String(error) });
     console.error("🔥 [GenerateReport] Error:", error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error?.message || 'Internal server error' });
   }
 };
