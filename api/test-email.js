@@ -1,12 +1,17 @@
-import { generateEmailTemplate } from "../services/emailTemplate.js";
+const { generateEmailTemplate } = require("../services/emailTemplate");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   try {
-    const html = generateEmailTemplate("1HGCM82633A004352", "https://carsaavy.com/reports/sample-report.pdf", false, "https://carsaavy.com/reports/sample-report.pdf");
+    const html = generateEmailTemplate(
+      "1HGCM82633A004352",
+      "https://carsaavy.com/reports/sample-report.pdf",
+      false,
+      "https://carsaavy.com/reports/sample-report.pdf"
+    );
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(html);
   } catch (err) {
     console.error("Error rendering template:", err);
     res.status(500).json({ error: err.message });
   }
-}
+};
