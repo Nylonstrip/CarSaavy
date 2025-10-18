@@ -1,5 +1,3 @@
-// /api/services/emailService.js
-
 /**
  * Handles emailing vehicle reports via Resend, SendGrid, or console fallback.
  * Works with /api/generate-report.js to deliver report files post-purchase.
@@ -8,26 +6,21 @@
 const fs = require('fs');
 const path = require('path');
 const { Resend } = require('resend');
+const { generateEmailTemplate } = require('./emailTemplate');
 
 // ---------- Main function ----------
-async function sendEmail(to, reportFile, inline = false, vin = 'Unknown VIN') {
+async function sendEmail(to, reportFile, inline = false, vin = 'Unknown VIN', pdfDownloadLink = null) {
   const emailService = process.env.EMAIL_SERVICE || 'resend';
-
   console.log(`📧 [EmailService] Preparing to send report for ${vin} via ${emailService}`);
 
   try {
-    let htmlContent = '';
-    if (inline) {
-      htmlContent = fs.readFileSync(reportFile, 'utf8');
-    }
-
     switch (emailService.toLowerCase()) {
       case 'resend':
-        return await sendWithResend({ to, vin, reportFile, htmlContent, inline });
+        return await sendWithResend({ to, vin, reportFile, inline, pdfDownloadLink });
       case 'sendgrid':
-        return await sendWithSendGrid({ to, vin, reportFile, htmlContent, inline });
+        return await sendWithSendGrid({ to, vin, reportFile, inline });
       case 'console':
-        return await sendToConsole({ to, vin, reportFile, htmlContent });
+        return await sendToConsole({ to, vin, reportFile });
       default:
         throw new Error(`Unknown email service: ${emailService}`);
     }
@@ -38,27 +31,32 @@ async function sendEmail(to, reportFile, inline = false, vin = 'Unknown VIN') {
 }
 
 // ---------- Resend ----------
-async function sendWithResend({ to, vin, reportFile, htmlContent, inline }) {
+async function sendWithResend({ to, vin, reportFile, inline, pdfDownloadLink }) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   console.log(`📤 [Resend] Sending report to ${to}`);
 
   try {
+    const isPdf = reportFile.endsWith('.pdf');
+    const reportLink = inline ? null : reportFile;
+
+    const html = generateEmailTemplate(vin, reportLink, isPdf, pdfDownloadLink);
+
     const options = {
-      from: 'CarSaavy Reports <reports@carsaavy.app>', // must be verified
+      from: process.env.FROM_EMAIL || 'CarSaavy Reports <reports@carsaavy.com>',
       to: [to],
-      subject: `Your CarSaavy Vehicle Report - VIN: ${vin}`,
-      html: inline ? htmlContent : 'Please see attached vehicle report.',
+      subject: `Your CarSaavy Report for VIN ${vin} is Ready`,
+      html,
     };
 
-    // Attach report file if not inline
-    if (!inline) {
+    // Attach report file if it's a PDF
+    if (isPdf) {
       const fileBuffer = fs.readFileSync(reportFile);
       const filename = path.basename(reportFile);
       options.attachments = [
         {
           filename,
           content: fileBuffer.toString('base64'),
-          type: 'text/html',
+          type: 'application/pdf',
           disposition: 'attachment',
         },
       ];
@@ -74,9 +72,9 @@ async function sendWithResend({ to, vin, reportFile, htmlContent, inline }) {
 }
 
 // ---------- SendGrid (future optional provider) ----------
-async function sendWithSendGrid({ to, vin, reportFile, htmlContent, inline }) {
+async function sendWithSendGrid({ to, vin, reportFile, inline }) {
   console.log(`📤 [SendGrid] Would send to ${to} - (implementation optional)`);
-  return sendToConsole({ to, vin, reportFile, htmlContent });
+  return sendToConsole({ to, vin, reportFile });
 }
 
 // ---------- Console fallback ----------
