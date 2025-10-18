@@ -1,75 +1,59 @@
-// /api/generate-report.js
-
-/**
- * Generates a vehicle report after a successful Stripe payment.
- * Pulls VIN data, builds the report, and emails it to the user.
- */
-
-const { getAllVehicleData } = require('./services/vehicleData');
-const { generateReport } = require('./services/reportGenerator');
+const fs = require('fs');
+const path = require('path');
+const { generateVehicleData } = require('./services/vehicleData');
+const { createReport } = require('./services/reportGenerator');
 const { sendEmail } = require('./services/emailService');
-const { logEvent } = require('./services/logger');
+const { logEvent } = require('./services/logger'); // ✅ include logger
 
 module.exports = async (req, res) => {
-  console.log("🚀 [GenerateReport] Endpoint hit");
-
-  // Quick method guard
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    await logEvent('generate-report', 'Invalid method', { method: req.method });
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
-  // parse body early so logs have context
-  const { vin, email } = req.body || {};
-
-  // Allow browser-origin requests (normal flow)
-  const origin = req.headers.origin || '';
-
   try {
-    await logEvent({ vin, email, status: 'started', message: 'Report generation started' });
-
+    const { vin, email } = req.body;
     if (!vin || !email) {
-      console.warn("⚠️ [GenerateReport] Missing VIN or email in request");
-      await logEvent({ vin, email, status: 'failed', message: 'Missing VIN or email' });
-      return res.status(400).json({ error: 'VIN and email are required.' });
+      await logEvent('generate-report', 'Missing VIN or email', { body: req.body });
+      return res.status(400).json({ success: false, message: 'VIN and email are required.' });
     }
 
-    console.log(`🛰️ [GenerateReport] Starting report generation for VIN: ${vin}`);
+    console.log(`🧩 [GenerateReport] Starting for VIN: ${vin}`);
+    await logEvent('generate-report', 'Start generation', { vin, email });
 
-    // 1️⃣ Fetch comprehensive vehicle data
-    const vehicleData = await getAllVehicleData(vin);
-    console.log(`✅ [GenerateReport] Vehicle data fetched for ${vin}`);
+    // 1️⃣ Fetch vehicle data
+    const vehicleData = await generateVehicleData(vin);
+    if (!vehicleData) throw new Error('Vehicle data could not be retrieved.');
+    await logEvent('generate-report', 'Vehicle data retrieved', { vin });
 
-    // 2️⃣ Generate the HTML report (returns a /tmp file path)
-    const reportFile = await generateReport(vehicleData);
-    console.log(`✅ [GenerateReport] Report generated: ${reportFile}`);
+    // 2️⃣ Create report file
+    const reportPaths = await createReport(vehicleData);
+    // Expected: { pdfPath, hostedUrl }
+    await logEvent('generate-report', 'Report created', { vin, reportPaths });
 
-    // 3️⃣ Automatically decide whether to send inline or attached
-    // For now: HTML-only reports = inline, PDF = attachment
-    const inline = reportFile.endsWith('.html');
+    // 3️⃣ Determine report mode
+    const hasPdf = fs.existsSync(reportPaths.pdfPath);
+    const reportFile = hasPdf ? reportPaths.pdfPath : reportPaths.hostedUrl;
+    const pdfDownloadLink = reportPaths.hostedUrl || null;
 
-    // 4️⃣ Send the report via email
-    const emailResponse = await sendEmail(email, reportFile, inline, vin);
+    // 4️⃣ Send email
+    const result = await sendEmail(
+      email,
+      reportFile,
+      !hasPdf,        // inline if not PDF
+      vin,
+      pdfDownloadLink
+    );
+    await logEvent('generate-report', 'Email sent', { vin, email, result });
 
-    if (!emailResponse.success) {
-      console.error("❌ [GenerateReport] Email failed:", emailResponse.error);
-      await logEvent({ vin, email, status: 'failed', message: `Email failed: ${emailResponse.error || 'unknown'}` });
-      return res.status(500).json({ error: 'Email delivery failed.' });
-    }
-
-    // success
-    await logEvent({ vin, email, status: 'success', message: 'Report emailed successfully' });
-
-    console.log(`✅ [GenerateReport] Report emailed successfully to ${email}`);
+    console.log('✅ [GenerateReport] Report sent successfully:', result);
     return res.status(200).json({
       success: true,
-      message: 'Vehicle report generated and emailed successfully.',
-      vin,
-      email
+      message: 'Report generated and emailed successfully.',
     });
-
   } catch (error) {
-    await logEvent({ vin, email, status: 'error', error: error?.message || String(error) });
-    console.error("🔥 [GenerateReport] Error:", error);
-    return res.status(500).json({ error: error?.message || 'Internal server error' });
+    console.error('❌ [GenerateReport] Error:', error);
+    await logEvent('generate-report', 'Error', { error: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
