@@ -1,6 +1,6 @@
 // services/emailTemplate.js
 
-function generateEmailTemplate(vin, reportLink, isAttachment = false, pdfDownloadLink = null) {
+export function generateEmailTemplate(vin, reportLink, isAttachment = false, pdfDownloadLink = null) {
     const reportSection = isAttachment
       ? `
         <p style="font-size: 16px;">Your CarSaavy report for <strong>${vin}</strong> is attached to this email as a PDF file.</p>
@@ -64,5 +64,3 @@ function generateEmailTemplate(vin, reportLink, isAttachment = false, pdfDownloa
     </div>
     `;
   }
-  
-  module.exports = { generateEmailTemplate };
