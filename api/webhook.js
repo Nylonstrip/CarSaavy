@@ -3,8 +3,8 @@ const Stripe = require("stripe");
 const { buffer } = require("micro");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Import your internal services directly
-const { generateVehicleData } = require("./services/vehicleData");
+// Import your internal services directly — bypass fetch/auth entirely
+const { getAllVehicleData } = require("./services/vehicleData");
 const { createReport } = require("./services/reportGenerator");
 const { sendEmail } = require("./services/emailService");
 
@@ -13,11 +13,15 @@ module.exports = async (req, res) => {
     return res.status(405).json({ success: false, message: "Method not allowed" });
   }
 
-  // Disable body parsing in Vercel config (keep at bottom of file)
   try {
     const sig = req.headers["stripe-signature"];
     const buf = await buffer(req);
-    const event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
+
+    const event = stripe.webhooks.constructEvent(
+      buf,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
 
     console.log(`💳 [Webhook] Event received: ${event.type}`);
 
@@ -28,52 +32,47 @@ module.exports = async (req, res) => {
 
       if (!vin || !email) {
         console.warn("⚠️ [Webhook] Missing VIN or email in metadata.");
-        // respond 200 anyway so Stripe doesn't retry endlessly for bad metadata
-        res.json({ received: true });
-        return;
+        return res.json({ received: true });
       }
 
-      console.log(`🚀 [Webhook] Payment succeeded for VIN ${vin} -> scheduling report generation for ${email}`);
+      console.log(`🚀 [Webhook] Payment succeeded for VIN ${vin} → ${email}`);
 
-      // Respond immediately to Stripe to avoid retries/timeout
+      // Immediately acknowledge the webhook to Stripe
       res.json({ received: true });
 
-      // Process in background (async, not awaited)
+      // Run background report generation and email dispatch
       (async () => {
         try {
-          // 1) Fetch vehicle data
-          const vehicleData = await generateVehicleData(vin);
+          console.log("🛰️ [Webhook] Fetching vehicle data...");
+          const vehicleData = await getAllVehicleData(vin);
           if (!vehicleData) throw new Error("Vehicle data retrieval failed");
 
-          // 2) Create report (PDF + hosted link)
-          const reportPaths = await createReport(vehicleData);
-          const hostedUrl = reportPaths.hostedUrl || null;
-          const pdfPath = reportPaths.pdfPath || null;
+          console.log("🧾 [Webhook] Generating report...");
+          const reportResult = await createReport(vehicleData);
+          const reportUrl = reportResult.hostedUrl || reportResult.pdfPath;
 
-          // 3) Send email (sendEmail handles PDF attach vs link)
-          const reportFile = hostedUrl || pdfPath;
-          const isLink = Boolean(hostedUrl);
-          const sendResult = await sendEmail(email, reportFile, isLink, vin, hostedUrl);
+          console.log("📧 [Webhook] Sending email...");
+          const isLink = Boolean(reportResult.hostedUrl);
+          const sendResult = await sendEmail(email, reportUrl, isLink, vin, reportResult.hostedUrl);
 
-          console.log("✅ [Webhook] Background processing complete", { vin, email, sendResult });
-        } catch (bgErr) {
-          console.error("❌ [Webhook] Background processing error:", bgErr);
-          // optionally: push to a retry queue or notify you by mail/slack
+          console.log("✅ [Webhook] Email sent successfully:", sendResult);
+        } catch (err) {
+          console.error("❌ [Webhook] Background processing failed:", err);
         }
       })();
-      return; // early return after scheduling background work
-    } else {
-      console.log(`ℹ️ [Webhook] Ignored event type: ${event.type}`);
-      return res.json({ received: true });
+
+      return;
     }
+
+    console.log(`ℹ️ [Webhook] Ignored event type: ${event.type}`);
+    return res.json({ received: true });
   } catch (err) {
     console.error("❌ [Webhook] Error processing event:", err);
-    // reply 400 to Stripe for signature/parse errors
     return res.status(400).json({ success: false, error: err.message });
   }
 };
 
-// Ensure Vercel doesn't parse the body (required for signature verify)
+// Required for Stripe webhook signature verification
 module.exports.config = {
   api: {
     bodyParser: false,
