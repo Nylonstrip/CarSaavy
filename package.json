@@ -4,14 +4,16 @@
     "description": "Backend API for VIN validation and payment processing",
     "main": "index.js",
     "scripts": {
-      "start": "node index.js"
+        "start": "node index.js"
     },
     "dependencies": {
-      "stripe": "^14.0.0",
-      "node-fetch": "^2.6.7",
-      "resend": "^3.0.0"
+        "@vercel/blob": "^2.0.0",
+        "node-fetch": "^2.6.7",
+        "pdfkit": "^0.17.2",
+        "resend": "^3.0.0",
+        "stripe": "^14.0.0"
     },
     "engines": {
-      "node": ">=18.x"
+        "node": ">=18.x"
     }
-  }
+}
