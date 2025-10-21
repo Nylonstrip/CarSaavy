@@ -1,6 +1,10 @@
 // api/services/vehicleData.js
 const fetch = require("node-fetch");
 
+// Toggle mock mode to skip live API calls
+const USE_MOCK = true;
+
+// Graceful JSON parser
 function safeParse(json, label) {
   try {
     return json;
@@ -30,30 +34,46 @@ async function fetchWithTimeout(url, ms = 10000, label = "request") {
   }
 }
 
-// Mock example endpoints — replace with your real data sources
+// --- Individual Data Fetchers ---
 async function getVehicleSpecs(vin) {
-  // replace URL with real VIN API endpoint
   return fetchWithTimeout(`https://example.com/api/specs/${vin}`, 10000, "specs");
 }
-
 async function getRecalls(vin) {
   return fetchWithTimeout(`https://example.com/api/recalls/${vin}`, 10000, "recalls");
 }
-
 async function getVehicleHistory(vin) {
   return fetchWithTimeout(`https://example.com/api/history/${vin}`, 10000, "history");
 }
-
 async function getMarketPricing(vin) {
   return fetchWithTimeout(`https://example.com/api/pricing/${vin}`, 10000, "pricing");
 }
-
 async function getRepairEstimates(vin) {
   return fetchWithTimeout(`https://example.com/api/repairs/${vin}`, 10000, "repairs");
 }
 
+// --- Master Aggregator ---
 async function getAllVehicleData(vin) {
   console.log("🛰️ [VehicleData] Starting getAllVehicleData for VIN:", vin);
+
+  // MOCK MODE: returns instantly for end-to-end testing
+  if (USE_MOCK) {
+    console.log("🧪 [VehicleData] Using mock mode for testing...");
+    const mockData = {
+      vin,
+      generatedAt: new Date().toISOString(),
+      sections: {
+        specs: { make: "Honda", model: "Civic", year: 2022 },
+        recalls: { activeRecalls: 0 },
+        history: { owners: 1, cleanTitle: true },
+        pricing: { marketValue: "$18,500" },
+        repairs: { estCost: "$200" },
+      },
+    };
+    console.log("✅ [VehicleData] Mock data ready");
+    return mockData;
+  }
+
+  // Live mode — real API calls
   try {
     const [specs, recalls, history, pricing, repairs] = await Promise.all([
       getVehicleSpecs(vin),
