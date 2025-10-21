@@ -46,10 +46,10 @@ async function createReport(vehicleData) {
 
     console.log("✅ [ReportGenerator] Report uploaded successfully:", url);
     fs.unlinkSync(filePath); // clean up temp file
-    return { success: true, url };
+    return { success: true, url: blob.url };
   } catch (err) {
     console.error("❌ [ReportGenerator] Blob upload failed:", err);
-    return { success: false, error: err.message };
+    throw err;
   }
 }
 
