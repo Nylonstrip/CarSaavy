@@ -3,7 +3,7 @@ const Stripe = require("stripe");
 const { buffer } = require("micro");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Import your internal services directly — bypass fetch/auth entirely
+// Internal service imports
 const { getAllVehicleData } = require("./services/vehicleData");
 const { createReport } = require("./services/reportGenerator");
 const { sendEmail } = require("./services/emailService");
@@ -36,24 +36,39 @@ module.exports = async (req, res) => {
       }
 
       console.log(`🚀 [Webhook] Payment succeeded for VIN ${vin} → ${email}`);
+      res.json({ received: true }); // respond immediately to Stripe
 
-      // Immediately acknowledge the webhook to Stripe
-      res.json({ received: true });
-
-      // Run background report generation and email dispatch
+      // Background report + email processing
       (async () => {
         try {
           console.log("🛰️ [Webhook] Fetching vehicle data...");
           const vehicleData = await getAllVehicleData(vin);
-          if (!vehicleData) throw new Error("Vehicle data retrieval failed");
+          console.log(
+            "🛰️ [Webhook] Vehicle data result:",
+            vehicleData && Object.keys(vehicleData).length > 0 ? "Received ✅" : "Missing ❌"
+          );
+
+          if (!vehicleData || !vehicleData.sections) {
+            throw new Error("Vehicle data retrieval returned empty or invalid data");
+          }
 
           console.log("🧾 [Webhook] Generating report...");
           const reportResult = await createReport(vehicleData);
-          const reportUrl = reportResult.hostedUrl || reportResult.pdfPath;
+          console.log("📦 [Webhook] Report result:", reportResult);
+
+          if (!reportResult || !reportResult.hostedUrl) {
+            throw new Error("Report generation failed or no hosted URL returned");
+          }
 
           console.log("📧 [Webhook] Sending email...");
           const isLink = Boolean(reportResult.hostedUrl);
-          const sendResult = await sendEmail(email, reportUrl, isLink, vin, reportResult.hostedUrl);
+          const sendResult = await sendEmail(
+            email,
+            reportResult.hostedUrl,
+            isLink,
+            vin,
+            reportResult.hostedUrl
+          );
 
           console.log("✅ [Webhook] Email sent successfully:", sendResult);
         } catch (err) {
