@@ -16,7 +16,6 @@ module.exports = async (req, res) => {
   try {
     const sig = req.headers["stripe-signature"];
     const buf = await buffer(req);
-
     const event = stripe.webhooks.constructEvent(
       buf,
       sig,
@@ -38,15 +37,22 @@ module.exports = async (req, res) => {
       console.log(`🚀 [Webhook] Payment succeeded for VIN ${vin} → ${email}`);
       res.json({ received: true }); // respond immediately to Stripe
 
-      // Background report + email processing
+      // Background report generation & email
       (async () => {
         try {
           console.log("🛰️ [Webhook] Fetching vehicle data...");
-          const vehicleData = await getAllVehicleData(vin);
-          console.log(
-            "🛰️ [Webhook] Vehicle data result:",
-            vehicleData && Object.keys(vehicleData).length > 0 ? "Received ✅" : "Missing ❌"
-          );
+
+          let vehicleData;
+          try {
+            vehicleData = await getAllVehicleData(vin);
+            console.log(
+              "🛰️ [Webhook] Vehicle data fetch complete:",
+              vehicleData && Object.keys(vehicleData).length > 0 ? "Received ✅" : "Empty ❌"
+            );
+          } catch (fetchErr) {
+            console.error("❌ [Webhook] Vehicle data fetch failed:", fetchErr);
+            throw new Error(`Vehicle data error: ${fetchErr.message}`);
+          }
 
           if (!vehicleData || !vehicleData.sections) {
             throw new Error("Vehicle data retrieval returned empty or invalid data");
