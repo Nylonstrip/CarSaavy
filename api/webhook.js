@@ -1,101 +1,74 @@
 // api/webhook.js
-const Stripe = require("stripe");
 const { buffer } = require("micro");
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const Stripe = require("stripe");
+const { getAllVehicleData } = require("../services/vehicleData");
+const { generateReport } = require("../services/reportGenerator");
+const { sendEmail } = require("../services/emailService");
 
-// Internal service imports
-const { getAllVehicleData } = require("./services/vehicleData");
-const { createReport } = require("./services/reportGenerator");
-const { sendEmail } = require("./services/emailService");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ success: false, message: "Method not allowed" });
+    return res.status(405).send("Method Not Allowed");
   }
 
+  let event;
   try {
-    const sig = req.headers["stripe-signature"];
     const buf = await buffer(req);
-    const event = stripe.webhooks.constructEvent(
-      buf,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    const sig = req.headers["stripe-signature"];
+    event = stripe.webhooks.constructEvent(buf, sig, endpointSecret);
+  } catch (err) {
+    console.error("❌ [Webhook] Error verifying Stripe signature:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
 
-    console.log(`💳 [Webhook] Event received: ${event.type}`);
+  console.log("💳 [Webhook] Event received:", event.type);
 
-    if (event.type === "payment_intent.succeeded") {
-      const paymentIntent = event.data.object;
-      const vin = paymentIntent.metadata?.vin;
-      const email = paymentIntent.metadata?.email;
+  if (event.type === "payment_intent.succeeded") {
+    const paymentIntent = event.data.object;
+    const vin = paymentIntent.metadata?.vin || "UNKNOWN";
+    const email = paymentIntent.receipt_email || "noreply@carsaavy.com";
 
-      if (!vin || !email) {
-        console.warn("⚠️ [Webhook] Missing VIN or email in metadata.");
-        return res.json({ received: true });
+    console.log(`🚀 [Webhook] Payment succeeded for VIN ${vin} → ${email}`);
+
+    try {
+      console.log("🛰️ [Webhook] Fetching vehicle data...");
+      const vehicleData = await getAllVehicleData(vin);
+      console.log("🛰️ [Webhook] Vehicle data fetch complete: Received ✅");
+
+      console.log("🧾 [Webhook] Generating report...");
+      const report = await generateReport(vehicleData);
+
+      if (!report.success) {
+        console.error("❌ [Webhook] Report generation returned error:", report.error);
+        return res.status(500).json({ success: false, message: "Report generation failed" });
       }
 
-      console.log(`🚀 [Webhook] Payment succeeded for VIN ${vin} → ${email}`);
-      res.json({ received: true }); // respond immediately to Stripe
+      console.log("📦 [Webhook] Report result:", report.url);
 
-      // Background report generation & email
-      (async () => {
-        try {
-          console.log("🛰️ [Webhook] Fetching vehicle data...");
+      console.log("📧 [Webhook] Sending email...");
+      const emailResult = await sendEmail({
+        to: email,
+        subject: `Your CarSaavy Report for VIN ${vin}`,
+        vin,
+        reportUrl: report.url,
+      });
 
-          let vehicleData;
-          try {
-            vehicleData = await getAllVehicleData(vin);
-            console.log(
-              "🛰️ [Webhook] Vehicle data fetch complete:",
-              vehicleData && Object.keys(vehicleData).length > 0 ? "Received ✅" : "Empty ❌"
-            );
-          } catch (fetchErr) {
-            console.error("❌ [Webhook] Vehicle data fetch failed:", fetchErr);
-            throw new Error(`Vehicle data error: ${fetchErr.message}`);
-          }
+      console.log("✅ [Webhook] Email result:", emailResult);
 
-          if (!vehicleData || !vehicleData.sections) {
-            throw new Error("Vehicle data retrieval returned empty or invalid data");
-          }
-
-          console.log("🧾 [Webhook] Generating report...");
-          const reportResult = await createReport(vehicleData);
-          console.log("📦 [Webhook] Report result:", reportResult);
-
-          if (!reportResult || !reportResult.hostedUrl) {
-            throw new Error("Report generation failed or no hosted URL returned");
-          }
-
-          console.log("📧 [Webhook] Sending email...");
-          const isLink = Boolean(reportResult.hostedUrl);
-          const sendResult = await sendEmail(
-            email,
-            reportResult.hostedUrl,
-            isLink,
-            vin,
-            reportResult.hostedUrl
-          );
-
-          console.log("✅ [Webhook] Email sent successfully:", sendResult);
-        } catch (err) {
-          console.error("❌ [Webhook] Background processing failed:", err);
-        }
-      })();
-
-      return;
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error("🔥 [Webhook] Unhandled error:", err);
+      return res.status(500).json({ success: false, error: err.message });
     }
-
-    console.log(`ℹ️ [Webhook] Ignored event type: ${event.type}`);
-    return res.json({ received: true });
-  } catch (err) {
-    console.error("❌ [Webhook] Error processing event:", err);
-    return res.status(400).json({ success: false, error: err.message });
+  } else {
+    console.log(`⚠️ [Webhook] Ignored event type: ${event.type}`);
   }
+
+  res.status(200).send("OK");
 };
 
-// Required for Stripe webhook signature verification
-module.exports.config = {
-  api: {
-    bodyParser: false,
-  },
+export const config = {
+  api: { bodyParser: false },
 };
