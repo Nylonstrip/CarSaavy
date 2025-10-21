@@ -1,130 +1,95 @@
-// /api/services/vehicleData.js
+// api/services/vehicleData.js
+const fetch = require("node-fetch");
 
-/**
- * Fetches and aggregates all available vehicle data for a given VIN.
- * Integrates NHTSA data + placeholder modules for future APIs.
- * Returns a unified structure used by the report generator.
- */
-
-const fetch = require('node-fetch');
-
-// ---------- Helper: safe value handler ----------
-function safe(value, fallback = 'Not Available') {
-  return value && value !== '0' ? value : fallback;
+function safeParse(json, label) {
+  try {
+    return json;
+  } catch (err) {
+    console.error(`❌ [VehicleData] Failed to parse ${label}:`, err);
+    return null;
+  }
 }
 
-// ---------- 1️⃣ Vehicle Specs ----------
+// Helper: wraps a fetch call in a timeout
+async function fetchWithTimeout(url, ms = 10000, label = "request") {
+  console.log(`🔍 [VehicleData] Starting ${label}: ${url}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ms);
+
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`${label} failed with ${res.status}`);
+    const data = await res.json();
+    console.log(`✅ [VehicleData] ${label} success`);
+    return safeParse(data, label);
+  } catch (err) {
+    console.error(`❌ [VehicleData] ${label} error:`, err.message);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Mock example endpoints — replace with your real data sources
 async function getVehicleSpecs(vin) {
-  try {
-    const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`);
-    const data = await res.json();
-
-    const make = safe(data.Results.find(x => x.Variable === 'Make')?.Value);
-    const model = safe(data.Results.find(x => x.Variable === 'Model')?.Value);
-    const year = safe(data.Results.find(x => x.Variable === 'Model Year')?.Value);
-    const body = safe(data.Results.find(x => x.Variable === 'Body Class')?.Value);
-    const engine = safe(data.Results.find(x => x.Variable === 'Engine Model')?.Value);
-
-    return { success: true, data: { make, model, year, body, engine } };
-  } catch (err) {
-    console.error(`❌ [VehicleData] Failed to fetch specs for VIN ${vin}:`, err.message);
-    return { success: false, error: err.message };
-  }
+  // replace URL with real VIN API endpoint
+  return fetchWithTimeout(`https://example.com/api/specs/${vin}`, 10000, "specs");
 }
 
-// ---------- 2️⃣ Recalls ----------
 async function getRecalls(vin) {
-  try {
-    const res = await fetch(`https://api.nhtsa.gov/recalls/recallsByVehicle?vin=${vin}`);
-    const data = await res.json();
-
-    if (!data.Results || !Array.isArray(data.Results) || !data.Results.length) {
-      return { success: true, data: [] };
-    }
-
-    const recalls = data.Results.map(
-      r => `${r.Component}: ${r.Summary || r.Remedy || 'Recall issued'}`
-    );
-
-    return { success: true, data: recalls };
-  } catch (err) {
-    console.error(`❌ [VehicleData] Failed to fetch recalls for VIN ${vin}:`, err.message);
-    return { success: false, error: err.message };
-  }
+  return fetchWithTimeout(`https://example.com/api/recalls/${vin}`, 10000, "recalls");
 }
 
-// ---------- 3️⃣ Placeholder: Ownership/History ----------
 async function getVehicleHistory(vin) {
-  try {
-    // Future integration with Carfax / EpicVIN API
-    return { success: true, data: { summary: 'No ownership history found (sample placeholder).' } };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
+  return fetchWithTimeout(`https://example.com/api/history/${vin}`, 10000, "history");
 }
 
-// ---------- 4️⃣ Placeholder: Market Pricing ----------
 async function getMarketPricing(vin) {
-  try {
-    // Future integration with KBB / MarketCheck / Edmunds APIs
-    return { success: true, data: { low: 8500, high: 11200, currency: 'USD' } };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
+  return fetchWithTimeout(`https://example.com/api/pricing/${vin}`, 10000, "pricing");
 }
 
-// ---------- 5️⃣ Placeholder: Repair & Maintenance ----------
 async function getRepairEstimates(vin) {
-  try {
-    // Future integration with RepairPal or Edmunds maintenance data
-    return {
-      success: true,
-      data: [
-        'Oil change recommended every 7,500 miles',
-        'Check tire tread and rotation at 10,000 miles',
-        'Inspect brakes and pads every 15,000 miles'
-      ]
-    };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
+  return fetchWithTimeout(`https://example.com/api/repairs/${vin}`, 10000, "repairs");
 }
 
-// ---------- 6️⃣ Aggregator ----------
 async function getAllVehicleData(vin) {
-  console.log(`🛰️ [VehicleData] Fetching data for VIN ${vin}`);
-
+  console.log("🛰️ [VehicleData] Starting getAllVehicleData for VIN:", vin);
   try {
     const [specs, recalls, history, pricing, repairs] = await Promise.all([
       getVehicleSpecs(vin),
       getRecalls(vin),
       getVehicleHistory(vin),
       getMarketPricing(vin),
-      getRepairEstimates(vin)
+      getRepairEstimates(vin),
     ]);
 
-    const finalData = {
-      vin: vin.toUpperCase(),
+    console.log("✅ [VehicleData] All API calls complete");
+
+    const result = {
+      vin,
       generatedAt: new Date().toISOString(),
       sections: {
-        specs,
-        recalls,
-        history,
-        pricing,
-        repairs
-      }
+        specs: specs || {},
+        recalls: recalls || {},
+        history: history || {},
+        pricing: pricing || {},
+        repairs: repairs || {},
+      },
     };
 
-    console.log(`✅ [VehicleData] Completed data fetch for ${vin}`);
-    return finalData;
+    console.log("✅ [VehicleData] Final result structure built");
+    return result;
   } catch (err) {
-    console.error(`🔥 [VehicleData] Error fetching data for ${vin}:`, err.message);
-    return {
-      vin: vin.toUpperCase(),
-      error: err.message,
-      sections: {}
-    };
+    console.error("🔥 [VehicleData] getAllVehicleData failed:", err);
+    return null;
   }
 }
 
-module.exports = { getAllVehicleData };
+module.exports = {
+  getAllVehicleData,
+  getVehicleSpecs,
+  getRecalls,
+  getVehicleHistory,
+  getMarketPricing,
+  getRepairEstimates,
+};
