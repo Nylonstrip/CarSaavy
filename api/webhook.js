@@ -8,7 +8,7 @@ const { sendEmail } = require("../services/emailService");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-module.exports = async (req, res) => {
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).send("Method Not Allowed");
   }
@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     const sig = req.headers["stripe-signature"];
     event = stripe.webhooks.constructEvent(buf, sig, endpointSecret);
   } catch (err) {
-    console.error("❌ [Webhook] Error verifying Stripe signature:", err.message);
+    console.error("❌ [Webhook] Stripe signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -56,7 +56,6 @@ module.exports = async (req, res) => {
       });
 
       console.log("✅ [Webhook] Email result:", emailResult);
-
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error("🔥 [Webhook] Unhandled error:", err);
@@ -66,9 +65,11 @@ module.exports = async (req, res) => {
     console.log(`⚠️ [Webhook] Ignored event type: ${event.type}`);
   }
 
-  res.status(200).send("OK");
-};
+  return res.status(200).send("OK");
+}
 
-export const config = {
+// ✅ CommonJS-compatible export
+module.exports = handler;
+module.exports.config = {
   api: { bodyParser: false },
 };
