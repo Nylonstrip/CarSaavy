@@ -44,6 +44,8 @@ async function createReport(vehicleData) {
     console.log("📦 [ReportGenerator] Uploading report to Vercel Blob...");
 
     // Upload to Vercel Blob for hosted access
+    console.log("🔐 Blob token present:", !!process.env.BLOB_READ_WRITE_TOKEN);
+    
     const { url } = await put(fileName, fs.createReadStream(filePath), {
       access: "public",
       token: process.env.BLOB_READ_WRITE_TOKEN,
