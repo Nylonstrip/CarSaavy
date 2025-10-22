@@ -11,7 +11,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * @param {string} params.vin - VIN used for the report
  * @param {string} params.reportUrl - Public Blob URL for the PDF
  */
-async function sendVehicleReportEmail({ to, vin, reportUrl }) {
+async function sendEmail({ to, vin, reportUrl }) {
   console.log("📧 [EmailService] Preparing to send email to:", to);
 
   if (!to || !vin || !reportUrl) {
@@ -50,4 +50,4 @@ If you have trouble accessing the link, please visit CarSaavy.com and log in to 
   }
 }
 
-module.exports = { sendVehicleReportEmail };
+module.exports = { sendEmail };
