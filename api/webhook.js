@@ -1,9 +1,9 @@
 // api/webhook.js
 const { buffer } = require("micro");
 const Stripe = require("stripe");
-const { getAllVehicleData } = require("../services/vehicleData");
-const { generateReport } = require("../services/reportGenerator");
-const { sendEmail } = require("../services/emailService");
+const { getAllVehicleData } = require("./services/vehicleData");
+const { generateReport } = require("./services/reportGenerator");
+const { sendEmail } = require("./services/emailService");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
