@@ -4,7 +4,7 @@ const Stripe = require("stripe");
 const { getAllVehicleData } = require("./services/vehicleData");
 const { generateReport } = require("./services/reportGenerator");
 const { sendEmail } = require("./services/emailService"); // using your direct-fetch version
-const log = require("./logger").scope("Webhook");
+const log = require("./services/loggerlogger").scope("Webhook");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
