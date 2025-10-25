@@ -3,26 +3,27 @@ const { put } = require("@vercel/blob");
 const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
+const log = require("../logger").scope("ReportGenerator");
 
 async function generateReport(vehicleData) {
-  console.log("🧾 [ReportGenerator] Starting PDF generation...");
-
   try {
+    log.info("Generating PDF…");
+
     const doc = new PDFDocument();
     const fileName = `report-${vehicleData.vin}.pdf`;
     const filePath = path.join("/tmp", fileName);
 
-    const writeStream = fs.createWriteStream(filePath);
-    doc.pipe(writeStream);
+    const ws = fs.createWriteStream(filePath);
+    doc.pipe(ws);
 
-    // Basic title/info for MVP
+    // Minimal, readable MVP layout
     doc.fontSize(20).text("CarSaavy Vehicle Report", { align: "center" });
     doc.moveDown();
     doc.fontSize(12).text(`VIN: ${vehicleData.vin}`);
-    doc.text(`Generated At: ${vehicleData.generatedAt}`);
+    doc.text(`Generated: ${vehicleData.generatedAt}`);
     doc.moveDown();
 
-    for (const [section, details] of Object.entries(vehicleData.sections)) {
+    for (const [section, details] of Object.entries(vehicleData.sections || {})) {
       doc.fontSize(14).text(section.toUpperCase(), { underline: true });
       doc.moveDown(0.5);
       doc.fontSize(12).text(JSON.stringify(details, null, 2));
@@ -30,51 +31,48 @@ async function generateReport(vehicleData) {
     }
 
     doc.end();
-    await new Promise((resolve) => writeStream.on("finish", resolve));
-    console.log("🖨️ [ReportGenerator] PDF file written:", filePath);
+    await new Promise((res) => ws.on("finish", res));
+    log.info("PDF ready:", filePath);
 
-    // --- Blob upload logic ---
-    console.log("📦 [ReportGenerator] Uploading report to Vercel Blob...");
-    console.log("🔐 Blob token present:", !!process.env.BLOB_READ_WRITE_TOKEN);
-
-    const start = Date.now();
+    // Unique key + retry-safe upload
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const uniqueKey = `reports/report-${vehicleData.vin}-${timestamp}.pdf`;
     const fileBuffer = fs.readFileSync(filePath);
 
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      log.error("Missing BLOB_READ_WRITE_TOKEN");
+      return { success: false, error: "Missing blob token" };
+    }
+
+    const start = Date.now();
     let attempt = 0;
     const maxRetries = 3;
     const retryDelay = 1000;
 
     while (attempt < maxRetries) {
       try {
-        console.log(`📦 [BlobUpload] Attempt ${attempt + 1} for ${uniqueKey}`);
-
+        attempt++;
+        log.info(`Blob upload attempt ${attempt} → ${uniqueKey}`);
         const blob = await put(uniqueKey, fileBuffer, {
           access: "public",
           token: process.env.BLOB_READ_WRITE_TOKEN,
           contentType: "application/pdf",
         });
-
-        console.log(`⏱️ [ReportGenerator] Blob upload took ${Date.now() - start} ms`);
-        console.log(`✅ [ReportGenerator] Report uploaded successfully: ${blob.url}`);
+        log.info(`Blob uploaded in ${Date.now() - start}ms`);
+        log.info("Blob URL:", blob.url);
         return { success: true, url: blob.url };
-
       } catch (err) {
-        attempt++;
-        console.error(`❌ [BlobUpload] Upload failed on attempt ${attempt}:`, err.message);
-
+        log.warn(`Blob upload failed (attempt ${attempt}):`, err.message);
         if (attempt < maxRetries) {
-          console.log(`🔁 Retrying in ${retryDelay}ms...`);
           await new Promise((r) => setTimeout(r, retryDelay));
         } else {
-          console.error("🔥 [BlobUpload] Failed after 3 attempts:", err.message);
+          log.error("Blob upload failed after 3 attempts");
           return { success: false, error: err.message };
         }
       }
     }
   } catch (err) {
-    console.error("🔥 [ReportGenerator] Fatal error during report generation:", err);
+    log.error("Report generation failed:", err.message);
     return { success: false, error: err.message };
   }
 }
