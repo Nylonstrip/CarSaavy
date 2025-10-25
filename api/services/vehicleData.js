@@ -1,6 +1,6 @@
 // api/services/vehicleData.js
 const fetch = require("node-fetch");
-const log = require("../logger").scope("VehicleData");
+const log = require("./logger").scope("VehicleData");
 
 const USE_MOCK = (process.env.MOCK_MODE || "true").toLowerCase() === "true";
 
