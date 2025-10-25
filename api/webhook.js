@@ -3,51 +3,49 @@ const { buffer } = require("micro");
 const Stripe = require("stripe");
 const { getAllVehicleData } = require("./services/vehicleData");
 const { generateReport } = require("./services/reportGenerator");
-const { sendEmail } = require("./services/emailService");
+const { sendEmail } = require("./services/emailService"); // using your direct-fetch version
+const log = require("./logger").scope("Webhook");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).send("Method Not Allowed");
-  }
+  if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
 
+  // Verify Stripe signature
   let event;
   try {
-    const buf = await buffer(req);
     const sig = req.headers["stripe-signature"];
+    const buf = await buffer(req);
     event = stripe.webhooks.constructEvent(buf, sig, endpointSecret);
   } catch (err) {
-    console.error("❌ [Webhook] Stripe signature verification failed:", err.message);
+    log.error("Stripe signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  console.log("💳 [Webhook] Event received:", event.type);
+  log.info("Event:", event.type);
 
   if (event.type === "payment_intent.succeeded") {
-    const paymentIntent = event.data.object;
-    const vin = paymentIntent.metadata?.vin || "UNKNOWN";
-    const email = paymentIntent.receipt_email || "noreply@carsaavy.com";
+    const pi = event.data.object;
+    const vin = pi.metadata?.vin || "UNKNOWN";
+    const email = pi.metadata?.email || pi.receipt_email || "noreply@carsaavy.com";
 
-    console.log(`🚀 [Webhook] Payment succeeded for VIN ${vin} → ${email}`);
+    log.info(`Payment success → VIN ${vin} → ${email}`);
 
     try {
-      console.log("🛰️ [Webhook] Fetching vehicle data...");
+      // 1) Vehicle data
       const vehicleData = await getAllVehicleData(vin);
-      console.log("🛰️ [Webhook] Vehicle data fetch complete: Received ✅");
+      log.info("Vehicle data ready");
 
-      console.log("🧾 [Webhook] Generating report...");
+      // 2) Report
       const report = await generateReport(vehicleData);
-
       if (!report.success) {
-        console.error("❌ [Webhook] Report generation returned error:", report.error);
-        return res.status(500).json({ success: false, message: "Report generation failed" });
+        log.error("Report failed:", report.error);
+        return res.status(200).json({ received: true, report: "failed" }); // acknowledge to Stripe
       }
+      log.info("Report URL:", report.url);
 
-      console.log("📦 [Webhook] Report result:", report.url);
-
-      console.log("📧 [Webhook] Sending email...");
+      // 3) Email
       const emailResult = await sendEmail({
         to: email,
         subject: `Your CarSaavy Report for VIN ${vin}`,
@@ -55,21 +53,24 @@ async function handler(req, res) {
         reportUrl: report.url,
       });
 
-      console.log("✅ [Webhook] Email result:", emailResult);
-      return res.status(200).json({ success: true });
+      if (!emailResult?.success) {
+        log.warn("Email send reported failure:", emailResult?.error);
+      } else {
+        log.info("Email sent, id:", emailResult.id || "n/a");
+      }
+
+      return res.status(200).json({ received: true });
     } catch (err) {
-      console.error("🔥 [Webhook] Unhandled error:", err);
-      return res.status(500).json({ success: false, error: err.message });
+      log.error("Unhandled error:", err.message);
+      // Always 200 to Stripe once signature is valid; we’ll fix downstream separately
+      return res.status(200).json({ received: true });
     }
-  } else {
-    console.log(`⚠️ [Webhook] Ignored event type: ${event.type}`);
   }
 
-  return res.status(200).send("OK");
+  // Other events are acknowledged but ignored
+  return res.status(200).json({ received: true });
 }
 
-// ✅ CommonJS-compatible export
+// CommonJS export + raw body for Stripe
 module.exports = handler;
-module.exports.config = {
-  api: { bodyParser: false },
-};
+module.exports.config = { api: { bodyParser: false } };

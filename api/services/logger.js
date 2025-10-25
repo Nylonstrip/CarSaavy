@@ -1,62 +1,33 @@
-// /api/services/logger.js
+// api/logger.js
+const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
+const levelName = (process.env.LOG_LEVEL || "info").toLowerCase();
+const LEVEL = LEVELS[levelName] ?? LEVELS.info;
 
-/**
- * Carsaavy Logger — lightweight audit trail system.
- * Saves each VIN report generation event to /tmp/logs.json
- * Works on both Vercel (ephemeral) and local environments.
- */
+function logAt(reqLevel, prefix, ...args) {
+  if (LEVELS[reqLevel] <= LEVEL) {
+    const ts = new Date().toISOString();
+    // Use console methods so Vercel groups severities correctly
+    const fn = reqLevel === "error" ? console.error :
+               reqLevel === "warn"  ? console.warn  :
+               reqLevel === "debug" ? console.debug : console.log;
+    fn(`${ts} [${reqLevel}] ${prefix}`, ...args);
+  }
+}
 
-const fs = require('fs');
-const path = require('path');
+module.exports = {
+  error: (...a) => logAt("error", "", ...a),
+  warn:  (...a) => logAt("warn",  "", ...a),
+  info:  (...a) => logAt("info",  "", ...a),
+  debug: (...a) => logAt("debug", "", ...a),
 
-const LOG_FILE = path.join('/tmp', 'carsaavy_logs.json');
-
-/**
- * Appends a structured log entry.
- * @param {Object} data { vin, email, status, message, error }
- */
-async function logEvent(data = {}) {
-  try {
-    const timestamp = new Date().toISOString();
-
-    const entry = {
-      timestamp,
-      vin: data.vin || 'Unknown',
-      email: data.email || 'Unknown',
-      status: data.status || 'unknown',
-      message: data.message || '',
-      error: data.error || null,
+  // Convenience tagged loggers
+  scope(tag) {
+    const p = tag ? `[${tag}]` : "";
+    return {
+      error: (...a) => logAt("error", p, ...a),
+      warn:  (...a) => logAt("warn",  p, ...a),
+      info:  (...a) => logAt("info",  p, ...a),
+      debug: (...a) => logAt("debug", p, ...a),
     };
-
-    // Read existing logs (if any)
-    let logs = [];
-    if (fs.existsSync(LOG_FILE)) {
-      const fileData = fs.readFileSync(LOG_FILE, 'utf8');
-      logs = JSON.parse(fileData || '[]');
-    }
-
-    // Add new log and write back
-    logs.push(entry);
-    fs.writeFileSync(LOG_FILE, JSON.stringify(logs, null, 2), 'utf8');
-
-    console.log(`🪵 [Logger] Logged event for VIN ${entry.vin} (${entry.status})`);
-  } catch (err) {
-    console.error("❌ [Logger] Failed to write log:", err.message);
-  }
-}
-
-/**
- * Reads all log entries (for internal analytics or debugging)
- */
-async function readLogs() {
-  try {
-    if (!fs.existsSync(LOG_FILE)) return [];
-    const fileData = fs.readFileSync(LOG_FILE, 'utf8');
-    return JSON.parse(fileData || '[]');
-  } catch (err) {
-    console.error("❌ [Logger] Failed to read logs:", err.message);
-    return [];
-  }
-}
-
-module.exports = { logEvent, readLogs };
+  },
+};
