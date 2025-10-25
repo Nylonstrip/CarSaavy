@@ -3,7 +3,7 @@ const { put } = require("@vercel/blob");
 const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
-const log = require("../logger").scope("ReportGenerator");
+const log = require("./logger").scope("ReportGenerator");
 
 async function generateReport(vehicleData) {
   try {
