@@ -38,24 +38,37 @@ async function generateReport(vehicleData) {
     console.log("🔐 Blob token present:", !!process.env.BLOB_READ_WRITE_TOKEN);
 
     const start = Date.now();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const uniqueKey = `reports/report-${vehicleData.vin}-${timestamp}.pdf`;
+    const fileBuffer = fs.readFileSync(filePath);
 
-    try {
-      const blob = await put(`reports/${fileName}`, fs.readFileSync(filePath), {
-        access: "public",
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      });
+    let attempt = 0;
+    const maxRetries = 3;
+    const retryDelay = 1000;
 
-      console.log("⏱️ [ReportGenerator] Blob upload took", Date.now() - start, "ms");
-      console.log("✅ [ReportGenerator] Report uploaded successfully:", blob.url);
-      return { success: true, url: blob.url };
-    } catch (err) {
-      console.error("❌ [ReportGenerator] Blob upload failed after", Date.now() - start, "ms:", err);
-      return { success: false, error: err };
+    while (attempt < maxRetries) {
+      try {
+        console.log(`📦 [BlobUpload] Attempt ${attempt + 1} for ${uniqueKey}`);
+        const blob = await put(uniqueKey, fileBuffer, {
+          access: "public",
+          token: process.env.BLOB_READ_WRITE_TOKEN,
+          contentType: "application/pdf",
+        });
+
+        console.log(`⏱️ [ReportGenerator] Blob upload took ${Date.now() - start} ms`);
+        console.log(`✅ [ReportGenerator] Report uploaded successfully: ${blob.url}`);
+        return { success: true, url: blob.url };
+      } catch (err) {
+        attempt++;
+        console.error(`❌ [BlobUpload] Upload failed on attempt ${attempt}:`, err.message);
+        if (attempt < maxRetries) {
+          console.log(`🔁 Retrying in ${retryDelay}ms...`);
+          await new Promise((r) => setTimeout(r, retryDelay));
+        } else {
+          console.error("🔥 [BlobUpload] Failed after 3 attempts:", err.message);
+          return { success: false, error: err.message };
+        }
+      }
     }
-  } catch (err) {
-    console.error("🔥 [ReportGenerator] Failed to generate PDF:", err);
-    return { success: false, error: err };
-  }
-}
 
 module.exports = { generateReport };
