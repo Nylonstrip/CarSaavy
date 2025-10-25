@@ -1,6 +1,7 @@
 // api/services/emailService.js
 const { Resend } = require("resend");
 const { emailTemplate } = require("./emailTemplate");
+const fetch = require("node-fetch");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -11,42 +12,56 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * @param {string} params.vin - VIN used for the report
  * @param {string} params.reportUrl - Public Blob URL for the PDF
  */
-async function sendEmail({ to, vin, reportUrl }) {
-  console.log("📧 [EmailService] Preparing to send email to:", to);
+async function sendEmail({ to, subject, vin, reportUrl }) {
+  const from = process.env.FROM_EMAIL || "CarSaavy Reports <reports@carsaavy.com>";
+  const apiKey = process.env.RESEND_API_KEY;
 
-  if (!to || !vin || !reportUrl) {
-    console.error("❌ [EmailService] Missing required email fields:", { to, vin, reportUrl });
-    throw new Error("Missing required email fields");
+  console.log("🔐 RESEND_API_KEY present:", !!apiKey);
+
+  if (!apiKey) {
+    console.error("❌ Missing RESEND_API_KEY in environment variables");
+    return { success: false, error: "Missing API key" };
   }
 
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #333;">
+      <h2>CarSaavy Report Ready</h2>
+      <p>Your VIN report for <strong>${vin}</strong> is ready.</p>
+      <p><a href="${reportUrl}" target="_blank">Click here to view your report</a>.</p>
+      <p>Thank you for using CarSaavy!</p>
+    </div>
+  `;
+
+  const payload = {
+    from,
+    to,
+    subject: subject || `Your CarSaavy Report - ${vin}`,
+    html,
+  };
+
+  console.log("📨 [EmailService] Sending payload:", payload);
+
   try {
-    const htmlContent = emailTemplate({ vin, reportUrl });
-    const textContent = `
-Your CarSaavy vehicle report for VIN ${vin} is ready!
-
-View your report:
-${reportUrl}
-
-If you have trouble accessing the link, please visit CarSaavy.com and log in to retrieve it.
-
-- The CarSaavy Team
-`;
-
-    const fromAddress = process.env.FROM_EMAIL || "reports@carsaavy.com";
-
-    const result = await resend.emails.send({
-      from: `CarSaavy <${fromAddress}>`,
-      to,
-      subject: `Your CarSaavy Report for VIN ${vin} is Ready 🚗`,
-      html: htmlContent,
-      text: textContent,
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
-    console.log("✅ [EmailService] Email sent successfully:", result.data?.id || "OK");
-    return { success: true, id: result.data?.id || null };
-  } catch (error) {
-    console.error("❌ [EmailService] Failed to send email:", error);
-    return { success: false, error: error.message };
+    const result = await response.json();
+    console.log("📬 [EmailService] Resend response:", result);
+
+    if (!response.ok) {
+      throw new Error(`Resend API Error: ${result.message || response.statusText}`);
+    }
+
+    return { success: true, id: result.id || null };
+  } catch (err) {
+    console.error("🔥 [EmailService] Error sending email:", err);
+    return { success: false, error: err.message };
   }
 }
 
