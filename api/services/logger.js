@@ -1,35 +1,43 @@
 // /api/services/logger.js
 const pino = require("pino");
 
-// Default log level and environment detection
 const logLevel = process.env.LOG_LEVEL || "info";
 const isProd = process.env.NODE_ENV === "production";
 const forcePretty = process.env.FORCE_PRETTY_LOGS === "true";
 
-// Configure Pino
+// Try to resolve pino-pretty safely
+let transport;
+if (!isProd || forcePretty) {
+  try {
+    require.resolve("pino-pretty"); // check if it’s installed
+    transport = {
+      target: "pino-pretty",
+      options: {
+        colorize: true,
+        translateTime: "yyyy-mm-dd HH:MM:ss.l",
+        singleLine: true,
+        ignore: "pid,hostname",
+      },
+    };
+  } catch {
+    console.warn("⚠️ Pretty transport not available — falling back to JSON logs");
+  }
+}
+
 const baseLogger = pino({
   level: logLevel,
-  transport:
-    !isProd || forcePretty
-      ? {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "yyyy-mm-dd HH:MM:ss.l",
-            singleLine: true,
-            ignore: "pid,hostname",
-          },
-        }
-      : undefined,
+  transport,
   timestamp: pino.stdTimeFunctions.isoTime,
 });
 
-// Announce logger startup (only once, and only outside production)
+// Startup confirmation
 if (!isProd) {
-  console.log(`🧠 Logger initialized at level: ${logLevel} (pretty: ${!isProd || forcePretty})`);
+  console.log(
+    `🧠 Logger initialized at level: ${logLevel} (pretty: ${!!transport})`
+  );
 }
 
-// Scoped logger factory
+// Scoped logger pattern
 const logger = {
   info: (msg, ...args) => baseLogger.info(msg, ...args),
   error: (msg, ...args) => baseLogger.error(msg, ...args),
