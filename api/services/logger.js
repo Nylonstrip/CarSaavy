@@ -1,30 +1,35 @@
 // /api/services/logger.js
 const pino = require("pino");
 
+// Default log level and environment detection
 const logLevel = process.env.LOG_LEVEL || "info";
 const isProd = process.env.NODE_ENV === "production";
+const forcePretty = process.env.FORCE_PRETTY_LOGS === "true";
 
+// Configure Pino
 const baseLogger = pino({
   level: logLevel,
-  transport: !isProd
-    ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "yyyy-mm-dd HH:MM:ss.l",
-          ignore: "pid,hostname",
-        },
-      }
-    : undefined,
+  transport:
+    !isProd || forcePretty
+      ? {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "yyyy-mm-dd HH:MM:ss.l",
+            singleLine: true,
+            ignore: "pid,hostname",
+          },
+        }
+      : undefined,
   timestamp: pino.stdTimeFunctions.isoTime,
 });
 
-// Announce init only in development
+// Announce logger startup (only once, and only outside production)
 if (!isProd) {
-  console.log(`🧠 Logger initialized at level: ${logLevel}`);
+  console.log(`🧠 Logger initialized at level: ${logLevel} (pretty: ${!isProd || forcePretty})`);
 }
 
-// Build scoped logger helper
+// Scoped logger factory
 const logger = {
   info: (msg, ...args) => baseLogger.info(msg, ...args),
   error: (msg, ...args) => baseLogger.error(msg, ...args),
