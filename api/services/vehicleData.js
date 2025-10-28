@@ -1,99 +1,178 @@
+// /api/services/vehicleData.js
 const logger = require("./logger");
 const { sendAdminAlert } = require("./emailService");
+const fetch = global.fetch || require("node-fetch"); // Vercel has fetch, this is just a safe fallback
 
-// Environment-controlled toggles
-const MOCK_MODE = process.env.MOCK_MODE !== "false";
+// ---- ENV / DEFAULTS ----
+const MOCK_MODE = process.env.MOCK_MODE !== "false"; // default true unless explicitly "false"
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "carsaavy@gmail.com";
+const MARKETCHECK_API_KEY = process.env.MARKETCHECK_API_KEY || "";
 
+// ---- In-memory state (resets on redeploy) ----
 let apiCallCount = 0;
 const seenVINs = new Set();
+const vinAttemptWindow = new Map(); // vin -> { count, windowStart }
 
-/**
- * Mock data generator (used in MOCK_MODE)
- */
+// ---- VIN helpers ----
+function normalizeVin(v) {
+  return String(v || "").trim().toUpperCase();
+}
+function isLikelyVin(v) {
+  return /^[A-HJ-NPR-Z0-9]{11,17}$/.test(v); // simple VIN pattern (excludes I,O,Q)
+}
+
+// Basic per-VIN rate limit: 5 requests / 10 minutes per deploy
+function checkVinRateLimit(vin) {
+  const WINDOW_MS = 10 * 60 * 1000;
+  const LIMIT = 5;
+  const now = Date.now();
+  const entry = vinAttemptWindow.get(vin) || { count: 0, windowStart: now };
+  if (now - entry.windowStart > WINDOW_MS) {
+    entry.count = 0;
+    entry.windowStart = now;
+  }
+  entry.count += 1;
+  vinAttemptWindow.set(vin, entry);
+  return entry.count <= LIMIT;
+}
+
+// ---- Usage alerts (non-blocking) ----
+async function maybeSendUsageAlert(count) {
+  try {
+    if (!ADMIN_EMAIL) return;
+    if (count >= 500) {
+      await sendAdminAlert(
+        ADMIN_EMAIL,
+        "MarketCheck quota exceeded",
+        `<p>Calls: ${count}/500. Fallback should engage.</p><p>${new Date().toISOString()}</p>`
+      );
+      return;
+    }
+    if (count === 400) {
+      await sendAdminAlert(
+        ADMIN_EMAIL,
+        "MarketCheck usage at 80%",
+        `<p>Calls: ${count}/500. Consider upgrading or enabling paid fallback.</p>`
+      );
+    } else if (count === 200) {
+      await sendAdminAlert(
+        ADMIN_EMAIL,
+        "MarketCheck usage at 50%",
+        `<p>Calls: ${count}/500. Monitoring recommended.</p>`
+      );
+    }
+  } catch (e) {
+    logger.warn(`[VehicleData] Usage alert failed: ${e.message}`);
+  }
+}
+
+// ---- Mock response for quick testing ----
 function getMockVehicleData(vin) {
-  logger.info(`[VehicleData] Using mock mode for VIN: ${vin}`);
+  logger.info(`[VehicleData] MOCK_MODE active for VIN ${vin}`);
   return {
     vin,
-    make: "Honda",
-    model: "Civic",
-    year: 2020,
-    price: "$18,500",
-    recommendations: [
-      "Negotiate for an additional $500 off due to mileage.",
-      "Ask about service history or potential recalls.",
-    ],
+    specs: { make: "Honda", model: "Civic", year: 2020, trim: "EX" },
+    pricing: { asking: 18500, estFair: 17900, variance: -600 },
+    recalls: [{ id: "NHTSA-FAKE-123", title: "Brake hose recall", status: "OPEN" }],
+    repairs: [{ type: "Oil change", date: "2024-08-10", miles: 32000 }],
   };
 }
 
-/**
- * Simulated API fetch from MarketCheck or fallback source.
- */
-async function fetchVehicleDataFromAPI(vin) {
-  const API_KEY = process.env.MARKETCHECK_API_KEY;
-  const url = `https://marketcheck-prod.apigee.net/v2/vins/${vin}/specs?api_key=${API_KEY}`;
-  const response = await fetch(url);
+// ---- Real data fetch (keep simple for MVP) ----
+async function fetchMarketcheckSpecs(vin) {
+  if (!MARKETCHECK_API_KEY) {
+    throw new Error("Missing MARKETCHECK_API_KEY");
+  }
+  const url = `https://marketcheck-prod.apigee.net/v2/vins/${vin}/specs?api_key=${MARKETCHECK_API_KEY}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`MarketCheck error: ${r.status} ${r.statusText}`);
+  return r.json();
+}
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch vehicle data: ${response.statusText}`);
+// ---- Public API ----
+async function getAllVehicleData(rawVin) {
+  const vin = normalizeVin(rawVin);
+  logger.info(`[VehicleData] Start for VIN: ${vin}`);
+
+  // Validate VIN format
+  if (!isLikelyVin(vin)) {
+    const msg = "Invalid or missing VIN";
+    logger.warn(`[VehicleData] ${msg}: "${rawVin}"`);
+    await sendAdminAlert(ADMIN_EMAIL, "Invalid VIN passed to vehicleData", `<p>VIN: ${rawVin}</p>`);
+    return { success: false, error: msg };
   }
 
-  const data = await response.json();
-  return {
-    vin,
-    make: data.make || "Unknown",
-    model: data.model || "Unknown",
-    year: data.year || "Unknown",
-    price: data.price || "N/A",
-  };
-}
-
-/**
- * Main handler
- */
-async function getAllVehicleData(vin) {
-  logger.info(`[VehicleData] Processing VIN: ${vin}`);
-
-  // Prevent repeat VIN lookups
+  // Duplicate prevention (per deploy)
   if (seenVINs.has(vin)) {
     logger.warn(`[VehicleData] Duplicate VIN lookup prevented: ${vin}`);
-    return {
-      vin,
-      duplicate: true,
-      message: "VIN already processed recently, skipping duplicate lookup.",
-    };
+    return { success: true, duplicate: true, vin };
   }
-  seenVINs.add(vin);
 
-  apiCallCount++;
-  logger.info(`[VehicleData] API calls so far: ${apiCallCount}`);
+  // Per-VIN rate limit (cheap anti-abuse)
+  if (!checkVinRateLimit(vin)) {
+    const msg = "VIN rate limit exceeded";
+    logger.warn(`[VehicleData] ${msg}: ${vin}`);
+    await sendAdminAlert(ADMIN_EMAIL, "VIN rate limit exceeded", `<p>VIN: ${vin}</p>`);
+    return { success: false, error: msg };
+  }
 
-  // Send alert to admin if nearing threshold
-  if (apiCallCount === 250 || apiCallCount % 100 === 0) {
-    await sendAdminAlert(
-      ADMIN_EMAIL,
-      "CarSaavy API Usage Alert",
-      `API usage has reached ${apiCallCount} calls. Consider upgrading or monitoring usage.`
-    );
-    logger.info(`[VehicleData] Admin alerted at ${apiCallCount} calls`);
+  // Usage counter (only for live MarketCheck calls)
+  const willCallExternal = (MOCK_MODE === false);
+  if (willCallExternal) {
+    // Soft cap: if already >=500, short-circuit to minimal data
+    if (apiCallCount >= 500) {
+      logger.warn("[VehicleData] Quota exceeded — returning minimal data.");
+      return {
+        vin,
+        specs: { note: "Quota exceeded; minimal data returned." },
+        pricing: {},
+        recalls: [],
+        repairs: [],
+        quotaExceeded: true,
+      };
+    }
+    apiCallCount += 1;
+    logger.info(`[VehicleData] MarketCheck call #${apiCallCount}`);
+    // non-blocking usage alert
+    // no await — don't delay user flow
+    // eslint-disable-next-line promise/catch-or-return
+    maybeSendUsageAlert(apiCallCount);
   }
 
   try {
-    // Choose mode
-    const result = MOCK_MODE ? getMockVehicleData(vin) : await fetchVehicleDataFromAPI(vin);
-    logger.info(`[VehicleData] Data retrieval complete for VIN: ${vin}`);
-    return result;
-  } catch (error) {
-    logger.error(`[VehicleData] Error fetching vehicle data: ${error.message}`);
+    let vehicleData;
+    if (MOCK_MODE) {
+      vehicleData = getMockVehicleData(vin);
+    } else {
+      const specs = await fetchMarketcheckSpecs(vin);
+      // Shape minimal MVP structure
+      vehicleData = {
+        vin,
+        specs: {
+          make: specs.make || "Unknown",
+          model: specs.model || "Unknown",
+          year: specs.year || "Unknown",
+          trim: specs.trim || "",
+        },
+        pricing: {},   // fill when pricing source is added
+        recalls: [],   // fill when NHTSA is wired
+        repairs: [],   // fill when repair source is wired
+      };
+    }
 
-    // Send failure alert
-    await sendAdminAlert(
-      ADMIN_EMAIL,
-      "CarSaavy Vehicle Data Fetch Failed",
-      `Error fetching data for VIN: ${vin}\n\nError: ${error.message}`
-    );
-
-    return { success: false, error: error.message };
+    seenVINs.add(vin);
+    logger.info(`[VehicleData] Completed for VIN: ${vin}`);
+    return vehicleData;
+  } catch (err) {
+    logger.error(`[VehicleData] Fetch error for ${vin}: ${err.message}`);
+    try {
+      await sendAdminAlert(
+        ADMIN_EMAIL,
+        "Vehicle data fetch failed",
+        `<p>VIN: ${vin}</p><p>Error: ${err.message}</p>`
+      );
+    } catch (_) {}
+    return { success: false, error: "vehicle_data_fetch_failed" };
   }
 }
 
