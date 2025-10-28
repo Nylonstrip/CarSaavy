@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CarSaavy Admin Dashboard (Secure)</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f9fafb;
+        color: #111827;
+        margin: 0;
+        padding: 2rem;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+      .progress {
+        width: 100%;
+        background: #e5e7eb;
+        border-radius: 10px;
+        overflow: hidden;
+        height: 22px;
+        margin-top: 8px;
+      }
+      .progress-bar {
+        height: 100%;
+        transition: width 0.4s ease;
+      }
+      .btn {
+        display: inline-block;
+        padding: 0.6rem 1.2rem;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.95rem;
+      }
+      .btn:hover {
+        background: #1d4ed8;
+      }
+      .status {
+        font-weight: bold;
+        margin-top: 0.75rem;
+      }
+      header {
+        margin-bottom: 2rem;
+      }
+      h1 {
+        margin: 0;
+        color: #111827;
+      }
+      footer {
+        margin-top: 3rem;
+        text-align: center;
+        color: #6b7280;
+        font-size: 0.9rem;
+      }
+      #lockScreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #f3f4f6;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      #lockScreen input {
+        padding: 0.6rem;
+        font-size: 1rem;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        margin-top: 0.5rem;
+      }
+      #lockScreen button {
+        margin-top: 0.75rem;
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="lockScreen">
+      <h2>🔐 Admin Access Required</h2>
+      <p>Please enter your admin key to continue:</p>
+      <input type="password" id="adminKeyInput" placeholder="Enter key..." />
+      <button onclick="verifyKey()">Unlock</button>
+      <p id="errorMsg" style="color: red; display: none">Invalid key.</p>
+    </div>
+
+    <header>
+      <h1>⚙️ CarSaavy Admin Dashboard</h1>
+      <p>Monitor API usage and manage system health.</p>
+    </header>
+
+    <div id="dashboard" style="display: none">
+      <div id="usageCard" class="card">
+        <h2>API Usage Overview</h2>
+        <p id="usageText">Loading...</p>
+        <div class="progress">
+          <div id="progressBar" class="progress-bar" style="width: 0%;"></div>
+        </div>
+        <p class="status" id="usageStatus"></p>
+        <button id="resetBtn" class="btn">🔁 Reset Counter</button>
+      </div>
+
+      <div class="card">
+        <h2>Quick Actions</h2>
+        <button
+          class="btn"
+          onclick="window.open('/api/test-send-email', '_blank')"
+        >
+          ✉️ Send Test Email
+        </button>
+        <button
+          class="btn"
+          onclick="window.open('/api/usage', '_blank')"
+          style="background-color: #16a34a; margin-left: 0.5rem"
+        >
+          📊 View Raw Usage Data
+        </button>
+      </div>
+    </div>
+
+    <footer>
+      <p>© <span id="year"></span> CarSaavy — Internal Dashboard</p>
+    </footer>
+
+    <script>
+
+async function verifyKey() {
+    const inputKey = document.getElementById("adminKeyInput").value.trim();
+    const res = await fetch(`/api/admin-key?key=${encodeURIComponent(inputKey)}`);
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById("lockScreen").style.display = "none";
+      document.getElementById("dashboard").style.display = "block";
+      fetchUsage();
+    } else {
+      const errorMsg = document.getElementById("errorMsg");
+      errorMsg.style.display = "block";
+      setTimeout(() => (errorMsg.style.display = "none"), 2000);
+    }
+  }
+
+  // Allow unlock via URL param (for convenience)
+  const params = new URLSearchParams(window.location.search);
+  const urlKey = params.get("key");
+  if (urlKey) {
+    fetch(`/api/admin-key?key=${encodeURIComponent(urlKey)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          document.getElementById("lockScreen").style.display = "none";
+          document.getElementById("dashboard").style.display = "block";
+          fetchUsage();
+        }
+      });
+  }
+
+      async function fetchUsage() {
+        try {
+          const res = await fetch("/api/usage");
+          const data = await res.json();
+          if (!data.success) throw new Error(data.message);
+
+          document.getElementById(
+            "usageText"
+          ).textContent = `Current Usage: ${data.count}/500 calls (${data.percentage})`;
+
+          const progressBar = document.getElementById("progressBar");
+          progressBar.style.width = data.percentage;
+
+          if (data.count >= 500)
+            progressBar.style.backgroundColor = "#dc2626";
+          else if (data.count >= 400)
+            progressBar.style.backgroundColor = "#f97316";
+          else if (data.count >= 200)
+            progressBar.style.backgroundColor = "#facc15";
+          else progressBar.style.backgroundColor = "#22c55e";
+
+          document.getElementById("usageStatus").textContent = data.status;
+        } catch (err) {
+          console.error(err);
+          document.getElementById("usageText").textContent =
+            "Error loading usage data.";
+        }
+      }
+
+      document
+        .getElementById("resetBtn")
+        .addEventListener("click", async () => {
+          if (!confirm("Reset API usage counter?")) return;
+          await fetch("/api/usage?reset=true");
+          alert("Usage counter reset.");
+          fetchUsage();
+        });
+
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
