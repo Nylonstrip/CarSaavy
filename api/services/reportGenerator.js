@@ -2,123 +2,73 @@
 const fs = require("fs");
 const path = require("path");
 const { put } = require("@vercel/blob");
-const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
 const logger = require("./logger");
-const { sendAdminAlert } = require("./emailService");
 
-// Admin notifications
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "carsaavy@gmail.com";
-
-// Helper: timestamped filename
-function generateTimestampedFilename(vin) {
-  const now = new Date().toISOString().replace(/[:.]/g, "-");
-  return `reports/report-${vin}-${now}.pdf`;
-}
-
-// Main function
-async function generateVehicleReport(vin, vehicleData) {
-  logger.info(`[ReportGenerator] Starting PDF generation...`);
-  const startTime = Date.now();
-  const tempFilePath = path.join("/tmp", `report-${vin}.pdf`);
-
+async function generateVehicleReport(vin, data) {
   try {
-    // Create the PDF
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    logger.info(`[ReportGenerator] Starting PDF generation...`);
 
-    const { width, height } = page.getSize();
-    const margin = 50;
-    let y = height - margin;
+    // Basic summary header
+    const summary = `
+CarSaavy Vehicle Negotiation Report
+===================================
 
-    // Title
-    page.drawText("CarSaavy Vehicle Report", {
-      x: margin,
-      y,
-      size: 20,
-      font,
-      color: rgb(0.1, 0.1, 0.1),
-    });
-    y -= 30;
+VIN: ${vin}
+Generated: ${new Date().toLocaleString()}
 
-    // VIN Summary
-    page.drawText(`VIN: ${vin}`, { x: margin, y, size: 12, font });
-    y -= 20;
-    page.drawText(`Generated: ${new Date().toLocaleString()}`, { x: margin, y, size: 12, font });
-    y -= 30;
+Summary:
+- Make: ${data?.specs?.make || "N/A"}
+- Model: ${data?.specs?.model || "N/A"}
+- Year: ${data?.specs?.year || "N/A"}
+- Trim: ${data?.specs?.trim || "N/A"}
+- Estimated Fair Price: $${data?.pricing?.estFair || "N/A"}
+- Dealer Asking: $${data?.pricing?.asking || "N/A"}
+- Variance: ${data?.pricing?.variance ? `$${data.pricing.variance}` : "N/A"}
 
-    // Summary header
-    page.drawText("Summary Highlights:", { x: margin, y, size: 14, font });
-    y -= 20;
-    const highlights = [
-      `Make: ${vehicleData?.specs?.make || "Unknown"}`,
-      `Model: ${vehicleData?.specs?.model || "Unknown"}`,
-      `Year: ${vehicleData?.specs?.year || "Unknown"}`,
-      `Trim: ${vehicleData?.specs?.trim || "N/A"}`,
-      `Estimated Price: ${vehicleData?.pricing?.asking || "N/A"}`,
-    ];
-    highlights.forEach((line) => {
-      page.drawText(`• ${line}`, { x: margin + 10, y, size: 12, font });
-      y -= 18;
-    });
-    y -= 10;
+Key Points:
+- Recalls: ${data?.recalls?.length || 0}
+- Recent Repairs: ${data?.repairs?.length || 0}
 
-    // Recall section
-    page.drawText("Recalls:", { x: margin, y, size: 14, font });
-    y -= 20;
-    if (vehicleData.recalls?.length) {
-      vehicleData.recalls.forEach((recall) => {
-        page.drawText(`• ${recall.title} (${recall.status})`, { x: margin + 10, y, size: 12, font });
-        y -= 16;
-      });
-    } else {
-      page.drawText("No recalls found.", { x: margin + 10, y, size: 12, font });
-      y -= 16;
-    }
+Negotiation Notes:
+- Ask about open recalls before closing.
+- Verify maintenance records for recurring issues.
+- Compare nearby listings within ±5% of asking price.
 
-    // Save PDF locally
-    const pdfBytes = await pdfDoc.save();
-    fs.writeFileSync(tempFilePath, pdfBytes);
-    logger.info(`[ReportGenerator] PDF file written: ${tempFilePath}`);
+---
+
+Detailed Sections
+-----------------
+Recalls:
+${(data.recalls || []).map(r => `• ${r.title} (${r.status})`).join("\n") || "No recalls found."}
+
+Repairs:
+${(data.repairs || []).map(r => `• ${r.type} on ${r.date} (${r.miles || "N/A"} mi)`).join("\n") || "No repairs logged."}
+
+End of Report.
+`;
+
+    // Save locally first
+    const fileName = `report-${vin}.txt`;
+    const filePath = path.join("/tmp", fileName);
+    fs.writeFileSync(filePath, summary);
+
+    logger.info(`[ReportGenerator] Text report written: ${filePath}`);
 
     // Upload to Vercel Blob
-    const filePath = generateTimestampedFilename(vin);
     logger.info(`[ReportGenerator] Uploading report to Vercel Blob...`);
+    const blobBuffer = Buffer.from(summary, "utf-8");
+    const uniqueName = `reports/${fileName.replace(".txt", `-${Date.now()}.txt`)}`;
 
-    const startUpload = Date.now();
-    const blobData = Buffer.from(pdfBytes); // ✅ FIXED: Buffer instead of Blob
-
-    const blob = await put(filePath, blobData, {
+    const upload = await put(uniqueName, blobBuffer, {
       access: "public",
-      contentType: "application/pdf",
+      contentType: "text/plain",
     });
 
-    const uploadTime = Date.now() - startUpload;
-    logger.info(`[ReportGenerator] Blob uploaded in ${uploadTime}ms`);
-    logger.info(`[ReportGenerator] Blob URL: ${blob.url}`);
-
-    const totalTime = Date.now() - startTime;
-    logger.info(`[ReportGenerator] Report generated in ${totalTime}ms`);
-
-    return blob.url;
+    logger.info(`[ReportGenerator] Upload complete: ${upload.url}`);
+    return upload.url;
   } catch (err) {
     logger.error(`[ReportGenerator] Error generating report: ${err.message}`);
-    try {
-      await sendAdminAlert(
-        ADMIN_EMAIL,
-        "Report generation failed",
-        `<p>VIN: ${vin}</p><p>${err.message}</p>`
-      );
-    } catch (e) {
-      logger.warn(`[ReportGenerator] Admin alert failed: ${e.message}`);
-    }
     return null;
-  } finally {
-    try {
-      if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-    } catch (cleanupErr) {
-      logger.warn(`[ReportGenerator] Cleanup failed: ${cleanupErr.message}`);
-    }
   }
 }
 
