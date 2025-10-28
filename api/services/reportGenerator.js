@@ -1,127 +1,124 @@
+// /api/services/reportGenerator.js
 const fs = require("fs");
 const path = require("path");
-const { Blob } = require("@vercel/blob");
-const PDFDocument = require("pdfkit");
+const { put } = require("@vercel/blob");
+const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
 const logger = require("./logger");
 const { sendAdminAlert } = require("./emailService");
 
+// Admin notifications
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "carsaavy@gmail.com";
+
+// Helper: timestamped filename
+function generateTimestampedFilename(vin) {
+  const now = new Date().toISOString().replace(/[:.]/g, "-");
+  return `reports/report-${vin}-${now}.pdf`;
+}
+
+// Main function
 async function generateVehicleReport(vin, vehicleData) {
   logger.info(`[ReportGenerator] Starting PDF generation...`);
+  const startTime = Date.now();
+  const tempFilePath = path.join("/tmp", `report-${vin}.pdf`);
 
   try {
-    const doc = new PDFDocument({ margin: 50 });
-    const filePath = `/tmp/report-${vin}.pdf`;
-    const writeStream = fs.createWriteStream(filePath);
-    doc.pipe(writeStream);
+    // Create the PDF
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    // === HEADER ===
-    doc
-      .fontSize(24)
-      .fillColor("#0A74DA")
-      .text("CarSaavy Vehicle Negotiation Report", { align: "center" })
-      .moveDown(0.5);
-    doc
-      .fontSize(12)
-      .fillColor("#444")
-      .text(`VIN: ${vin}`, { align: "center" })
-      .moveDown(1.5);
+    const { width, height } = page.getSize();
+    const margin = 50;
+    let y = height - margin;
 
-    // === SUMMARY SECTION ===
-    doc
-      .fontSize(16)
-      .fillColor("#000")
-      .text("📊 Summary", { underline: true })
-      .moveDown(0.5);
-    doc
-      .fontSize(12)
-      .fillColor("#333")
-      .text(
-        "This report summarizes critical insights and negotiation leverage points based on vehicle data and history. Use these notes to identify deal breakers, value trends, and smart negotiation angles.",
-        { align: "left" }
-      )
-      .moveDown(1);
+    // Title
+    page.drawText("CarSaavy Vehicle Report", {
+      x: margin,
+      y,
+      size: 20,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    y -= 30;
 
-    // === DATA SECTIONS ===
-    const sections = [
-      {
-        title: "Vehicle Overview",
-        color: "#0056b3",
-        content: JSON.stringify(vehicleData.specs || {}, null, 2),
-      },
-      {
-        title: "Pricing Insights",
-        color: "#008037",
-        content: JSON.stringify(vehicleData.pricing || {}, null, 2),
-      },
-      {
-        title: "Recall History",
-        color: "#D9534F",
-        content: JSON.stringify(vehicleData.recalls || {}, null, 2),
-      },
-      {
-        title: "Repair / Maintenance Records",
-        color: "#F0AD4E",
-        content: JSON.stringify(vehicleData.repairs || {}, null, 2),
-      },
+    // VIN Summary
+    page.drawText(`VIN: ${vin}`, { x: margin, y, size: 12, font });
+    y -= 20;
+    page.drawText(`Generated: ${new Date().toLocaleString()}`, { x: margin, y, size: 12, font });
+    y -= 30;
+
+    // Summary header
+    page.drawText("Summary Highlights:", { x: margin, y, size: 14, font });
+    y -= 20;
+    const highlights = [
+      `Make: ${vehicleData?.specs?.make || "Unknown"}`,
+      `Model: ${vehicleData?.specs?.model || "Unknown"}`,
+      `Year: ${vehicleData?.specs?.year || "Unknown"}`,
+      `Trim: ${vehicleData?.specs?.trim || "N/A"}`,
+      `Estimated Price: ${vehicleData?.pricing?.asking || "N/A"}`,
     ];
+    highlights.forEach((line) => {
+      page.drawText(`• ${line}`, { x: margin + 10, y, size: 12, font });
+      y -= 18;
+    });
+    y -= 10;
 
-    for (const section of sections) {
-      doc
-        .moveDown(0.8)
-        .fontSize(14)
-        .fillColor(section.color)
-        .text(section.title, { underline: true })
-        .moveDown(0.3)
-        .fontSize(10)
-        .fillColor("#000")
-        .text(section.content || "No data available", { align: "left" });
+    // Recall section
+    page.drawText("Recalls:", { x: margin, y, size: 14, font });
+    y -= 20;
+    if (vehicleData.recalls?.length) {
+      vehicleData.recalls.forEach((recall) => {
+        page.drawText(`• ${recall.title} (${recall.status})`, { x: margin + 10, y, size: 12, font });
+        y -= 16;
+      });
+    } else {
+      page.drawText("No recalls found.", { x: margin + 10, y, size: 12, font });
+      y -= 16;
     }
 
-    doc.end();
+    // Save PDF locally
+    const pdfBytes = await pdfDoc.save();
+    fs.writeFileSync(tempFilePath, pdfBytes);
+    logger.info(`[ReportGenerator] PDF file written: ${tempFilePath}`);
 
-    await new Promise((resolve) => writeStream.on("finish", resolve));
-    logger.info(`[ReportGenerator] PDF file written: ${filePath}`);
+    // Upload to Vercel Blob
+    const filePath = generateTimestampedFilename(vin);
+    logger.info(`[ReportGenerator] Uploading report to Vercel Blob...`);
 
-    // === UPLOAD TO BLOB (with unique filename) ===
-    const blobClient = new Blob({
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    });
+    const startUpload = Date.now();
+    const blobData = Buffer.from(pdfBytes); // ✅ FIXED: Buffer instead of Blob
 
-    const fileBuffer = fs.readFileSync(filePath);
-    const blobName = `reports/report-${vin}-${new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")}.pdf`;
-
-    const start = Date.now();
-    logger.info(`[BlobUpload] Attempt 1 for ${blobName}`);
-
-    const blob = await blobClient.put(blobName, fileBuffer, {
+    const blob = await put(filePath, blobData, {
       access: "public",
       contentType: "application/pdf",
     });
 
-    const duration = Date.now() - start;
-    logger.info(`⏱️ [ReportGenerator] Blob upload took ${duration} ms`);
-    logger.info(`✅ [ReportGenerator] Report uploaded successfully: ${blob.url}`);
+    const uploadTime = Date.now() - startUpload;
+    logger.info(`[ReportGenerator] Blob uploaded in ${uploadTime}ms`);
+    logger.info(`[ReportGenerator] Blob URL: ${blob.url}`);
+
+    const totalTime = Date.now() - startTime;
+    logger.info(`[ReportGenerator] Report generated in ${totalTime}ms`);
 
     return blob.url;
   } catch (err) {
     logger.error(`[ReportGenerator] Error generating report: ${err.message}`);
-
-    // Admin alert fallback
     try {
       await sendAdminAlert(
-        process.env.ADMIN_EMAIL,
-        "🚨 CarSaavy Report Generation Error",
-        `<p>VIN: ${vin}</p><p>Error: ${err.message}</p>`
+        ADMIN_EMAIL,
+        "Report generation failed",
+        `<p>VIN: ${vin}</p><p>${err.message}</p>`
       );
-    } catch (alertErr) {
-      logger.error(
-        `[ReportGenerator] Failed to send admin alert: ${alertErr.message}`
-      );
+    } catch (e) {
+      logger.warn(`[ReportGenerator] Admin alert failed: ${e.message}`);
     }
-
-    throw err;
+    return null;
+  } finally {
+    try {
+      if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+    } catch (cleanupErr) {
+      logger.warn(`[ReportGenerator] Cleanup failed: ${cleanupErr.message}`);
+    }
   }
 }
 
