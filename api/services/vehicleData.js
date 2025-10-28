@@ -1,70 +1,100 @@
-// api/services/vehicleData.js
-const fetch = require("node-fetch");
-const log = require("./logger").scope("VehicleData");
+const logger = require("./logger");
+const { sendAdminAlert } = require("./emailService");
 
-const USE_MOCK = (process.env.MOCK_MODE || "true").toLowerCase() === "true";
+// Environment-controlled toggles
+const MOCK_MODE = process.env.MOCK_MODE !== "false";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "carsaavy@gmail.com";
 
-// --- Real data fetchers (stubbed for now). Replace URLs when going live. ---
-async function getVehicleSpecs(vin)    { return {}; /* hook real API */ }
-async function getRecalls(vin)         { return {}; /* hook real API */ }
-async function getVehicleHistory(vin)  { return {}; /* hook real API */ }
-async function getMarketPricing(vin)   { return {}; /* hook real API */ }
-async function getRepairEstimates(vin) { return {}; /* hook real API */ }
+let apiCallCount = 0;
+const seenVINs = new Set();
 
-async function getAllVehicleData(vin) {
-  if (USE_MOCK) {
-    log.info("Mock mode active");
-    return {
-      vin,
-      generatedAt: new Date().toISOString(),
-      sections: {
-        specs:   { make: "Honda", model: "Civic", year: 2022 },
-        recalls: { activeRecalls: 0 },
-        history: { owners: 1, cleanTitle: true },
-        pricing: { marketValue: "$18,500" },
-        repairs: { estCost: "$200" },
-      },
-    };
+/**
+ * Mock data generator (used in MOCK_MODE)
+ */
+function getMockVehicleData(vin) {
+  logger.info(`[VehicleData] Using mock mode for VIN: ${vin}`);
+  return {
+    vin,
+    make: "Honda",
+    model: "Civic",
+    year: 2020,
+    price: "$18,500",
+    recommendations: [
+      "Negotiate for an additional $500 off due to mileage.",
+      "Ask about service history or potential recalls.",
+    ],
+  };
+}
+
+/**
+ * Simulated API fetch from MarketCheck or fallback source.
+ */
+async function fetchVehicleDataFromAPI(vin) {
+  const API_KEY = process.env.MARKETCHECK_API_KEY;
+  const url = `https://marketcheck-prod.apigee.net/v2/vins/${vin}/specs?api_key=${API_KEY}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch vehicle data: ${response.statusText}`);
   }
 
-  // Live mode: fetch in parallel with basic resilience
-  try {
-    const [specs, recalls, history, pricing, repairs] = await Promise.all([
-      getVehicleSpecs(vin),
-      getRecalls(vin),
-      getVehicleHistory(vin),
-      getMarketPricing(vin),
-      getRepairEstimates(vin),
-    ]);
+  const data = await response.json();
+  return {
+    vin,
+    make: data.make || "Unknown",
+    model: data.model || "Unknown",
+    year: data.year || "Unknown",
+    price: data.price || "N/A",
+  };
+}
 
+/**
+ * Main handler
+ */
+async function getAllVehicleData(vin) {
+  logger.info(`[VehicleData] Processing VIN: ${vin}`);
+
+  // Prevent repeat VIN lookups
+  if (seenVINs.has(vin)) {
+    logger.warn(`[VehicleData] Duplicate VIN lookup prevented: ${vin}`);
     return {
       vin,
-      generatedAt: new Date().toISOString(),
-      sections: {
-        specs:   specs   || {},
-        recalls: recalls || {},
-        history: history || {},
-        pricing: pricing || {},
-        repairs: repairs || {},
-      },
+      duplicate: true,
+      message: "VIN already processed recently, skipping duplicate lookup.",
     };
-  } catch (err) {
-    log.error("Live fetch failed:", err.message);
-    // Fail gracefully so the pipeline continues
-    return {
-      vin,
-      generatedAt: new Date().toISOString(),
-      sections: { specs:{}, recalls:{}, history:{}, pricing:{}, repairs:{} },
-    };
+  }
+  seenVINs.add(vin);
+
+  apiCallCount++;
+  logger.info(`[VehicleData] API calls so far: ${apiCallCount}`);
+
+  // Send alert to admin if nearing threshold
+  if (apiCallCount === 250 || apiCallCount % 100 === 0) {
+    await sendAdminAlert(
+      ADMIN_EMAIL,
+      "CarSaavy API Usage Alert",
+      `API usage has reached ${apiCallCount} calls. Consider upgrading or monitoring usage.`
+    );
+    logger.info(`[VehicleData] Admin alerted at ${apiCallCount} calls`);
+  }
+
+  try {
+    // Choose mode
+    const result = MOCK_MODE ? getMockVehicleData(vin) : await fetchVehicleDataFromAPI(vin);
+    logger.info(`[VehicleData] Data retrieval complete for VIN: ${vin}`);
+    return result;
+  } catch (error) {
+    logger.error(`[VehicleData] Error fetching vehicle data: ${error.message}`);
+
+    // Send failure alert
+    await sendAdminAlert(
+      ADMIN_EMAIL,
+      "CarSaavy Vehicle Data Fetch Failed",
+      `Error fetching data for VIN: ${vin}\n\nError: ${error.message}`
+    );
+
+    return { success: false, error: error.message };
   }
 }
 
-module.exports = {
-  getAllVehicleData,
-  // export individual fetchers if you’ll unit-test them later
-  getVehicleSpecs,
-  getRecalls,
-  getVehicleHistory,
-  getMarketPricing,
-  getRepairEstimates,
-};
+module.exports = { getAllVehicleData };

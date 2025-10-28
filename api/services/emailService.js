@@ -65,4 +65,29 @@ async function sendEmail({ to, subject, vin, reportUrl }) {
   }
 }
 
-module.exports = { sendEmail };
+async function sendSystemAlertEmail({ to, subject, html }) {
+  if (!RESEND_API_KEY) throw new Error("Missing RESEND_API_KEY");
+  if (!to) throw new Error("Missing alert recipient email");
+  const resp = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
+  });
+  return resp?.id || null;
+}
+
+function buildSystemAlertHtml(title, lines = []) {
+  const items = lines.map(l => `<li>${l}</li>`).join("");
+  return `
+    <div style="font-family:Arial,sans-serif;color:#111">
+      <h2>🔔 ${title}</h2>
+      <ul>${items}</ul>
+      <p style="margin-top:16px;color:#555">— CarSaavy Monitor</p>
+    </div>
+  `;
+}
+
+module.exports = { sendEmail, 
+  sendSystemAlertEmail,
+  buildSystemAlertHtml };
