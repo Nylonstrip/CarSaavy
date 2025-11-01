@@ -83,7 +83,7 @@ async function fetchMarketcheckSpecs(vin) {
   if (!MARKETCHECK_API_KEY) {
     throw new Error("Missing MARKETCHECK_API_KEY");
   }
-  const url = `https://api.marketcheck.com/v2/vins/${vin}/specs?api_key=${MARKETCHECK_API_KEY}`;
+  const url = `https://api.marketcheck.com/v2/decode/car/epi/${vin}/specs?api_key=${MARKETCHECK_API_KEY}`;
   try {
     const r = await fetch(url);
     if (!r.ok) {
