@@ -84,9 +84,18 @@ async function fetchMarketcheckSpecs(vin) {
     throw new Error("Missing MARKETCHECK_API_KEY");
   }
   const url = `https://marketcheck-prod.apigee.net/v2/vins/${vin}/specs?api_key=${MARKETCHECK_API_KEY}`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`MarketCheck error: ${r.status} ${r.statusText}`);
-  return r.json();
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      const text = await r.text();
+      throw new Error(`MarketCheck error: ${r.status} ${r.statusText} — body: ${text}`);
+    }
+    const json = await r.json();
+    return json;
+  } catch (err) {
+    logger.error(`[VehicleData] fetchMarketcheckSpecs error for VIN ${vin}: ${err.stack}`);
+    throw err; // ensure upstream caller knows
+  }
 }
 
 // ---- Public API ----
