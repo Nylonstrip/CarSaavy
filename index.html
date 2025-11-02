@@ -1,114 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CarSaavy – Negotiate Smarter</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<style>
-body {
-font-family: 'Inter', sans-serif;
-margin: 0;
-background-color: #f8f9fa;
-color: #222;
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CarSaavy – Smarter Car Deals</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      background-color: #f8f9fa;
+      color: #222;
+    }
 
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.2rem 2rem;
+      background-color: #0d1b2a;
+      color: white;
+    }
 
-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-padding: 1.2rem 2rem;
-background-color: #0d1b2a;
-color: white;
-}
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
 
+    header a.button {
+      background-color: #00b4d8;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.3s ease;
+    }
 
-header h1 {
-font-size: 1.5rem;
-font-weight: 700;
-}
+    header a.button:hover {
+      background-color: #0096c7;
+    }
 
+    .hero {
+      text-align: center;
+      padding: 5rem 1rem 4rem;
+      background: linear-gradient(to right, #0d1b2a, #1b263b);
+      color: white;
+    }
 
-header a.button {
-background-color: #00b4d8;
-color: white;
-padding: 0.6rem 1.2rem;
-border-radius: 8px;
-text-decoration: none;
-transition: background 0.3s ease;
-}
+    .hero h2 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
 
+    .hero p {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      color: #e0e1dd;
+    }
 
-header a.button:hover {
-background-color: #0096c7;
-}
+    .hero a.button {
+      background-color: #00b4d8;
+      padding: 0.8rem 1.6rem;
+      border-radius: 10px;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
 
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      padding: 4rem 2rem;
+      background-color: white;
+      text-align: center;
+    }
 
-.hero {
-text-align: center;
-padding: 5rem 1rem 4rem;
-background: linear-gradient(to right, #0d1b2a, #1b263b);
-color: white;
-}
+    .feature {
+      background-color: #f1f3f5;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      transition: transform 0.3s ease;
+    }
 
+    .feature:hover {
+      transform: translateY(-5px);
+    }
 
-.hero h2 {
-font-size: 2.5rem;
-margin-bottom: 1rem;
-}
+    .feature i {
+      font-size: 2rem;
+      color: #00b4d8;
+      margin-bottom: 1rem;
+    }
 
+    .pricing {
+      text-align: center;
+      padding: 4rem 1rem;
+      background-color: #e9ecef;
+    }
 
-.hero p {
-font-size: 1.2rem;
-margin-bottom: 2rem;
-color: #e0e1dd;
-}
+    .pricing h3 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
 
+    .pricing p {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+    }
 
-.hero a.button {
-background-color: #00b4d8;
-padding: 0.8rem 1.6rem;
-border-radius: 10px;
-color: white;
-text-decoration: none;
-font-weight: bold;
-font-size: 1.1rem;
-}
+    .pricing a.button {
+      background-color: #00b4d8;
+      color: white;
+      padding: 0.8rem 1.6rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
 
+    footer {
+      background-color: #0d1b2a;
+      color: #aaa;
+      text-align: center;
+      padding: 2rem 1rem;
+      font-size: 0.9rem;
+    }
 
-.steps {
-display: grid;
-grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-gap: 2rem;
-padding: 4rem 2rem;
-background-color: white;
-text-align: center;
-}
+    footer a {
+      color: #00b4d8;
+      text-decoration: none;
+      margin: 0 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CarSaavy</h1>
+    <a href="vin" class="button">Check a VIN</a>
+  </header>
 
+  <section class="hero">
+    <h2>Negotiate Smarter, Not Harder.</h2>
+    <p>Turn any VIN into a negotiation-ready report. Save thousands on your next car deal with CarSaavy’s data-powered insights.</p>
+    <a href="vin" class="button">Generate My Report →</a>
+  </section>
 
-.step {
-background-color: #f1f3f5;
-border-radius: 12px;
-padding: 2rem;
-box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-transition: transform 0.3s ease;
-}
+  <section class="features">
+    <div class="feature">
+      <i class="fas fa-car"></i>
+      <h3>Instant VIN Insights</h3>
+      <p>We decode your vehicle’s details and hidden data points instantly from trusted sources.</p>
+    </div>
+    <div class="feature">
+      <i class="fas fa-list-check"></i>
+      <h3>Negotiation Checklist</h3>
+      <p>Get key leverage points, question prompts, and deal warnings — all in one report.</p>
+    </div>
+    <div class="feature">
+      <i class="fas fa-handshake"></i>
+      <h3>Real Savings</h3>
+      <p>Walk into your next car purchase ready to negotiate like a pro, backed by data.</p>
+    </div>
+  </section>
 
+  <section class="pricing">
+    <h3>Only $20 per Report</h3>
+    <p>One-time purchase. Instant delivery. Big savings.</p>
+    <a href="vin" class="button">Start Now</a>
+  </section>
 
-.step:hover {
-transform: translateY(-5px);
-}
-
-
-.step i {
-font-size: 2rem;
-color: #00b4d8;
-margin-bottom: 1rem;
-}
-
-
-.pricing {
-text-align: center;
-padding: 4rem 1rem;
+  <footer>
+    <p>© 2025 CarSaavy. All rights reserved.</p>
+    <p>
+      <a href="about">About</a> ·
+      <a href="contact">Contact</a> ·
+      <a href="privacy">Privacy Policy</a>
+    </p>
+  </footer>
+</body>
 </html>
