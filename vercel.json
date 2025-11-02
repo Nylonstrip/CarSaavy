@@ -4,9 +4,7 @@
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/index.html" },
     { "src": "/(.*)", "dest": "/vin.html" }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
+  ]
 }
 
 
