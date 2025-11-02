@@ -2,12 +2,12 @@
   "version": 2,
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/$", "dest": "/index.html" },
-    { "src": "/vin/?", "dest": "/vin.html" }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
+    { "src": "^/(|index)$", "dest": "/index.html" },
+    { "src": "^/vin$", "dest": "/vin.html" },
+    { "src": "^/about$", "dest": "/about.html" },
+    { "src": "^/contact$", "dest": "/contact.html" },
+    { "src": "/.*", "status": 302, "headers": { "Location": "/" } }
+  ]
 }
-
 
 
