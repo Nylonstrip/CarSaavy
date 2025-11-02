@@ -2,9 +2,11 @@
   "version": 2,
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/index.html" },
-    { "src": "/(.*)", "dest": "/vin.html" }
-  ]
+    { "src": "/$", "dest": "/index.html" },
+    { "src": "/vin/?", "dest": "/vin.html" }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
 }
 
 
