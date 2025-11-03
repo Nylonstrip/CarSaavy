@@ -10,6 +10,7 @@
         "@vercel/blob": "^2.0.0",
         "micro": "^10.0.1",
         "node-fetch": "^2.6.7",
+        "pdf-lib": "^1.17.1",
         "pdfkit": "^0.17.2",
         "pino": "^10.1.0",
         "pino-pretty": "^13.1.2",
