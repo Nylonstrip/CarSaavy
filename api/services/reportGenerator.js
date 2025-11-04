@@ -17,8 +17,8 @@ async function generateVehicleReport(data, vin) {
 
   // --- HEADER SECTION ---
   try {
-    const logoPath = path.join(process.cwd(), 'images', 'carsaavy_header.png');
-    const logoBytes = fs.readFileSync(logoPath);
+    const logoUrl = 'https://onebc34tesijmjtq.public.blob.vercel-storage.com/carsaavy_header.png'; // update with your actual hosted logo
+    const logoBytes = await fetch(logoUrl).then(res => res.arrayBuffer());
     const logoImage = await pdfDoc.embedPng(logoBytes);
     const logoWidth = 140;
     const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
@@ -26,7 +26,7 @@ async function generateVehicleReport(data, vin) {
     const logoY = height - 100;
     page.drawImage(logoImage, { x: logoX, y: logoY, width: logoWidth, height: logoHeight });
   } catch (e) {
-    console.error('[ReportGenerator] Could not load logo:', e.message);
+    console.error('[ReportGenerator] Could not load remote logo:', e.message);
   }
 
   const title = 'Vehicle Negotiation Report';
