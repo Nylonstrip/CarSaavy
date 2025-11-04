@@ -6,6 +6,7 @@
     { "src": "^/vin$", "dest": "/vin.html" },
     { "src": "^/about$", "dest": "/about.html" },
     { "src": "^/contact$", "dest": "/contact.html" },
+    { "src": "^/privacy$", "dest": "/privacy.html" },
     { "src": "/.*", "dest": "/index.html", "headers": { "Cache-Control": "no-cache" } }
   ]
 }
