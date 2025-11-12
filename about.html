@@ -1,27 +1,107 @@
-<!-- about.html -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>About – CarSaavy</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>About — CarSaavy</title>
+<link rel="icon" href="/favicon.ico" />
 <style>
-body {font-family: 'Inter', sans-serif; background:#f8f9fa; color:#222; margin:0;}
-header {background:#0d1b2a; color:#fff; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center;}
-a {color:#00b4d8; text-decoration:none;}
-main {max-width:800px; margin:3rem auto; padding:1rem;}
+  :root{
+    --bg:#0b0f13;
+    --card:#121417;
+    --muted:#9aa6b2;
+    --accent1:#0077b6;
+    --accent2:#00b4d8;
+    --glass: rgba(255,255,255,0.03);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}html,body{height:100%}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;background:#121212;color:#e6eef6;display:flex;flex-direction:column;min-height:100vh}
+  /* Header */
+  header.site-header{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter: blur(6px);
+    background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 20px;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand img{height:44px;display:block}
+  nav.site-nav{display:flex;gap:14px;align-items:center}
+  nav.site-nav a{
+    color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
+    transition: all .18s ease;
+  }
+  nav.site-nav a:hover{color:#fff;background:linear-gradient(90deg,var(--accent1),var(--accent2));box-shadow:0 6px 18px rgba(0,180,216,0.12);transform:translateY(-2px);}
+
+  .container{max-width:1000px;margin:0 auto;padding:36px 20px;flex:1}
+  .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:26px;border-radius:14px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+  h2{margin-top:0;color:transparent;background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;font-size:28px}
+  p.lead{color:var(--muted)}
+
+  .two-col{display:grid;grid-template-columns:1fr 320px;gap:18px;margin-top:18px}
+  .box{background:rgba(255,255,255,0.02);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+  footer {
+      text-align: center;
+      padding: 1rem;
+      background: #1b1b1b;
+      color: #9ed9ef;
+    }
+
+  @media (max-width:900px){.two-col{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
-<header>
-<a href="/" style="color:white; font-weight:bold; font-size:1.3rem;">CarSaavy</a>
-<a href="vin" style="background:#00b4d8; padding:0.5rem 1rem; border-radius:6px; color:white;">Get a Report</a>
-</header>
-<main>
-<h1>About CarSaavy</h1>
-<p>CarSaavy helps car buyers negotiate smarter. We provide detailed VIN-based reports designed to uncover insights, spot red flags, and maximize your leverage during negotiation.</p>
-<p>Our mission is simple — empower everyday car buyers with the same data and analysis that dealerships use, without the hassle or jargon.</p>
-</main>
+  <header class="site-header">
+    <div class="brand">
+      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
+    </div>
+
+    <nav class="site-nav" aria-label="Main nav">
+      <a href="/index.html">Home</a>
+      <a href="/vin.html">VIN Tool</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div class="panel">
+      <h2>About CarSaavy</h2>
+      <p class="lead">CarSaavy was built to give everyday buyers the upper hand at the dealership. Instead of sifting through raw VIN data, our reports surface the specific leverage points you can use when negotiating price, repairs, or warranties.</p>
+
+      <div class="two-col">
+        <div>
+          <h3 style="margin-bottom:8px">What we do</h3>
+          <p class="muted">We aggregate publicly available vehicle data (recalls, history flags, pricing comps) and transform it into a concise negotiation checklist with a recommended price range and walking-away threshold.</p>
+          <h4 style="margin-top:18px">How it helps</h4>
+          <ul style="color:var(--muted)">
+            <li>Save time in the lot — get clear questions & priorities.</li>
+            <li>Know fair price ranges and spot red flags fast.</li>
+            <li>Bring proof-to-the-table: a PDF your salesperson can’t ignore.</li>
+          </ul>
+        </div>
+
+        <aside class="box">
+          <strong>Quick facts</strong>
+          <p class="muted" style="margin:8px 0 0">Price per report: <strong>$20</strong></p>
+          <p class="muted">Delivery: Email + PDF link</p>
+          <p class="muted">Payment: Stripe (test/live)</p>
+          <div style="margin-top:12px"><a class="btn" href="/vin.html" style="text-decoration:none;">Generate a report</a></div>
+        </aside>
+      </div>
+
+      <section style="margin-top:20px">
+        <h3>Values</h3>
+        <p class="muted">Clear, honest guidance — our goal is to empower buyers so they never feel taken advantage of on price or condition.</p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    © 2025 CarSaavy — Negotiate Smarter • <a href="/privacy.html" style="color:var(--muted);text-decoration:underline">Privacy</a>
+  </footer>
 </body>
 </html>

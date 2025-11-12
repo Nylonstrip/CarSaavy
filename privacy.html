@@ -1,26 +1,97 @@
-<!-- privacy.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Privacy Policy – CarSaavy</title>
-<style>
-body {font-family:'Inter',sans-serif;background:#f8f9fa;margin:0;color:#222;}
-header {background:#0d1b2a;color:white;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;}
-main {max-width:800px;margin:3rem auto;padding:1rem;line-height:1.6;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CarSaavy — Privacy Policy</title>
+  <link rel="icon" type="image/png" href="/favicon.ico" />
+
+  <style>
+    :root{
+      --bg:#0b0f13;
+      --card:#121417;
+      --muted:#9aa6b2;
+      --accent1:#0077b6;
+      --accent2:#00b4d8;
+      --radius:14px;
+    }
+    body { margin:0; font-family:Inter, system-ui, -apple-system, Arial;
+      background:#121212; color:#e6eef6;
+      display:flex; flex-direction:column; min-height:100vh; }
+    /* Header */
+  header.site-header{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter: blur(6px);
+    background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 20px;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand img{height:44px;display:block}
+  nav.site-nav{display:flex;gap:14px;align-items:center}
+  nav.site-nav a{
+    color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
+    transition: all .18s ease;
+  }
+  nav.site-nav a:hover{color:#fff;background:linear-gradient(90deg,var(--accent1),var(--accent2));box-shadow:0 6px 18px rgba(0,180,216,0.12);transform:translateY(-2px);}
+
+    main { flex:1; padding:40px 20px; display:flex; justify-content:center; }
+    .card {
+      background:var(--card);
+      width:100%; max-width:800px;
+      padding:30px; border-radius:var(--radius);
+      border:1px solid rgba(255,255,255,0.05);
+      line-height:1.6;
+    }
+    h1 { margin-top:0; }
+    footer {
+      text-align:center; padding:1rem;
+      background:#1b1b1b; color:#9ed9ef;
+    }
+  </style>
 </head>
+
 <body>
-<header>
-<a href="/" style="color:white;font-weight:bold;font-size:1.3rem;">CarSaavy</a>
-<a href="vin" style="background:#00b4d8;padding:0.5rem 1rem;border-radius:6px;color:white;">Get a Report</a>
-</header>
-<main>
-<h1>Privacy Policy</h1>
-<p>Your privacy is important to us. CarSaavy does not sell or share your data. Any information you provide is used solely to generate your vehicle report and communicate with you about your order.</p>
-<p>We use secure payment and encryption technologies to protect all personal and financial data.</p>
-<p>For any privacy concerns, reach out to us via the <a href="contact">Contact</a> page.</p>
-</main>
+  <header class="site-header">
+    <div class="brand">
+      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
+    </div>
+    <nav class="site-nav">
+      <a href="/index.html">Home</a>
+      <a href="/vin.html">VIN Tool</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+      <h1>Privacy Policy</h1>
+      <p>Last Updated: March 2025</p>
+
+      <p>CarSaavy respects your privacy. We only collect data required to generate your VIN report and process payments through Stripe.</p>
+
+      <h3>Information We Collect</h3>
+      <ul>
+        <li>VIN numbers (for report generation)</li>
+        <li>Email (to send your report)</li>
+        <li>Payment details (handled securely by Stripe — we never store card numbers)</li>
+      </ul>
+
+      <h3>Your Rights</h3>
+      <p>You may request deletion of report data at any time by contacting us.</p>
+
+      <h3>Third-Party Services</h3>
+      <p>We use Stripe for secure payments and may use analytics to improve site performance.</p>
+
+      <p>If you have questions, email: <strong>support@carsaavy.com</strong></p>
+    </div>
+  </main>
+
+  <footer>
+    © 2025 CarSaavy — Negotiate Smarter • <a href="/privacy.html" style="color:var(--muted);text-decoration:underline">Privacy</a>
+  </footer>
 </body>
 </html>
