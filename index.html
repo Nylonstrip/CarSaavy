@@ -1,205 +1,179 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CarSaavy – Negotiate Smarter</title>
-  
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  
-    <!-- SEO & Sharing -->
-    <meta name="description" content="CarSaavy helps you negotiate smarter car deals using instant VIN-based insights. Turn any VIN into a powerful negotiation report." />
-    <meta property="og:title" content="CarSaavy – Negotiate Smarter" />
-    <meta property="og:description" content="Save thousands on your next car deal. Generate instant vehicle negotiation reports with CarSaavy." />
-    <meta property="og:image" content="/images/logo.png" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.carsaavy.com/" />
-  
-    <!-- Fonts & Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-  
-    <!-- Logo preload (for fast rendering) -->
-    <link rel="preload" href="/images/logo.png" as="image">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      background-color: #f8f9fa;
-      color: #222;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CarSaavy — Negotiation-ready VIN reports</title>
+<link rel="icon" href="/favicon.ico" />
+<style>
+  :root{
+    --bg:#0b0f13;
+    --card:#121417;
+    --muted:#9aa6b2;
+    --accent1:#0077b6;
+    --accent2:#00b4d8;
+    --glass: rgba(255,255,255,0.03);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background:#121212;
+    color:#e6eef6;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
 
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.2rem 2rem;
-      background-color: #0d1b2a;
-      color: white;
-    }
+  /* Header */
+  header.site-header{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter: blur(6px);
+    background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 20px;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand img{height:44px;display:block}
+  nav.site-nav{display:flex;gap:14px;align-items:center}
+  nav.site-nav a{
+    color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
+    transition: all .18s ease;
+  }
+  nav.site-nav a:hover{color:#fff;background:linear-gradient(90deg,var(--accent1),var(--accent2));box-shadow:0 6px 18px rgba(0,180,216,0.12);transform:translateY(-2px);}
 
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-    }
+  /* Hero */
+  .container{width:100%;max-width:1100px;margin:0 auto;padding:36px 20px;flex:1}
+  .hero{
+    display:grid;grid-template-columns:1fr 420px;gap:28px;align-items:center;
+    margin-top:36px;
+  }
+  .hero-card{
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:var(--radius);padding:28px;border:1px solid rgba(255,255,255,0.03);
+    box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+  }
+  h1{font-size:34px;margin:0 0 12px;color:linear-gradient(90deg,var(--accent1),var(--accent2));}
+  p.lead{color:var(--muted);margin:0 0 18px;line-height:1.45}
 
-    header a.button {
-      background-color: #00b4d8;
-      color: white;
-      padding: 0.6rem 1.2rem;
-      border-radius: 8px;
-      text-decoration: none;
-      transition: background 0.3s ease;
-    }
+  .cta-row{display:flex;gap:12px;align-items:center}
+  .btn{
+    display:inline-block;padding:12px 16px;border-radius:12px;font-weight:700;border:none;cursor:pointer;
+    color:#071018;background:linear-gradient(90deg,var(--accent1),var(--accent2));
+    box-shadow:0 10px 30px rgba(0,180,216,0.12);transition:transform .14s ease,box-shadow .14s ease;
+  }
+  .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);box-shadow:none}
+  .btn:active{transform:translateY(1px)}
 
-    header a.button:hover {
-      background-color: #0096c7;
-    }
+  /* VIN box */
+  .vin-box{background:var(--card);padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+  input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:#0f1418;color:#e8f5ff}
+  .muted{color:var(--muted);font-size:0.92rem}
 
-    .hero {
+  /* features */
+  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}
+  .feature{background:var(--glass);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+  .feature h4{margin:0 0 6px;font-size:1rem;color:#eaf6ff}
+  .feature p{margin:0;color:var(--muted);font-size:0.92rem}
+
+  footer {
       text-align: center;
-      padding: 5rem 1rem 4rem;
-      background: linear-gradient(to right, #0d1b2a, #1b263b);
-      color: white;
+      padding: 1rem;
+      background: #1b1b1b;
+      color: #9ed9ef;
     }
 
-    .hero h2 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .hero p {
-      font-size: 1.2rem;
-      margin-bottom: 2rem;
-      color: #e0e1dd;
-    }
-
-    .hero a.button {
-      background-color: #00b4d8;
-      padding: 0.8rem 1.6rem;
-      border-radius: 10px;
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 1.1rem;
-    }
-
-    .features {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 2rem;
-      padding: 4rem 2rem;
-      background-color: white;
-      text-align: center;
-    }
-
-    .feature {
-      background-color: #f1f3f5;
-      border-radius: 12px;
-      padding: 2rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      transition: transform 0.3s ease;
-    }
-
-    .feature:hover {
-      transform: translateY(-5px);
-    }
-
-    .feature i {
-      font-size: 2rem;
-      color: #00b4d8;
-      margin-bottom: 1rem;
-    }
-
-    .pricing {
-      text-align: center;
-      padding: 4rem 1rem;
-      background-color: #e9ecef;
-    }
-
-    .pricing h3 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .pricing p {
-      font-size: 1.1rem;
-      margin-bottom: 2rem;
-    }
-
-    .pricing a.button {
-      background-color: #00b4d8;
-      color: white;
-      padding: 0.8rem 1.6rem;
-      border-radius: 10px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    footer {
-      background-color: #0d1b2a;
-      color: #aaa;
-      text-align: center;
-      padding: 2rem 1rem;
-      font-size: 0.9rem;
-    }
-
-    footer a {
-      color: #00b4d8;
-      text-decoration: none;
-      margin: 0 0.5rem;
-    }
-  </style>
+  /* Responsive */
+  @media (max-width:900px){
+    .hero{grid-template-columns:1fr; padding-bottom:20px}
+    nav.site-nav{display:none}
+  }
+</style>
 </head>
 <body>
-  <header style="background:#0d1b2a;color:white;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;">
-    <a href="/" style="color:white;font-weight:bold;font-size:1.5rem;text-decoration:none;">CarSaavy</a>
-    <a href="vin" class="button">Check a VIN</a>
-    <nav>
-      <a href="/about" style="color:white;margin-right:1rem;">About</a>
-      <a href="/contact" style="color:white;margin-right:1rem;">Contact</a>
-      <a href="/privacy" style="color:white;margin-right:1rem;">Privacy</a>
-      <a href="/vin" style="background:#00b4d8;padding:0.5rem 1rem;border-radius:6px;color:white;text-decoration:none;">Get a Report</a>
+  <header class="site-header">
+    <div class="brand">
+      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
+    </div>
+
+    <nav class="site-nav" aria-label="Main nav">
+      <a href="/index.html">Home</a>
+      <a href="/vin.html">VIN Tool</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
     </nav>
   </header>
-  <section class="hero">
-    <h2>Negotiate Smarter, Not Harder.</h2>
-    <p>Turn any VIN into a negotiation-ready report. Save thousands on your next car deal with CarSaavy’s data-powered insights.</p>
-    <a href="vin" class="button">Generate My Report →</a>
-  </section>
 
-  <section class="features">
-    <div class="feature">
-      <i class="fas fa-car"></i>
-      <h3>Instant VIN Insights</h3>
-      <p>We decode your vehicle’s details and hidden data points instantly from trusted sources.</p>
-    </div>
-    <div class="feature">
-      <i class="fas fa-list-check"></i>
-      <h3>Negotiation Checklist</h3>
-      <p>Get key leverage points, question prompts, and deal warnings — all in one report.</p>
-    </div>
-    <div class="feature">
-      <i class="fas fa-handshake"></i>
-      <h3>Real Savings</h3>
-      <p>Walk into your next car purchase ready to negotiate like a pro, backed by data.</p>
-    </div>
-  </section>
+  <main class="container">
+    <section class="hero">
+      <div class="hero-card">
+        <h1 style="background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;color:transparent;">
+          Get negotiation-ready in minutes
+        </h1>
+        <p class="lead">CarSaavy converts a VIN into a short, high-impact negotiation checklist you can take to a dealer. Fast, actionable, and designed to save you thousands.</p>
 
-  <section class="pricing">
-    <h3>Only $20 per Report</h3>
-    <p>One-time purchase. Instant delivery. Big savings.</p>
-    <a href="vin" class="button">Start Now</a>
-  </section>
+        <div class="cta-row" style="margin-top:18px;">
+          <a class="btn" href="/vin.html">Start a VIN Report</a>
+          <a class="btn secondary" href="/about.html">How it works</a>
+        </div>
+
+        <div style="margin-top:22px" class="vin-box">
+          <label class="muted">Quick check — paste VIN (17 chars)</label>
+          <form id="inline-check" onsubmit="return false" style="margin-top:8px;">
+            <input id="quickVin" placeholder="Enter VIN (example: 1HGCM82633A004352)" maxlength="17" />
+            <div style="display:flex;gap:10px;margin-top:12px">
+              <button class="btn" onclick="goToVin()">Go</button>
+              <button class="btn secondary" onclick="document.getElementById('quickVin').value=''">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="features" style="margin-top:18px;">
+          <div class="feature">
+            <h4>Negotiation checklist</h4>
+            <p>Priced guidance, walk-away threshold, and key questions to ask the dealer.</p>
+          </div>
+          <div class="feature">
+            <h4>Recalls & history</h4>
+            <p>Pulls recall and history flags so you don't get stuck with surprises.</p>
+          </div>
+          <div class="feature">
+            <h4>PDF & email</h4>
+            <p>Deliverable PDF and email link you can use at the dealership or share.</p>
+          </div>
+        </div>
+      </div>
+
+      <aside>
+        <div class="hero-card" style="width:420px">
+          <h3 style="margin-top:0">Why CarSaavy?</h3>
+          <p class="muted">Tailored negotiation points — not just raw VIN data. Our report highlights leverage you can use in the moment.</p>
+          <div style="margin-top:14px">
+            <strong>Price:</strong> $20 per report • <span class="muted">Secure Stripe checkout</span>
+          </div>
+          <div style="margin-top:18px">
+            <a class="btn" href="/vin.html">Generate a report</a>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
 
   <footer>
-    <p>© 2025 CarSaavy. All rights reserved.</p>
-    <p>
-      <a href="about">About</a> ·
-      <a href="contact">Contact</a> ·
-      <a href="privacy">Privacy Policy</a>
-    </p>
+    © 2025 CarSaavy — Negotiate Smarter • <a href="/privacy.html" style="color:var(--muted);text-decoration:underline">Privacy</a>
   </footer>
+
+<script>
+  function goToVin(){
+    const val = (document.getElementById('quickVin').value || '').trim().toUpperCase();
+    if(!val || val.length < 11){ alert('Please enter a VIN'); return; }
+    // direct user to VIN page with vin as query param
+    window.location.href = `/vin.html?vin=${encodeURIComponent(val)}`;
+  }
+</script>
 </body>
 </html>

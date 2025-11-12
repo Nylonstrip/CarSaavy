@@ -1,595 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CarSaavy – Negotiate Smarter</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CarSaavy — VIN Report Tool</title>
+  <link rel="icon" type="image/png" href="/favicon.ico" />
+  <style>
+    :root{
+    --bg:#0b0f13;
+    --card:#121417;
+    --muted:#9aa6b2;
+    --accent1:#0077b6;
+    --accent2:#00b4d8;
+    --glass: rgba(255,255,255,0.03);
+    --radius:14px;
+  }
+  header.site-header{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter: blur(6px);
+    background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 20px;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand img{height:44px;display:block}
+  nav.site-nav{display:flex;gap:14px;align-items:center}
+  nav.site-nav a{
+    color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
+    transition: all .18s ease;
+  }
+  nav.site-nav a:hover{color:#fff;background:linear-gradient(90deg,var(--accent1),var(--accent2));box-shadow:0 6px 18px rgba(0,180,216,0.12);transform:translateY(-2px);}
+
+    body {
+      margin: 0;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background-color: #121212;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
   
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  
-    <!-- SEO & Sharing -->
-    <meta name="description" content="CarSaavy helps you negotiate smarter car deals using instant VIN-based insights. Turn any VIN into a powerful negotiation report." />
-    <meta property="og:title" content="CarSaavy – Negotiate Smarter" />
-    <meta property="og:description" content="Save thousands on your next car deal. Generate instant vehicle negotiation reports with CarSaavy." />
-    <meta property="og:image" content="/images/logo.png" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.carsaavy.com/" />
-  
-    <!-- Fonts & Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-  
-    <!-- Logo preload (for fast rendering) -->
-    <link rel="preload" href="/images/logo.png" as="image">
-    <script src="https://js.stripe.com/v3/">
-        const STRIPE_PUBLISHABLE_KEY = 'pk_test_51SEAELB3RPy2OIjKKbueCTkdO97ipd7PHoQlDT9Z9Fi1GdWRHKFmZ5zHLGBBb08VxF6zUU60sli9LpqS4r0lJm5t00tHIX2I44';
-        const API_URL = 'car-saavy-1h91n82k1-tory-keals-projects.vercel.app';
-    </script>
-    
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
-            background: #f5f7fa;
-        }
-        
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-        }
-        
-        h1 {
-            margin-top: 0;
-            color: #1a1a1a;
-            font-size: 28px;
-        }
-        
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 15px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-            font-size: 14px;
-        }
-        
-        input {
-            width: 100%;
-            padding: 12px 16px;
-            font-size: 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            transition: border-color 0.3s;
-        }
-        
-        input:focus {
-            outline: none;
-            border-color: #635bff;
-        }
-        
-        input.valid {
-            border-color: #00d924;
-        }
-        
-        input.invalid {
-            border-color: #ff4444;
-        }
-        
-        .message {
-            margin-top: 10px;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .info {
-            color: #666;
-            font-size: 13px;
-            margin-top: 5px;
-        }
-        
-        button {
-            background-color: #635bff;
-            color: white;
-            padding: 14px 28px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.3s;
-        }
-        
-        button:hover:not(:disabled) {
-            background-color: #4f46e5;
-        }
-        
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        
-        .step {
-            display: none;
-        }
-        
-        .step.active {
-            display: block;
-        }
-        
-        .step-indicator {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-        }
-        
-        .step-item {
-            flex: 1;
-            text-align: center;
-            position: relative;
-            padding: 10px 0;
-        }
-        
-        .step-item::before {
-            content: '';
-            position: absolute;
-            top: 15px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #e0e0e0;
-            z-index: 0;
-        }
-        
-        .step-item:first-child::before {
-            left: 50%;
-        }
-        
-        .step-item:last-child::before {
-            right: 50%;
-        }
-        
-        .step-number {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #e0e0e0;
-            color: #666;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 14px;
-            position: relative;
-            z-index: 1;
-            margin-bottom: 5px;
-        }
-        
-        .step-item.completed .step-number,
-        .step-item.active .step-number {
-            background: #635bff;
-            color: white;
-        }
-        
-        .step-label {
-            font-size: 12px;
-            color: #666;
-            font-weight: 500;
-        }
-        
-        .step-item.active .step-label {
-            color: #635bff;
-            font-weight: 600;
-        }
-        
-        #card-element {
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            background: white;
-        }
-        
-        #card-errors {
-            color: #ff4444;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        
-        .price-display {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .price-amount {
-            font-size: 36px;
-            font-weight: 700;
-            color: #1a1a1a;
-        }
-        
-        .price-description {
-            color: #666;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        
-        .vin-display {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 18px;
-            text-align: center;
-            letter-spacing: 2px;
-            color: #1a1a1a;
-            font-weight: 600;
-        }
-        
-        .back-button {
-            background: white;
-            color: #635bff;
-            border: 2px solid #635bff;
-            margin-top: 10px;
-        }
-        
-        .back-button:hover {
-            background: #f8f9fa;
-        }
-        
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #635bff;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-right: 10px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 {
+      color: #22b7f0;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .steps {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .steps.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .step {
+      background: #1b2a35;
+      border: 1px solid #22b7f0;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      min-width: 150px;
+      color: #9ed9ef;
+      font-weight: 600;
+      opacity: 0.7;
+      transition: all 0.4s ease;
+      box-shadow: 0 0 5px rgba(34, 183, 240, 0.3);
+    }
+    .step.active {
+      opacity: 1;
+      background: #22b7f0;
+      color: #0c0c0c;
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(34, 183, 240, 0.8);
+    }
+    .step.glow {
+      box-shadow: 0 0 20px rgba(34, 183, 240, 0.9);
+    }
+    form {
+      background: #1e1e1e;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 450px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    form.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #444;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: #2a2a2a;
+      color: #f0f0f0;
+    }
+    button {
+      width: 100%;
+      margin-top: 1rem;
+      background-color: #22b7f0;
+      color: #0c0c0c;
+      border: none;
+      padding: 0.85rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s ease-in-out, transform 0.2s ease;
+    }
+    button:hover {
+      background-color: #1a9dce;
+    }
+    button.pulse {
+      animation: pulse 0.6s ease;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 183, 240, 0.6); }
+      50% { transform: scale(1.05); box-shadow: 0 0 15px rgba(34, 183, 240, 0.9); }
+      100% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 183, 240, 0.6); }
+    }
+    .message {
+      margin-top: 1rem;
+      font-size: 0.95rem;
+      color: #f87171;
+      display: none;
+    }
+    .success {
+      color: #7bf58a;
+    }
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background: #1b1b1b;
+      color: #9ed9ef;
+    }
+  </style>
 </head>
 <body>
-    <header style="background:#0d1b2a;color:white;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;">
-        <a href="/" style="color:white;font-weight:bold;font-size:1.3rem;">CarSaavy</a>
-        <span>Vehicle Report Tool</span>
-        </header>
-    <div class="container">
-        <h1>🚗 Car Buying Audit Report</h1>
-        <p class="subtitle">Get instant insights on any vehicle to negotiate like a pro</p>
-        
-        <div class="step-indicator">
-            <div class="step-item active" id="indicator-1">
-                <div class="step-number">1</div>
-                <div class="step-label">VIN</div>
-            </div>
-            <div class="step-item" id="indicator-2">
-                <div class="step-number">2</div>
-                <div class="step-label">Payment</div>
-            </div>
-            <div class="step-item" id="indicator-3">
-                <div class="step-number">3</div>
-                <div class="step-label">Report</div>
-            </div>
-        </div>
-
-        <!-- Step 1: VIN Validation -->
-        <div class="step active" id="step1">
-            <form id="vinForm">
-                <div class="form-group">
-                    <label for="vin">Vehicle Identification Number (VIN):</label>
-                    <input 
-                        type="text" 
-                        id="vin" 
-                        name="vin" 
-                        maxlength="17"
-                        placeholder="Enter 17-character VIN"
-                        required
-                    >
-                    <div class="info">
-                        <span id="charCount">0/17 characters</span>
-                    </div>
-                    <div id="validationMessage"></div>
-                </div>
-                
-                <button type="submit" id="vinSubmitBtn">Continue to Payment</button>
-            </form>
-        </div>
-
-        <!-- Step 2: Payment -->
-        <div class="step" id="step2">
-            <div class="vin-display" id="vinDisplay"></div>
-            
-            <div class="price-display">
-                <div class="price-amount">$20.00</div>
-                <div class="price-description">One-time payment for comprehensive vehicle report</div>
-            </div>
-
-            <form id="payment-form">
-                <div class="form-group">
-                    <label for="email">Email Address:</label>
-                    <input type="email" id="email" placeholder="you@example.com" required>
-                    <div class="info">Receipt and report will be sent here</div>
-                </div>
-
-                <div class="form-group">
-                    <label for="card-element">Credit or Debit Card:</label>
-                    <div id="card-element"></div>
-                    <div id="card-errors" role="alert"></div>
-                </div>
-
-                <button type="submit" id="paymentSubmitBtn">
-                    Pay $20.00
-                </button>
-                <button type="button" class="back-button" id="backToVin">← Back to VIN</button>
-            </form>
-        </div>
-
-        <!-- Step 3: Success -->
-        <div class="step" id="step3">
-            <div style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-                <h2 style="color: #00d924; margin-bottom: 10px;">Payment Successful!</h2>
-                <p style="color: #666; margin-bottom: 30px;">Your comprehensive vehicle report is being generated...</p>
-                <div class="vin-display" id="finalVinDisplay"></div>
-                <p style="font-size: 14px; color: #666; margin-top: 20px;">
-                    A copy of your report and receipt has been sent to <strong id="emailConfirm"></strong>
-                </p>
-                <button onclick="location.reload()" style="margin-top: 30px; background: #00d924;">
-                    Generate Another Report
-                </button>
-            </div>
-        </div>
+  <header class="site-header">
+    <div class="brand">
+      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
     </div>
 
-    <script>
-        // IMPORTANT: Replace with your actual Stripe publishable key after setup
-        const STRIPE_PUBLISHABLE_KEY = 'pk_test_51SEAELB3RPy2OIjKKbueCTkdO97ipd7PHoQlDT9Z9Fi1GdWRHKFmZ5zHLGBBb08VxF6zUU60sli9LpqS4r0lJm5t00tHIX2I44';
-        
-        // IMPORTANT: Replace with your Vercel backend URL after deployment
-        const API_URL = 'car-saavy-1h91n82k1-tory-keals-projects.vercel.app';
-        
-        const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-        const elements = stripe.elements();
-        
-        // Create card element
-        const cardElement = elements.create('card', {
-            style: {
-                base: {
-                    fontSize: '16px',
-                    color: '#32325d',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
-                    '::placeholder': {
-                        color: '#aab7c4'
-                    }
-                },
-                invalid: {
-                    color: '#ff4444'
-                }
-            }
-        });
+    <nav class="site-nav" aria-label="Main nav">
+      <a href="/index.html">Home</a>
+      <a href="/vin.html">VIN Tool</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
+    </nav>
+  </header>
 
-        const vinInput = document.getElementById('vin');
-        const charCount = document.getElementById('charCount');
-        const validationMessage = document.getElementById('validationMessage');
-        const vinForm = document.getElementById('vinForm');
-        const paymentForm = document.getElementById('payment-form');
-        const emailInput = document.getElementById('email');
-        
-        let validatedVIN = '';
+  <main>
+    <h1>Get Your Negotiation-Ready Report</h1>
+    <p>Simply enter your vehicle's VIN below and follow the steps to receive your report.</p>
 
-        // VIN validation function
-        function validateVIN(vin) {
-            if (vin.length !== 17) {
-                return { valid: false, message: 'VIN must be exactly 17 characters' };
-            }
+    <div class="steps" id="steps">
+      <div class="step active" id="step1">1️⃣ Enter VIN</div>
+      <div class="step" id="step2">2️⃣ Pay & Process</div>
+      <div class="step" id="step3">3️⃣ Receive Report</div>
+    </div>
 
-            if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(vin)) {
-                return { valid: false, message: 'VIN contains invalid characters (I, O, Q not allowed)' };
-            }
+    <form id="vinForm">
+      <input type="text" id="vin" placeholder="Enter 17-digit VIN" maxlength="17" required />
+      <button type="submit" id="submitBtn">Generate Report</button>
+      <div class="message" id="message"></div>
+    </form>
+  </main>
 
-            const transliteration = {
-                'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8,
-                'J': 1, 'K': 2, 'L': 3, 'M': 4, 'N': 5, 'P': 7, 'R': 9,
-                'S': 2, 'T': 3, 'U': 4, 'V': 5, 'W': 6, 'X': 7, 'Y': 8, 'Z': 9,
-                '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9
-            };
+  <footer class="site-footer">
+    © 2025 CarSaavy — Negotiate Smarter • <a href="/privacy.html" style="color:var(--muted);text-decoration:underline">Privacy</a>
+  </footer>
 
-            const weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
-            
-            let sum = 0;
-            for (let i = 0; i < 17; i++) {
-                const char = vin[i].toUpperCase();
-                const value = transliteration[char];
-                sum += value * weights[i];
-            }
+  <script>
+    const form = document.getElementById('vinForm');
+    const messageEl = document.getElementById('message');
+    const steps = document.querySelector('.steps');
+    const stepEls = document.querySelectorAll('.step');
+    const submitBtn = document.getElementById('submitBtn');
 
-            const checkDigit = sum % 11;
-            const expectedCheckDigit = vin[8].toUpperCase() === 'X' ? 10 : parseInt(vin[8]);
+    function isValidVIN(vin) {
+      const regex = /^[A-HJ-NPR-Z0-9]{17}$/i;
+      return regex.test(vin.trim());
+    }
 
-            if (checkDigit !== expectedCheckDigit) {
-                return { valid: false, message: 'Invalid VIN - check digit does not match' };
-            }
-
-            return { valid: true, message: 'Valid VIN!' };
+    function setStep(activeIndex) {
+      stepEls.forEach((step, i) => {
+        step.classList.toggle('active', i === activeIndex);
+        if (i <= activeIndex) {
+          step.classList.add('glow');
+        } else {
+          step.classList.remove('glow');
         }
+      });
+    }
 
-        // Real-time VIN validation
-        vinInput.addEventListener('input', function(e) {
-            let value = e.target.value.toUpperCase();
-            e.target.value = value;
-            
-            charCount.textContent = `${value.length}/17 characters`;
-            vinInput.classList.remove('valid', 'invalid');
-            validationMessage.innerHTML = '';
+    // Smooth entrance animations
+    window.addEventListener('load', () => {
+      steps.classList.add('visible');
+      setTimeout(() => {
+        document.querySelector('form').classList.add('visible');
+      }, 400);
+    });
 
-            if (value.length === 17) {
-                const result = validateVIN(value);
-                
-                if (result.valid) {
-                    vinInput.classList.add('valid');
-                    validationMessage.innerHTML = `<div class="message success">${result.message}</div>`;
-                } else {
-                    vinInput.classList.add('invalid');
-                    validationMessage.innerHTML = `<div class="message error">${result.message}</div>`;
-                }
-            }
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const vin = document.getElementById('vin').value.trim().toUpperCase();
+
+      if (!isValidVIN(vin)) {
+        messageEl.textContent = '❌ Invalid VIN. Please enter a 17-character VIN (no I, O, or Q).';
+        messageEl.classList.remove('success');
+        messageEl.style.display = 'block';
+        setStep(0);
+        return;
+      }
+
+      messageEl.textContent = '✅ VIN looks good! Redirecting to payment...';
+      messageEl.classList.add('success');
+      messageEl.style.display = 'block';
+      setStep(1);
+
+      // Trigger pulse effect on success
+      submitBtn.classList.add('pulse');
+      setTimeout(() => submitBtn.classList.remove('pulse'), 600);
+
+      try {
+        const response = await fetch('/api/create-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vin })
         });
 
-        // VIN form submission
-        vinForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const vin = vinInput.value;
-            const result = validateVIN(vin);
-            
-            if (result.valid) {
-                validatedVIN = vin;
-                document.getElementById('vinDisplay').textContent = vin;
-                document.getElementById('finalVinDisplay').textContent = vin;
-                goToStep(2);
-            } else {
-                validationMessage.innerHTML = `<div class="message error">${result.message}</div>`;
-            }
-        });
-
-        // Step navigation
-        function goToStep(stepNumber) {
-            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.step-item').forEach(s => s.classList.remove('active', 'completed'));
-            
-            document.getElementById(`step${stepNumber}`).classList.add('active');
-            document.getElementById(`indicator-${stepNumber}`).classList.add('active');
-            
-            for (let i = 1; i < stepNumber; i++) {
-                document.getElementById(`indicator-${i}`).classList.add('completed');
-            }
-            
-            if (stepNumber === 2 && !cardElement._parent) {
-                cardElement.mount('#card-element');
-            }
+        const data = await response.json();
+        if (data.url) {
+          setStep(2);
+          setTimeout(() => {
+            window.location.href = data.url;
+          }, 1000);
+        } else {
+          messageEl.textContent = '⚠️ Error initiating payment. Please try again later.';
+          messageEl.classList.remove('success');
         }
-
-        // Handle card errors
-        cardElement.on('change', function(event) {
-            const displayError = document.getElementById('card-errors');
-            if (event.error) {
-                displayError.textContent = event.error.message;
-            } else {
-                displayError.textContent = '';
-            }
-        });
-
-        // Payment form submission
-        paymentForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('paymentSubmitBtn');
-            const cardErrors = document.getElementById('card-errors');
-            
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner"></span>Processing...';
-            cardErrors.textContent = '';
-
-            try {
-                // Step 1: Create PaymentIntent on your backend
-                const response = await fetch(`/api/create-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        vin: validatedVIN,
-                        email: emailInput.value
-                    })
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to create payment');
-                }
-                
-                const { clientSecret } = await response.json();
-                
-                // Step 2: Confirm payment with Stripe
-                const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-                    payment_method: {
-                        card: cardElement,
-                        billing_details: {
-                            email: emailInput.value
-                        }
-                    }
-                });
-                
-                if (error) {
-                    throw new Error(error.message);
-                }
-                
-                if (paymentIntent.status === 'succeeded') {
-                    document.getElementById('emailConfirm').textContent = emailInput.value;
-                    goToStep(3);
-                }
-                
-            } catch (error) {
-                console.error('Payment error:', error);
-                cardErrors.textContent = error.message || 'Payment failed. Please try again.';
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Pay $20.00';
-            }
-        });
-
-        // Back button
-        document.getElementById('backToVin').addEventListener('click', function() {
-            goToStep(1);
-        });
-    </script>
+      } catch (error) {
+        console.error('Payment error:', error);
+        messageEl.textContent = '⚠️ Network error. Please refresh and try again.';
+        messageEl.classList.remove('success');
+      }
+    });
+  </script>
 </body>
 </html>
