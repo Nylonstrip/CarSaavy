@@ -3,140 +3,174 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CarSaavy — Contact Us</title>
-  <link rel="icon" type="image/png" href="/favicon.ico" />
+  <title>Contact Us – CarSaavy</title>
+  <link rel="stylesheet" href="styles.css" />
 
   <style>
-    :root{
-      --bg:#0b0f13;
-      --card:#121417;
-      --muted:#9aa6b2;
-      --accent1:#0077b6;
-      --accent2:#00b4d8;
-      --radius:14px;
-    }
     body {
+      background: #0d1117;
+      color: white;
+      font-family: Arial, sans-serif;
       margin: 0;
-      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-      background:#121212;
-      color:#e6eef6;
-      display:flex;
-      flex-direction:column;
-      min-height:100vh;
-    }
-    header.site-header {
-      position: sticky; top: 0; z-index: 10;
-      backdrop-filter: blur(6px);
-      background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      padding: 12px 20px; display:flex; align-items:center; justify-content:space-between;
-    }
-    .brand img { height: 44px; display: block; }
-    nav.site-nav { display:flex; gap:14px; }
-    nav.site-nav a {
-      color:var(--muted); text-decoration:none; font-weight:600;
-      padding:8px 12px; border-radius:10px; transition:0.18s;
-    }
-    nav.site-nav a:hover {
-      color:#fff;
-      background:linear-gradient(90deg,var(--accent1),var(--accent2));
-      box-shadow:0 6px 18px rgba(0,180,216,0.2);
-      transform:translateY(-2px);
+      padding: 0;
     }
 
-    main {
-      flex:1; display:flex;
-      justify-content:center; align-items:center;
-      padding:40px 20px;
+    header {
+      background: rgba(20, 25, 32, 0.85);
+      padding: 15px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #1f2937;
     }
-    .card {
-      background:var(--card);
-      padding:30px;
-      border-radius:var(--radius);
-      width:100%; max-width:600px;
-      border:1px solid rgba(255,255,255,0.05);
+
+    header img {
+      height: 45px;
     }
-    h1 { margin-top:0; }
-    label { display:block; margin-top:14px; margin-bottom:6px; color:var(--muted); }
+
+    nav a {
+      margin-left: 20px;
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 16px;
+      transition: 0.25s;
+    }
+
+    nav a:hover {
+      color: white;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 60px auto;
+      background: #161b22;
+      padding: 40px;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+    }
+
+    label {
+      display: block;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-size: 15px;
+      color: #cbd5e1;
+    }
+
     input, textarea {
-      width:100%; padding:12px;
-      background:#0f1418; border-radius:12px;
-      border:1px solid rgba(255,255,255,0.05);
-      color:#e8f5ff;
-    }
-    textarea { resize:vertical; height:120px; }
-    button {
-      margin-top:18px; padding:12px; width:100%;
-      background:linear-gradient(90deg,var(--accent1),var(--accent2));
-      border:none; border-radius:12px; font-weight:700; cursor:pointer;
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+      background: #0f141a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: white;
     }
 
-    footer {
-      text-align: center;
-      padding: 1rem;
-      background: #1b1b1b;
-      color: #9ed9ef;
+    button {
+      margin-top: 25px;
+      width: 100%;
+      background: #00b4d8;
+      color: black;
+      padding: 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.25s;
+    }
+
+    button:hover {
+      background: #0093b3;
+    }
+
+    /* Fade-in success box */
+    #successBox {
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #16a34a;
+      color: white;
+      padding: 20px 30px;
+      border-radius: 8px;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+      font-size: 18px;
+      opacity: 0;
+      transition: all 0.6s ease;
+      z-index: 9999;
+    }
+
+    #successBox.show {
+      top: 40px;
+      opacity: 1;
     }
   </style>
 </head>
 
 <body>
-  <header class="site-header">
-    <div class="brand">
-      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
-    </div>
-    <nav class="site-nav">
-      <a href="/index">Home</a>
-      <a href="/vin">VIN Tool</a>
-      <a href="/about">About</a>
-      <a href="/contact">Contact</a>
-      <a href="/privacy">Privacy</a>
-    </nav>
-  </header>
 
-  <main>
-    <div class="card">
-      <h1>Contact Us</h1>
-      <p>Have a question about your report or a feature request? Reach out below.</p>
+<header>
+  <a href="/"><img src="/carsaavy_header.webp" alt="CarSaavy Logo"></a>
 
-      <form action="https://formspree.io/f/yourID" method="POST" id="contactForm">
-        <label>Your Email</label>
-        <input type="email" name="email" required />
+  <nav>
+    <a href="/">Home</a>
+    <a href="/vin">VIN Tool</a>
+    <a href="/about">About</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/contact">Contact</a>
+  </nav>
+</header>
 
-        <label>Your Message</label>
-        <textarea name="message" required></textarea>
+<div id="successBox">Message Sent Successfully 🎉</div>
 
-        <button type="submit">Send</button>
-      </form>
-    </div>
-  </main>
+<div class="container">
+  <h1>Contact Us</h1>
 
-  <footer>
-    © 2025 CarSaavy — Negotiate Smarter • <a href="/privacy" style="color:var(--muted);text-decoration:underline">Privacy</a>
-  </footer>
-  <script>
-    document.getElementById("contactForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-    
-      const formData = {
-        name: document.getElementById("name").value.trim(),
-        email: document.getElementById("email").value.trim(),
-        message: document.getElementById("message").value.trim(),
-      };
-    
-      const response = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
-      });
-    
-      if (response.ok) {
-        alert("✅ Message sent! We'll reply shortly.");
-        document.getElementById("contactForm").reset();
-      } else {
-        alert("❌ Something went wrong. Please try again.");
-      }
-    });
-    </script>
+  <form id="contactForm">
+    <label>Your Name</label>
+    <input type="text" id="name" required>
+
+    <label>Your Email</label>
+    <input type="email" id="email" required>
+
+    <label>Your Message</label>
+    <textarea id="message" rows="5" required></textarea>
+
+    <button type="submit">Send Message</button>
+  </form>
+</div>
+
+<script>
+document.getElementById("contactForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const payload = {
+    name: document.getElementById("name").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    message: document.getElementById("message").value.trim(),
+  };
+
+  const res = await fetch("/api/contact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (res.ok) {
+    const box = document.getElementById("successBox");
+    box.classList.add("show");
+    setTimeout(() => box.classList.remove("show"), 3500);
+
+    document.getElementById("contactForm").reset();
+  } else {
+    alert("Error sending message. Please try again.");
+  }
+});
+</script>
+
 </body>
 </html>
