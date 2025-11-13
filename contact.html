@@ -7,41 +7,44 @@
   <link rel="stylesheet" href="styles.css" />
 
   <style>
-    body {
-      background: #0d1117;
-      color: white;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
+    :root{
+    --bg:#0b0f13;
+    --card:#121417;
+    --muted:#9aa6b2;
+    --accent1:#0077b6;
+    --accent2:#00b4d8;
+    --glass: rgba(255,255,255,0.03);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background:#121212;
+    color:#e6eef6;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
 
-    header {
-      background: rgba(20, 25, 32, 0.85);
-      padding: 15px 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid #1f2937;
-    }
-
-    header img {
-      height: 45px;
-    }
-
-    nav a {
-      margin-left: 20px;
-      color: #9ca3af;
-      text-decoration: none;
-      font-size: 16px;
-      transition: 0.25s;
-    }
-
-    nav a:hover {
-      color: white;
-    }
+  /* Header */
+  header.site-header{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter: blur(6px);
+    background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 20px;
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand img{height:44px;display:block}
+  nav.site-nav{display:flex;gap:14px;align-items:center}
+  nav.site-nav a{
+    color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
+    transition: all .18s ease;
+  }
+  nav.site-nav a:hover{color:#fff;background:linear-gradient(90deg,var(--accent1),var(--accent2));box-shadow:0 6px 18px rgba(0,180,216,0.12);transform:translateY(-2px);}
 
     .container {
       max-width: 800px;
@@ -108,22 +111,37 @@
       top: 40px;
       opacity: 1;
     }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background: #1b1b1b;
+      color: #9ed9ef;
+    }
+
+    /* Responsive */
+  @media (max-width:900px){
+    .hero{grid-template-columns:1fr; padding-bottom:20px}
+    nav.site-nav{display:none}
+  }
   </style>
 </head>
 
 <body>
 
-<header>
-  <a href="/"><img src="/carsaavy_header.webp" alt="CarSaavy Logo"></a>
+  <header class="site-header">
+    <div class="brand">
+      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
+    </div>
 
-  <nav>
-    <a href="/">Home</a>
-    <a href="/vin">VIN Tool</a>
-    <a href="/about">About</a>
-    <a href="/privacy">Privacy</a>
-    <a href="/contact">Contact</a>
-  </nav>
-</header>
+    <nav class="site-nav" aria-label="Main nav">
+      <a href="/index">Home</a>
+      <a href="/vin">VIN Tool</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </header>
 
 <div id="successBox">Message Sent Successfully 🎉</div>
 
@@ -143,6 +161,10 @@
     <button type="submit">Send Message</button>
   </form>
 </div>
+
+<footer>
+  © 2025 CarSaavy — Negotiate Smarter • <a href="/privacy" style="color:var(--muted);text-decoration:underline">Privacy</a>
+</footer>
 
 <script>
 document.getElementById("contactForm").addEventListener("submit", async (e) => {
