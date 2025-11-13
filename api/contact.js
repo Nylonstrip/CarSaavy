@@ -1,67 +1,58 @@
-// api/contact.js
-import { Resend } from "resend";
-import { put } from "@vercel/blob";
+// /api/contact.js
+const { put } = require("@vercel/blob");
+const { Resend } = require("resend");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
-    const { name, email, message } = req.body;
+    const { name, email, message } = req.body || {};
 
     if (!name || !email || !message) {
-      return res.status(400).json({ success: false, error: "Missing fields" });
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // ✅ Store submission to Vercel Blob (archive)
-    const blobData = JSON.stringify(
-      { name, email, message, timestamp: new Date().toISOString() },
-      null,
-      2
-    );
-    await put(`contact/contact-${Date.now()}.json`, blobData, {
-      access: "private",
-      contentType: "application/json",
+    // 💾 Save message to Blob
+    const filename = `contacts/contact-${Date.now()}.json`;
+    await put(filename, JSON.stringify({ name, email, message, date: new Date() }), {
+      access: "public"
     });
 
-    // ✅ Email notification to you
+    // 📬 Send emails using Resend
     const resend = new Resend(process.env.RESEND_API_KEY);
 
+    // Notify support
     await resend.emails.send({
-      from: "CarSaavy Contact Form <no-reply@carsaavy.com>",
+      from: "CarSaavy Support <support@carsaavy.com>",
       to: "support@carsaavy.com",
-      subject: `New Contact Form Message From ${name}`,
+      subject: "New Contact Form Message",
       html: `
-        <h2>New Contact Form Submission</h2>
+        <h2>New Contact Message</h2>
         <p><strong>Name:</strong> ${name}</p>
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Message:</strong></p>
         <p>${message.replace(/\n/g, "<br>")}</p>
-        <hr/>
-        <small>Stored securely in Vercel Blob archive</small>
-      `,
+      `
     });
 
-    // ✅ Auto-reply to the sender
+    // Auto-reply to customer
     await resend.emails.send({
       from: "CarSaavy Support <support@carsaavy.com>",
       to: email,
-      subject: "Thanks — we received your message!",
+      subject: "We've Received Your Message",
       html: `
-        <h2>Message Received ✅</h2>
-        <p>Hey ${name},</p>
-        <p>Thanks for reaching out! We received your message and a member of the CarSaavy team will get back to you soon.</p>
-        <br/>
-        <p>Talk soon,</p>
-        <strong>The CarSaavy Team</strong>
-      `,
+        <h2>Thanks for reaching out!</h2>
+        <p>Hi ${name},</p>
+        <p>We’ve received your message and a member of our team will reach out soon.</p>
+        <p style="margin-top:20px;">- CarSaavy Support Team</p>
+      `
     });
 
-    res.status(200).json({ success: true });
-
-  } catch (error) {
-    console.error("❌ Contact form error:", error);
-    res.status(500).json({ success: false, error: "Server error" });
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Contact form error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
-}
+};
