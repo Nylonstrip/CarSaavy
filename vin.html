@@ -265,9 +265,10 @@
   </header>
 
   <main>
-    <h1>Get Your Negotiation-Ready Report</h1>
+    <h1>Car Buying Audit – VIN Report</h1>
     <p class="subtitle">
-      Enter your VIN and email, then complete secure payment. Your negotiation-focused report will be generated and delivered to your inbox.
+    Start with a focused $15 Basic Report to sanity-check price, value, and key details.
+    When the Advanced Report drops, you’ll be able to unlock full negotiation leverage for just $5 more.
     </p>
 
     <div class="steps" id="steps">
@@ -301,6 +302,12 @@
       <button type="submit" id="submitBtn">Generate Report</button>
       <div class="message" id="message"></div>
     </form>
+
+    <ul style="margin-top:1.25rem; text-align:left; font-size:0.9rem; color:#cbd5f5; padding-left:1.1rem;">
+        <li><strong>Basic Report ($15)</strong> – VIN verification, fair price range, key specs, and a quick negotiation summary.</li>
+        <li><strong>Advanced Report ($20, coming soon)</strong> – live comps, days-on-market, deeper pricing breakdowns, and a stronger negotiation script.</li>
+        <li>Most serious buyers will choose the Advanced Report once it’s live – Basic is perfect for a fast first check.</li>
+      </ul>
   </main>
 
   <footer class="site-footer">
@@ -321,6 +328,7 @@
     }
 
     function isValidEmail(email) {
+  // Single backslash \s so JS sees it as "whitespace"
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
