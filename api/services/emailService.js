@@ -13,7 +13,7 @@ async function sendVehicleReportEmail(to, vin, reportUrl) {
 
     const result = await resend.emails.send({
       from: FROM_EMAIL,
-      to,
+      to: [to],   // 👈 FIXED
       subject: `Your CarSaavy Report for VIN ${vin}`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #333;">
@@ -42,7 +42,7 @@ async function sendAdminAlert(to, subject, html) {
 
     const result = await resend.emails.send({
       from: FROM_EMAIL,
-      to,
+      to: [to],
       subject,
       html,
     });
