@@ -50,33 +50,34 @@ module.exports = async (req, res) => {
 
     if (eventType === "payment_intent.succeeded") {
       const paymentIntent = event.data.object;
-
+    
       const vin = paymentIntent.metadata?.vin;
       const email = paymentIntent.metadata?.email;
-
+    
       console.log("VIN:", vin, "Email:", email);
-
+    
       if (!vin || !email) {
         console.error("❌ Missing metadata in payment intent");
         return res.status(200).json({ received: true });
       }
-
-      // 1. Fetch vehicle data
+    
+      // --- FETCH VEHICLE DATA ---
       const { getAllVehicleData } = require("./services/vehicleData");
       const vehicleData = await getAllVehicleData(vin);
-
-      // 2. Generate report
-      const { generateReport } = require("./services/reportGenerator");
-      const reportUrl = await generateReport(vehicleData, vin);
-
+    
+      // --- GENERATE REPORT ---
+      const { generateVehicleReport } = require("./services/reportGenerator");
+      const reportUrl = await generateVehicleReport(vehicleData, vin);
+    
       console.log("Report URL generated:", reportUrl);
-
-      // 3. Send email
+    
+      // --- SEND EMAIL ---
       const { sendEmail } = require("./services/emailService");
       await sendEmail(email, reportUrl, vin);
-
+    
       console.log("📨 Email sent successfully to:", email);
     }
+    
 
     if (eventType === "payment_intent.payment_failed") {
       console.error("❌ Payment failed:", event.data.object.last_payment_error);
