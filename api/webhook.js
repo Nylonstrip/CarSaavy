@@ -62,8 +62,8 @@ module.exports = async (req, res) => {
       }
 
       // 1. Fetch vehicle data
-      const { fetchVehicleData } = require("./services/vehicleData");
-      const vehicleData = await fetchVehicleData(vin);
+      const { getAllVehicleData } = require("./services/vehicleData");
+      const vehicleData = await getAllVehicleData(vin);
 
       // 2. Generate report
       const { generateReport } = require("./services/reportGenerator");
