@@ -72,8 +72,8 @@ module.exports = async (req, res) => {
       console.log("Report URL generated:", reportUrl);
     
       // --- SEND EMAIL ---
-      const { sendEmail } = require("./services/emailService");
-      await sendEmail(email, reportUrl, vin);
+      const { sendVehicleReportEmail } = require("./services/emailService");
+      await sendVehicleReportEmail(email, vin, reportUrl);
     
       console.log("📨 Email sent successfully to:", email);
     }
