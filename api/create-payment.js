@@ -1,8 +1,6 @@
-// /api/create-payment.js
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 module.exports = async (req, res) => {
-  // CORS headers (optional but okay)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -19,18 +17,11 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "VIN and email are required" });
     }
 
-    // Validate VIN format
-    if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(vin)) {
-      return res.status(400).json({ error: "Invalid VIN format" });
-    }
-
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: "Invalid email format" });
+      return res.status(400).json({ error: "Invalid email" });
     }
 
-    // ---- CREATE CHECKOUT SESSION ----
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -39,7 +30,7 @@ module.exports = async (req, res) => {
         {
           price_data: {
             currency: "usd",
-            unit_amount: 2000, // $20
+            unit_amount: 2000,
             product_data: {
               name: `VIN Report for ${vin.toUpperCase()}`,
             },
@@ -48,8 +39,13 @@ module.exports = async (req, res) => {
         },
       ],
 
-      // This metadata MUST exist — your webhook depends on it
+      // Metadata on the SESSION itself
       metadata: { vin: vin.toUpperCase(), email },
+
+      // Metadata propagated to the INTERNAL PAYMENT INTENT
+      payment_intent_data: {
+        metadata: { vin: vin.toUpperCase(), email },
+      },
 
       customer_email: email,
 
@@ -60,9 +56,6 @@ module.exports = async (req, res) => {
     return res.status(200).json({ url: session.url });
   } catch (error) {
     console.error("Checkout Session Error:", error);
-    return res.status(500).json({
-      error: "Failed to create checkout session",
-      message: error.message,
-    });
+    return res.status(500).json({ error: "Failed", message: error.message });
   }
 };
