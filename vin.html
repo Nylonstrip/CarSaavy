@@ -4,251 +4,293 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CarSaavy — VIN Report Tool</title>
-  <link rel="icon" href="/favicon.ico" />
-
+  <link rel="icon" type="image/png" href="/favicon.ico" />
   <style>
-    :root {
-      --bg: #0b0f13;
-      --muted: #9aa6b2;
-      --accent1: #0077b6;
-      --accent2: #00b4d8;
-      --radius: 16px;
+    :root{
+      --bg:#0b0f13;
+      --card:#121417;
+      --muted:#9aa6b2;
+      --accent1:#0077b6;
+      --accent2:#00b4d8;
+      --glass: rgba(255,255,255,0.03);
+      --radius:14px;
+    }
+
+    header.site-header{
+      position:sticky;top:0;z-index:50;
+      backdrop-filter: blur(6px);
+      background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 20px;
+    }
+    .brand{display:flex;align-items:center;gap:14px}
+    .brand img{height:44px;display:block}
+    nav.site-nav{display:flex;gap:14px;align-items:center}
+    nav.site-nav a{
+      color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
+      transition: all .18s ease;
+    }
+    nav.site-nav a:hover{
+      color:#fff;
+      background:linear-gradient(90deg,var(--accent1),var(--accent2));
+      box-shadow:0 6px 18px rgba(0,180,216,0.12);
+      transform:translateY(-2px);
     }
 
     body {
       margin: 0;
-      font-family: Inter, Arial, sans-serif;
-      background: var(--bg);
-      color: #eaf4ff;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background-color: #121212;
+      color: #f0f0f0;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
     }
 
-    header {
-      position: sticky;
-      top: 0;
-      padding: 14px 22px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(10,12,14,0.72);
-      backdrop-filter: blur(6px);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      z-index: 10;
-    }
-
-    nav a {
-      margin-left: 12px;
-      color: var(--muted);
-      text-decoration: none;
-      font-weight: 600;
-      padding: 6px 10px;
-      border-radius: 8px;
-      transition: 0.2s;
-    }
-
-    nav a:hover {
-      color: #fff;
-      background: linear-gradient(90deg, var(--accent1), var(--accent2));
-    }
-
     main {
       flex: 1;
-      padding: 2rem 1rem;
-      max-width: 900px;
-      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
+      padding: 2rem;
     }
 
     h1 {
-      font-size: 2.2rem;
-      color: var(--accent2);
-    }
-
-    .subtext {
-      max-width: 600px;
-      margin: 0 auto 2rem;
-      color: var(--muted);
+      color: #22b7f0;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
     }
 
     .steps {
       display: flex;
       justify-content: center;
-      gap: 1rem;
+      gap: 1.5rem;
       margin-bottom: 2rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .steps.visible {
+      opacity: 1;
+      transform: translateY(0);
     }
     .step {
-      padding: 0.8rem 1.2rem;
-      border-radius: 10px;
       background: #1b2a35;
-      border: 1px solid var(--accent2);
+      border: 1px solid #22b7f0;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      min-width: 150px;
       color: #9ed9ef;
       font-weight: 600;
-      min-width: 130px;
+      opacity: 0.7;
+      transition: all 0.4s ease;
+      box-shadow: 0 0 5px rgba(34, 183, 240, 0.3);
     }
     .step.active {
-      background: var(--accent2);
-      color: #0b0f13;
+      opacity: 1;
+      background: #22b7f0;
+      color: #0c0c0c;
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(34, 183, 240, 0.8);
+    }
+    .step.glow {
+      box-shadow: 0 0 20px rgba(34, 183, 240, 0.9);
     }
 
     form {
-      background: rgba(255,255,255,0.04);
+      background: #1e1e1e;
       padding: 2rem;
-      max-width: 460px;
-      margin: 0 auto;
-      border-radius: var(--radius);
-      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 450px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
     }
-
-    .field {
-      text-align: left;
-      margin-bottom: 1rem;
-    }
-
-    .field label {
-      font-size: 0.9rem;
-      color: var(--muted);
-      display: block;
-      margin-bottom: 0.3rem;
+    form.visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     input[type="text"],
     input[type="email"] {
       width: 100%;
-      padding: 0.85rem;
-      border-radius: 10px;
-      border: 1px solid #333;
-      background: #1e1e1e;
-      color: #fff;
+      padding: 0.75rem;
+      border: 1px solid #444;
+      border-radius: 8px;
       font-size: 1rem;
+      background: #2a2a2a;
+      color: #f0f0f0;
+      margin-bottom: 0.75rem;
     }
 
     button {
       width: 100%;
-      padding: 0.9rem;
-      font-size: 1.1rem;
-      font-weight: 600;
+      margin-top: 0.25rem;
+      background-color: #22b7f0;
+      color: #0c0c0c;
       border: none;
-      border-radius: 10px;
-      background: linear-gradient(90deg, var(--accent1), var(--accent2));
-      color: #000;
+      padding: 0.85rem;
+      border-radius: 8px;
+      font-size: 1rem;
       cursor: pointer;
-      margin-top: 0.5rem;
+      transition: background 0.2s ease-in-out, transform 0.2s ease;
+    }
+    button:hover {
+      background-color: #1a9dce;
+    }
+    button.pulse {
+      animation: pulse 0.6s ease;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 183, 240, 0.6); }
+      50% { transform: scale(1.05); box-shadow: 0 0 15px rgba(34, 183, 240, 0.9); }
+      100% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 183, 240, 0.6); }
     }
 
     .message {
       margin-top: 1rem;
+      font-size: 0.95rem;
+      color: #f87171;
       display: none;
-      font-size: 1rem;
     }
-    .message.error { color: #ff6b6b; }
-    .message.success { color: #7bf58a; }
+    .message.success {
+      color: #7bf58a;
+    }
 
     footer {
-      padding: 1.4rem;
       text-align: center;
-      color: var(--muted);
-      background: #101317;
-      border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 1rem;
+      background: #1b1b1b;
+      color: #9ed9ef;
     }
   </style>
 </head>
-
 <body>
-
-<header>
-  <a href="/"><img src="/images/carsaavy_header.webp" alt="logo" style="height:46px"></a>
-  <nav>
-    <a href="/index">Home</a>
-    <a href="/vin">VIN Tool</a>
-    <a href="/about">About</a>
-    <a href="/contact">Contact</a>
-    <a href="/privacy">Privacy</a>
-  </nav>
-</header>
-
-<main>
-  <h1>Get Your Negotiation-Ready Report</h1>
-  <p class="subtext">Enter your VIN and email to generate your personalized negotiation report.</p>
-
-  <div class="steps">
-    <div class="step active" id="step1">Enter Details</div>
-    <div class="step" id="step2">Pay & Process</div>
-    <div class="step" id="step3">Receive Report</div>
-  </div>
-
-  <form id="vinForm">
-    <div class="field">
-      <label for="vin">Vehicle VIN</label>
-      <input type="text" id="vin" maxlength="17" placeholder="Enter 17-digit VIN" required>
+  <header class="site-header">
+    <div class="brand">
+      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
     </div>
 
-    <div class="field">
-      <label for="email">Email for Delivery</label>
-      <input type="email" id="email" placeholder="you@example.com" required>
+    <nav class="site-nav" aria-label="Main nav">
+      <a href="/index">Home</a>
+      <a href="/vin">VIN Tool</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </header>
+
+  <main>
+    <h1>Get Your Negotiation-Ready Report</h1>
+    <p>Simply enter your vehicle's VIN below and follow the steps to receive your report.</p>
+
+    <div class="steps" id="steps">
+      <div class="step active" id="step1">1️⃣ Enter VIN</div>
+      <div class="step" id="step2">2️⃣ Pay &amp; Process</div>
+      <div class="step" id="step3">3️⃣ Receive Report</div>
     </div>
 
-    <button type="submit" id="submitBtn">Generate Report</button>
+    <form id="vinForm">
+      <input type="text" id="vin" placeholder="Enter 17-digit VIN" maxlength="17" required />
+      <input type="email" id="email" placeholder="Enter your email" required />
+      <button type="submit" id="submitBtn">Generate Report</button>
+      <div class="message" id="message"></div>
+    </form>
+  </main>
 
-    <div class="message" id="message"></div>
-  </form>
-</main>
+  <footer class="site-footer">
+    © 2025 CarSaavy — Negotiate Smarter •
+    <a href="/privacy" style="color:var(--muted);text-decoration:underline">Privacy</a>
+  </footer>
 
-<footer>
-  © 2025 CarSaavy — Negotiate Smarter
-</footer>
+  <script>
+    const form = document.getElementById('vinForm');
+    const messageEl = document.getElementById('message');
+    const steps = document.querySelector('.steps');
+    const stepEls = document.querySelectorAll('.step');
+    const submitBtn = document.getElementById('submitBtn');
 
-<script>
-  const form = document.getElementById("vinForm");
-  const msg = document.getElementById("message");
-
-  function isValidVIN(v) {
-    return /^[A-HJ-NPR-Z0-9]{17}$/i.test(v.trim());
-  }
-  function isValidEmail(e) {
-    return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e.trim());
-  }
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const vin = document.getElementById("vin").value.trim().toUpperCase();
-    const email = document.getElementById("email").value.trim();
-
-    if (!isValidVIN(vin)) {
-      msg.textContent = "Invalid VIN.";
-      msg.className = "message error";
-      msg.style.display = "block";
-      return;
-    }
-    if (!isValidEmail(email)) {
-      msg.textContent = "Invalid email.";
-      msg.className = "message error";
-      msg.style.display = "block";
-      return;
+    function isValidVIN(vin) {
+      const regex = /^[A-HJ-NPR-Z0-9]{17}$/i;
+      return regex.test(vin.trim());
     }
 
-    msg.textContent = "Redirecting to payment...";
-    msg.className = "message success";
-    msg.style.display = "block";
+    function setStep(activeIndex) {
+      stepEls.forEach((step, i) => {
+        step.classList.toggle('active', i === activeIndex);
+        if (i <= activeIndex) {
+          step.classList.add('glow');
+        } else {
+          step.classList.remove('glow');
+        }
+      });
+    }
 
-    const res = await fetch("/api/create-payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vin, email })
+    // Smooth entrance animations
+    window.addEventListener('load', () => {
+      steps.classList.add('visible');
+      setTimeout(() => {
+        document.querySelector('form').classList.add('visible');
+      }, 400);
     });
 
-    const data = await res.json();
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const vin = document.getElementById('vin').value.trim().toUpperCase();
+      const email = document.getElementById('email').value.trim();
 
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      msg.textContent = "Payment could not start.";
-      msg.className = "message error";
-    }
-  });
-</script>
+      if (!isValidVIN(vin)) {
+        messageEl.textContent = '❌ Invalid VIN. Please enter a 17-character VIN (no I, O, or Q).';
+        messageEl.classList.remove('success');
+        messageEl.style.display = 'block';
+        setStep(0);
+        return;
+      }
 
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        messageEl.textContent = '❌ Please enter a valid email address.';
+        messageEl.classList.remove('success');
+        messageEl.style.display = 'block';
+        return;
+      }
+
+      messageEl.textContent = '✅ VIN looks good! Redirecting to payment...';
+      messageEl.classList.add('success');
+      messageEl.style.display = 'block';
+      setStep(1);
+
+      // Trigger pulse effect on success
+      submitBtn.classList.add('pulse');
+      setTimeout(() => submitBtn.classList.remove('pulse'), 600);
+
+      try {
+        const response = await fetch('/api/create-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vin, email })
+        });
+
+        const data = await response.json();
+        if (data.url) {
+          setStep(2);
+          setTimeout(() => {
+            window.location.href = data.url;
+          }, 1000);
+        } else {
+          messageEl.textContent = '⚠️ Error initiating payment. Please try again later.';
+          messageEl.classList.remove('success');
+        }
+      } catch (error) {
+        console.error('Payment error:', error);
+        messageEl.textContent = '⚠️ Network error. Please refresh and try again.';
+        messageEl.classList.remove('success');
+      }
+    });
+  </script>
 </body>
 </html>
