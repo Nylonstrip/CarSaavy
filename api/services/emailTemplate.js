@@ -42,7 +42,7 @@ function buildVehicleReportEmailHtml(vin, reportUrl) {
                 </p>
 
                 <p style="font-size:14px; color:#555;">
-                  If the button above doesn’t work, you can access your report directly via this link:<br>
+                  If the button above doesn’t work, you can also access your report directly via this link:<br>
                   <a href="${safeUrl}" style="color:#0a2540;">${safeUrl}</a>
                 </p>
 
