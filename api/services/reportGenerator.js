@@ -1,5 +1,5 @@
 // /api/services/reportGenerator.js
-// Redesigned PDF generator for CarSaavy
+// Redesigned PDF generator for CarSaavy (Version 2 copy)
 // Uses pdf-lib to produce a structured, branded, single-page report PDF
 // Returns a public Blob URL, same behaviour as the previous implementation.
 
@@ -38,6 +38,14 @@ function moneyOr(val, fallback = 'Not available') {
     });
   }
   return fallback;
+}
+
+function asNumber(val) {
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string' && val.trim() && !isNaN(Number(val))) {
+    return Number(val);
+  }
+  return null;
 }
 
 // Extract a "normalized" view of the vehicle + market from whatever the
@@ -198,7 +206,6 @@ async function generateVehicleReport(rawData, vin) {
 
   function drawSectionTitle(title) {
     y -= 6;
-    // dark header bar
     const barHeight = 18;
     const barY = y;
     page.drawRectangle({
@@ -222,7 +229,6 @@ async function generateVehicleReport(rawData, vin) {
     const labelSize = 8.5;
     const valueSize = 11;
 
-    // label
     page.drawText(label.toUpperCase(), {
       x: colX,
       y,
@@ -232,7 +238,6 @@ async function generateVehicleReport(rawData, vin) {
     });
     y -= lineHeight - 3;
 
-    // value
     page.drawText(value, {
       x: colX,
       y,
@@ -245,16 +250,15 @@ async function generateVehicleReport(rawData, vin) {
 
   function ensureSpace(linesNeeded = 3) {
     if (y < 80 + linesNeeded * lineHeight) {
-      // For now, we assume single page is enough. If you ever find this
-      // overflowing, we can add proper multi-page support.
+      // Single-page for now; can add multi-page support later if needed.
       // const newPage = pdfDoc.addPage([595.28, 841.89]);
       // y = height - marginTop;
     }
   }
 
-  // HEADER
-  const headerTitle = 'CarSaavy Vehicle Analysis Report';
-  const headerSub = 'Automated market intelligence for informed negotiations.';
+  // ---------- HEADER ----------
+  const headerTitle = 'CarSaavy — Vehicle Market & Negotiation Report';
+  const headerSub = 'Personalized market data and negotiation guidance for your vehicle.';
   const titleSize = 16;
 
   page.drawRectangle({
@@ -282,7 +286,7 @@ async function generateVehicleReport(rawData, vin) {
   });
 
   const rightMetaY = y + 18;
-  const metaX = width - marginX - 180;
+  const metaX = width - marginX - 200;
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', {
     month: 'short',
@@ -307,9 +311,30 @@ async function generateVehicleReport(rawData, vin) {
 
   y -= 60;
 
-  // VEHICLE OVERVIEW
-  drawSectionTitle('Vehicle overview');
+  // ---------- EXECUTIVE SUMMARY ----------
+  ensureSpace(4);
+  drawSectionTitle('Executive summary');
+
+  const summaryLines = [
+    'This report gives you a clear, data-backed view of your vehicle’s',
+    'current market value, competitive position, and recommended',
+    'negotiation strategy, based on comparable listings in your area.'
+  ];
+
+  summaryLines.forEach((line) => {
+    ensureSpace(1);
+    drawText(line, marginX + 4, {
+      size: 10,
+      font: fontRegular,
+      color: rgb(0.13, 0.16, 0.24),
+    });
+  });
+
+  y -= 4;
+
+  // ---------- VEHICLE OVERVIEW ----------
   ensureSpace(6);
+  drawSectionTitle('Vehicle overview');
 
   const col1X = marginX + 2;
   const col2X = marginX + (width - marginX * 2) / 2 + 4;
@@ -350,33 +375,73 @@ async function generateVehicleReport(rawData, vin) {
 
   y -= 6;
 
-  // MARKET SNAPSHOT & NEGOTIATION RANGE
+  // ---------- MARKET SNAPSHOT & NEGOTIATION RANGE ----------
   ensureSpace(8);
-  drawSectionTitle('Market snapshot & negotiation range');
+  drawSectionTitle('Market value & negotiation range');
 
-  const lowPrice = data.market.lowPrice || data.market.low || data.market.minPrice;
-  const highPrice = data.market.highPrice || data.market.high || data.market.maxPrice;
-  const avgPrice = data.market.avgPrice || data.market.averagePrice || data.market.meanPrice;
-  const demandLevel = data.market.demandLevel || data.market.demand || 'Not available';
+  const lowPrice =
+    data.market.lowPrice || data.market.low || data.market.minPrice;
+  const highPrice =
+    data.market.highPrice || data.market.high || data.market.maxPrice;
+  const avgPrice =
+    data.market.avgPrice || data.market.averagePrice || data.market.meanPrice;
+  const demandLevel =
+    data.market.demandLevel || data.market.demand || 'Not available';
 
   const minSavings = data.negotiation.minSavings || data.negotiation.min;
   const maxSavings = data.negotiation.maxSavings || data.negotiation.max;
   const targetPrice = data.negotiation.targetPrice || data.negotiation.target;
 
-  const savingsRangeText =
-    minSavings && maxSavings
-      ? `${moneyOr(minSavings)} – ${moneyOr(maxSavings)} below asking`
-      : 'Negotiation range not available';
+  const listPriceNum = asNumber(data.listPrice);
+  const minSavingsNum = asNumber(minSavings);
+  const maxSavingsNum = asNumber(maxSavings);
+  const avgPriceNum = asNumber(avgPrice);
+  const targetPriceNum = asNumber(targetPrice);
 
-  const targetPriceText = targetPrice ? moneyOr(targetPrice) : 'Based on comparable vehicles';
+  let targetPriceLowNum = null;
+  let targetPriceHighNum = null;
+
+  if (asNumber(data.negotiation?.targetPriceLow) && asNumber(data.negotiation?.targetPriceHigh)) {
+    targetPriceLowNum = asNumber(data.negotiation.targetPriceLow);
+    targetPriceHighNum = asNumber(data.negotiation.targetPriceHigh);
+  } else if (listPriceNum !== null && minSavingsNum !== null && maxSavingsNum !== null) {
+    // Offer range = asking minus savings band
+    targetPriceLowNum = listPriceNum - maxSavingsNum;
+    targetPriceHighNum = listPriceNum - minSavingsNum;
+  } else if (targetPriceNum !== null) {
+    targetPriceLowNum = targetPriceNum;
+    targetPriceHighNum = targetPriceNum;
+  } else if (avgPriceNum !== null) {
+    targetPriceLowNum = avgPriceNum;
+    targetPriceHighNum = avgPriceNum;
+  }
+
+  const estimatedMarketValue =
+    avgPriceNum !== null ? avgPriceNum : (listPriceNum !== null ? listPriceNum : null);
+
+  const estimatedMarketValueText = estimatedMarketValue
+    ? moneyOr(estimatedMarketValue)
+    : 'Not available';
+
+  const targetRangeText =
+    targetPriceLowNum !== null && targetPriceHighNum !== null
+      ? (targetPriceLowNum !== targetPriceHighNum
+          ? `${moneyOr(targetPriceLowNum)} – ${moneyOr(targetPriceHighNum)}`
+          : moneyOr(targetPriceHighNum))
+      : 'Based on comparable vehicles';
+
   const confidenceText =
     data.negotiation.confidenceText ||
     'Range estimated from similar listings over the last 60–90 days when available.';
 
-  // Negotiation block
+  const compCount =
+    data.market.sampleSize ||
+    (Array.isArray(data.comparables) ? data.comparables.length : null);
+
+  // Negotiation / value block
   const negBoxX = marginX;
   const negBoxWidth = width - marginX * 2;
-  const negBoxHeight = 70;
+  const negBoxHeight = 80;
   const negBoxY = y - negBoxHeight + 10;
 
   page.drawRectangle({
@@ -388,7 +453,7 @@ async function generateVehicleReport(rawData, vin) {
   });
 
   y -= 4;
-  page.drawText('ESTIMATED NEGOTIATION RANGE', {
+  page.drawText('MARKET VALUE & SUGGESTED OFFER RANGE', {
     x: negBoxX + 10,
     y: negBoxY + negBoxHeight - 16,
     size: 8,
@@ -396,25 +461,38 @@ async function generateVehicleReport(rawData, vin) {
     color: rgb(0.74, 0.82, 0.9),
   });
 
-  page.drawText(savingsRangeText, {
+  page.drawText(`Estimated market value: ${estimatedMarketValueText}`, {
     x: negBoxX + 10,
     y: negBoxY + negBoxHeight - 32,
-    size: 13,
+    size: 11,
     font: fontBold,
     color: rgb(0.9, 0.97, 1),
   });
 
-  page.drawText(`Target price: ${targetPriceText}`, {
+  page.drawText(`Suggested offer range: ${targetRangeText} out the door`, {
     x: negBoxX + 10,
-    y: negBoxY + 18,
-    size: 9,
+    y: negBoxY + negBoxHeight - 46,
+    size: 10,
     font: fontRegular,
-    color: rgb(0.74, 0.82, 0.9),
+    color: rgb(0.9, 0.97, 1),
   });
 
+  const detailY = negBoxY + 22;
+
+  page.drawText(
+    `Based on${compCount ? ' ' + compCount + ' comparable vehicles' : ' available comparable vehicles'} in your area.`,
+    {
+      x: negBoxX + 10,
+      y: detailY,
+      size: 9,
+      font: fontRegular,
+      color: rgb(0.74, 0.82, 0.9),
+    }
+  );
+
   page.drawText(`Market demand: ${safe(demandLevel)}`, {
-    x: negBoxX + negBoxWidth / 2,
-    y: negBoxY + 18,
+    x: negBoxX + 10,
+    y: detailY - 12,
     size: 9,
     font: fontRegular,
     color: rgb(0.74, 0.82, 0.9),
@@ -490,9 +568,7 @@ async function generateVehicleReport(rawData, vin) {
     color: rgb(0.45, 0.51, 0.59),
   });
   page.drawText(
-    data.market.sampleSize
-      ? numberOr(data.market.sampleSize)
-      : 'Not available',
+    compCount ? numberOr(compCount) : 'Not available',
     {
       x: cardCol1,
       y: cardInnerY - 40,
@@ -519,7 +595,7 @@ async function generateVehicleReport(rawData, vin) {
 
   y = cardY - cardHeight - 24;
 
-  // Comparable vehicles (if any)
+  // ---------- COMPARABLE VEHICLES ----------
   ensureSpace(6);
   drawSectionTitle('Comparable vehicles');
 
@@ -598,7 +674,6 @@ async function generateVehicleReport(rawData, vin) {
         color: rgb(0.07, 0.09, 0.15),
       });
 
-      // simple tag
       page.drawText(label, {
         x: colTag,
         y,
@@ -619,32 +694,63 @@ async function generateVehicleReport(rawData, vin) {
     );
   }
 
-  // Negotiation script
+  // ---------- QUICK MARKET HIGHLIGHTS ----------
   ensureSpace(5);
-  drawSectionTitle('Suggested negotiation script');
+  drawSectionTitle('Quick market highlights');
 
-  const scriptTargetPriceText = targetPrice
-    ? moneyOr(targetPrice)
-    : 'a fair market price';
+  const highlights = [];
 
-  const scriptLines = [
-    `“I’ve taken a look at similar ${safe(data.year, '')} ${safe(
-      data.make,
-      ''
-    )} ${safe(data.model, '')} listings in this area,`,
-    `and most of them are priced${
-      lowPrice && highPrice
-        ? ' between ' + moneyOr(lowPrice) + ' and ' + moneyOr(highPrice)
-        : ' in a competitive range'
-    } for comparable mileage and trim.`,
-    '',
-    `Based on that, and factoring in this vehicle’s mileage and features, I’m comfortable`,
-    `at around ${scriptTargetPriceText} out the door.`,
-    '',
-    'Can you work with me on the price and get closer to that range?”',
-  ];
+  if (demandLevel && demandLevel !== 'Not available') {
+    highlights.push(`• Market demand for this model is ${demandLevel.toLowerCase()} in your area.`);
+  }
+  if (listPriceNum !== null && avgPriceNum !== null) {
+    if (listPriceNum > avgPriceNum) {
+      highlights.push('• The asking price is above the estimated market average, giving room to negotiate.');
+    } else if (listPriceNum < avgPriceNum) {
+      highlights.push('• The asking price is below the estimated market average, which may limit negotiation room.');
+    } else {
+      highlights.push('• The asking price is close to the estimated market average.');
+    }
+  }
+  if (compCount) {
+    highlights.push(`• There are ${compCount} similar listings contributing to this estimate.`);
+  }
+  if (!highlights.length) {
+    highlights.push('• Market and comparable data is limited for this vehicle. Use the suggested range as a general guide.');
+  }
 
-  scriptLines.forEach((line) => {
+  highlights.forEach((line) => {
+    ensureSpace(1);
+    drawText(line, marginX + 4, {
+      size: 9.5,
+      font: fontRegular,
+      color: rgb(0.13, 0.16, 0.24),
+    });
+  });
+
+  // ---------- NEGOTIATION STRATEGY ----------
+  ensureSpace(5);
+  drawSectionTitle('Negotiation strategy');
+
+  const strategyLines = [];
+
+  if (targetPriceLowNum !== null || targetPriceHighNum !== null) {
+    const startOfferText =
+      targetPriceLowNum !== null ? moneyOr(targetPriceLowNum) : targetRangeText;
+    const closeTargetText =
+      targetPriceHighNum !== null ? moneyOr(targetPriceHighNum) : targetRangeText;
+
+    strategyLines.push(`Start your negotiation near: ${startOfferText}`);
+    strategyLines.push(`Aim to close the deal around: ${closeTargetText}`);
+  } else {
+    strategyLines.push('Use the estimated market value and comparable listings as your anchor.');
+  }
+
+  strategyLines.push('');
+  strategyLines.push('These numbers are based on active local listings,');
+  strategyLines.push('and frame you as an informed buyer with real data.');
+
+  strategyLines.forEach((line) => {
     ensureSpace(1);
     drawText(line, marginX + 4, {
       size: 9.5,
@@ -653,7 +759,55 @@ async function generateVehicleReport(rawData, vin) {
     });
   });
 
-  // Disclaimer
+  // ---------- NEGOTIATION SCRIPT ----------
+  ensureSpace(5);
+  drawSectionTitle('Suggested negotiation script');
+
+  const scriptRangeLowText =
+    targetPriceLowNum !== null ? moneyOr(targetPriceLowNum) : 'a fair market range';
+  const scriptRangeHighText =
+    targetPriceHighNum !== null && targetPriceHighNum !== targetPriceLowNum
+      ? moneyOr(targetPriceHighNum)
+      : null;
+
+  const rangePhrase =
+    scriptRangeHighText ? `${scriptRangeLowText} to ${scriptRangeHighText}` : scriptRangeLowText;
+
+  const scriptLines = [
+    `“Hi, I’m very interested in the vehicle. I’ve reviewed similar listings`,
+    `in the area, and based on current market prices I’m seeing comparable`,
+    `models landing around ${rangePhrase} out the door.`,
+    '',
+    `If we can get the numbers closer to that range today, I’m ready`,
+    `to move forward.`,
+    '',
+    `Can you check with your sales manager and see what flexibility you have?”`,
+    '',
+    'If they push back:',
+    '“I understand. I’m basing my offer on real listings in the market.',
+    'If there’s a reason this vehicle should be valued higher than similar ones,',
+    'I’m open to hearing it.”',
+    '',
+    'If they say “That’s too low”:',
+    '“Totally fair. What’s the best out-the-door number you can do?',
+    'I’m comparing offers today, but I’d prefer to work with you.”',
+    '',
+    'If they give you a number:',
+    `“Thanks for checking. That’s higher than the market average I’m seeing.`,
+    `If you can meet me closer to ${scriptRangeHighText || scriptRangeLowText},`,
+    `we can wrap this up today.”`
+  ];
+
+  scriptLines.forEach((line) => {
+    ensureSpace(1);
+    drawText(line, marginX + 4, {
+      size: 9,
+      font: fontRegular,
+      color: rgb(0.11, 0.15, 0.2),
+    });
+  });
+
+  // ---------- DISCLAIMER ----------
   ensureSpace(5);
   const disclaimerY = y - 4;
   page.drawLine({
@@ -664,13 +818,11 @@ async function generateVehicleReport(rawData, vin) {
   });
 
   const disclaimerText =
-    'CarSaavy provides automated analysis based on public and third-party automotive data sources. ' +
-    'Information may be incomplete or contain inaccuracies and is provided for informational purposes only. ' +
-    'CarSaavy does not inspect vehicles, does not participate in your transaction, and does not guarantee any specific ' +
-    'negotiation outcome, price reduction, financing terms, or dealer behavior. Market conditions change over time and ' +
-    'can vary by region and individual vehicle condition. By using this report, you agree that CarSaavy is not responsible ' +
-    'for purchase decisions, vehicle condition, title issues, or any direct or indirect losses related to the use of this information. ' +
-    'For full legal terms and detailed disclaimers, please visit www.carsaavy.com/disclaimer.';
+    'CarSaavy provides this report using available market and listing data, which may be incomplete ' +
+    'or contain inaccuracies. Pricing ranges are estimates only and do not guarantee that any dealer ' +
+    'will agree to a specific price or outcome. This report is for informational purposes and is not ' +
+    'financial, legal, or purchasing advice. Vehicle history, condition, and final sale prices may vary. ' +
+    'CarSaavy is not responsible for purchase decisions or outcomes related to the use of this report.';
 
   const words = disclaimerText.split(' ');
   let line = '';
@@ -707,14 +859,17 @@ async function generateVehicleReport(rawData, vin) {
     });
   }
 
-  // Footer
-  page.drawText(`© ${now.getFullYear()} CarSaavy — Automated Vehicle Market Intelligence`, {
-    x: marginX,
-    y: 40,
-    size: 7.5,
-    font: fontRegular,
-    color: rgb(0.62, 0.68, 0.76),
-  });
+  // ---------- FOOTER ----------
+  page.drawText(
+    `© ${now.getFullYear()} CarSaavy — Smarter Car Buying Starts Here — www.carsaavy.com`,
+    {
+      x: marginX,
+      y: 40,
+      size: 7.5,
+      font: fontRegular,
+      color: rgb(0.62, 0.68, 0.76),
+    }
+  );
 
   // Finalize PDF
   const pdfBytes = await pdfDoc.save();
