@@ -623,7 +623,7 @@ async function generateVehicleReport(rawData, vin) {
   ensureSpace(5);
   drawSectionTitle('Suggested negotiation script');
 
-  const targetPriceText = targetPrice
+  const scriptTargetPriceText = targetPrice
     ? moneyOr(targetPrice)
     : 'a fair market price';
 
@@ -639,7 +639,7 @@ async function generateVehicleReport(rawData, vin) {
     } for comparable mileage and trim.`,
     '',
     `Based on that, and factoring in this vehicle’s mileage and features, I’m comfortable`,
-    `at around ${targetPriceText} out the door.`,
+    `at around ${scriptTargetPriceText} out the door.`,
     '',
     'Can you work with me on the price and get closer to that range?”',
   ];
