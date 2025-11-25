@@ -1,7 +1,7 @@
 // /api/services/reportGenerator.js
-// Redesigned PDF generator for CarSaavy (Version 2 copy)
-// Uses pdf-lib to produce a structured, branded, single-page report PDF
-// Returns a public Blob URL, same behaviour as the previous implementation.
+// CarSaavy PDF generator (Version 2, multipage, repeated header)
+// Uses pdf-lib to produce a structured, branded report PDF
+// Returns a public Blob URL.
 
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const fs = require('fs');
@@ -49,8 +49,7 @@ function asNumber(val) {
 }
 
 // Extract a "normalized" view of the vehicle + market from whatever the
-// upstream vehicleData service returns. This is defensive on purpose so
-// changes in API shape don't break the report.
+// upstream vehicleData service returns.
 function normalizeReportData(raw, vin) {
   const vehicle = raw.vehicle || raw.basic || raw;
 
@@ -147,8 +146,6 @@ function normalizeReportData(raw, vin) {
     raw.VIN ||
     vin;
 
-  // Optional market / negotiation fields — fill what you have, others
-  // will gracefully render as "Not available".
   const market = raw.market || {};
   const negotiation = raw.negotiation || {};
   const comparables = Array.isArray(raw.comparables) ? raw.comparables : [];
@@ -179,19 +176,97 @@ async function generateVehicleReport(rawData, vin) {
 
   const data = normalizeReportData(rawData || {}, vin);
 
-  // Create new PDF (A4: 595.28 x 841.89 pt)
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595.28, 841.89]);
-  const { width, height } = page.getSize();
+  let page = pdfDoc.addPage([595.28, 841.89]);
+  let { width, height } = page.getSize();
 
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
   const marginX = 40;
   const marginTop = 60;
-  const lineHeight = 14;
+  const bottomMargin = 50;
+  const lineHeight = 12.5;
 
-  let y = height - marginTop;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  });
+
+  let y = 0;
+
+  function drawHeader() {
+    y = height - marginTop;
+
+    const headerTitle = 'CarSaavy — Vehicle Market & Negotiation Report';
+    const headerSub =
+      'Personalized market data and negotiation guidance for your vehicle.';
+
+    const headerBarHeight = 50;
+    const headerBarY = y - 10;
+
+    page.drawRectangle({
+      x: marginX,
+      y: headerBarY,
+      width: width - marginX * 2,
+      height: headerBarHeight,
+      color: rgb(0.01, 0.04, 0.09),
+    });
+
+    // Title
+    page.drawText(headerTitle, {
+      x: marginX + 12,
+      y: headerBarY + headerBarHeight - 18,
+      size: 15,
+      font: fontBold,
+      color: rgb(0.91, 0.96, 1),
+    });
+
+    // Subtitle
+    page.drawText(headerSub, {
+      x: marginX + 12,
+      y: headerBarY + headerBarHeight - 32,
+      size: 9,
+      font: fontRegular,
+      color: rgb(0.68, 0.8, 0.95),
+    });
+
+    const metaX = width - marginX - 200;
+    const metaY = headerBarY + headerBarHeight - 20;
+
+    page.drawText(`Generated: ${dateStr}`, {
+      x: metaX,
+      y: metaY,
+      size: 9,
+      font: fontRegular,
+      color: rgb(0.79, 0.84, 0.93),
+    });
+    page.drawText(`VIN: ${safe(data.vin || vin).toUpperCase()}`, {
+      x: metaX,
+      y: metaY - 12,
+      size: 9,
+      font: fontRegular,
+      color: rgb(0.79, 0.84, 0.93),
+    });
+
+    // Start content comfortably below header
+    y = headerBarY - 30;
+  }
+
+  function newPage() {
+    page = pdfDoc.addPage([595.28, 841.89]);
+    ({ width, height } = page.getSize());
+    drawHeader();
+  }
+
+  function ensureSpace(linesNeeded = 3) {
+    const needed = linesNeeded * lineHeight + bottomMargin;
+    if (y - needed < 0) {
+      newPage();
+    }
+  }
 
   function drawText(text, x, opts = {}) {
     const {
@@ -200,12 +275,17 @@ async function generateVehicleReport(rawData, vin) {
       color = rgb(0.07, 0.09, 0.15),
     } = opts;
 
+    if (y - lineHeight < bottomMargin) {
+      newPage();
+    }
+
     page.drawText(text, { x, y, size, font, color });
     y -= lineHeight;
   }
 
   function drawSectionTitle(title) {
-    y -= 6;
+    ensureSpace(3);
+    y -= 4;
     const barHeight = 18;
     const barY = y;
     page.drawRectangle({
@@ -222,12 +302,14 @@ async function generateVehicleReport(rawData, vin) {
       font: fontBold,
       color: rgb(0.82, 0.86, 0.91),
     });
-    y = barY - 10;
+    y = barY - 14;
   }
 
   function drawKeyValue(label, value, colX) {
     const labelSize = 8.5;
     const valueSize = 11;
+
+    ensureSpace(2);
 
     page.drawText(label.toUpperCase(), {
       x: colX,
@@ -236,7 +318,7 @@ async function generateVehicleReport(rawData, vin) {
       font: fontBold,
       color: rgb(0.45, 0.51, 0.59),
     });
-    y -= lineHeight - 3;
+    y -= lineHeight - 2;
 
     page.drawText(value, {
       x: colX,
@@ -245,74 +327,52 @@ async function generateVehicleReport(rawData, vin) {
       font: fontRegular,
       color: rgb(0.07, 0.09, 0.15),
     });
-    y -= lineHeight + 2;
+    y -= lineHeight + 1;
   }
 
-  function ensureSpace(linesNeeded = 3) {
-    if (y < 80 + linesNeeded * lineHeight) {
-      // Single-page for now; can add multi-page support later if needed.
-      // const newPage = pdfDoc.addPage([595.28, 841.89]);
-      // y = height - marginTop;
+  function drawParagraph(text, opts = {}) {
+    const { size = 9.5, font = fontRegular, color = rgb(0.13, 0.16, 0.24) } = opts;
+    const maxWidth = width - marginX * 2;
+    const words = text.split(' ');
+    let line = '';
+
+    words.forEach((word) => {
+      const testLine = line + word + ' ';
+      const lineWidth = font.widthOfTextAtSize(testLine, size);
+
+      if (lineWidth > maxWidth) {
+        ensureSpace(1);
+        page.drawText(line.trim(), {
+          x: marginX + 4,
+          y,
+          size,
+          font,
+          color,
+        });
+        y -= lineHeight;
+        line = word + ' ';
+      } else {
+        line = testLine;
+      }
+    });
+
+    if (line.trim()) {
+      ensureSpace(1);
+      page.drawText(line.trim(), {
+        x: marginX + 4,
+        y,
+        size,
+        font,
+        color,
+      });
+      y -= lineHeight;
     }
   }
 
-  // ---------- HEADER ----------
-  const headerTitle = 'CarSaavy — Vehicle Market & Negotiation Report';
-  const headerSub = 'Personalized market data and negotiation guidance for your vehicle.';
-  const titleSize = 16;
-
-  page.drawRectangle({
-    x: marginX,
-    y: y - 4,
-    width: width - marginX * 2,
-    height: 40,
-    color: rgb(0.01, 0.04, 0.09),
-  });
-
-  page.drawText(headerTitle, {
-    x: marginX + 10,
-    y: y + 12,
-    size: titleSize,
-    font: fontBold,
-    color: rgb(0.91, 0.96, 1),
-  });
-
-  page.drawText(headerSub, {
-    x: marginX + 10,
-    y: y,
-    size: 9,
-    font: fontRegular,
-    color: rgb(0.68, 0.8, 0.95),
-  });
-
-  const rightMetaY = y + 18;
-  const metaX = width - marginX - 200;
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-  });
-
-  page.drawText(`Generated: ${dateStr}`, {
-    x: metaX,
-    y: rightMetaY,
-    size: 9,
-    font: fontRegular,
-    color: rgb(0.79, 0.84, 0.93),
-  });
-  page.drawText(`VIN: ${safe(data.vin || vin).toUpperCase()}`, {
-    x: metaX,
-    y: rightMetaY - 11,
-    size: 9,
-    font: fontRegular,
-    color: rgb(0.79, 0.84, 0.93),
-  });
-
-  y -= 60;
+  // -------- DRAW HEADER FOR PAGE 1 --------
+  drawHeader();
 
   // ---------- EXECUTIVE SUMMARY ----------
-  ensureSpace(4);
   drawSectionTitle('Executive summary');
 
   const summaryLines = [
@@ -322,7 +382,6 @@ async function generateVehicleReport(rawData, vin) {
   ];
 
   summaryLines.forEach((line) => {
-    ensureSpace(1);
     drawText(line, marginX + 4, {
       size: 10,
       font: fontRegular,
@@ -333,7 +392,6 @@ async function generateVehicleReport(rawData, vin) {
   y -= 4;
 
   // ---------- VEHICLE OVERVIEW ----------
-  ensureSpace(6);
   drawSectionTitle('Vehicle overview');
 
   const col1X = marginX + 2;
@@ -373,10 +431,9 @@ async function generateVehicleReport(rawData, vin) {
 
   drawKeyValue('Current asking price', moneyOr(data.listPrice), col1X);
 
-  y -= 6;
+  y -= 4;
 
   // ---------- MARKET SNAPSHOT & NEGOTIATION RANGE ----------
-  ensureSpace(8);
   drawSectionTitle('Market value & negotiation range');
 
   const lowPrice =
@@ -405,7 +462,6 @@ async function generateVehicleReport(rawData, vin) {
     targetPriceLowNum = asNumber(data.negotiation.targetPriceLow);
     targetPriceHighNum = asNumber(data.negotiation.targetPriceHigh);
   } else if (listPriceNum !== null && minSavingsNum !== null && maxSavingsNum !== null) {
-    // Offer range = asking minus savings band
     targetPriceLowNum = listPriceNum - maxSavingsNum;
     targetPriceHighNum = listPriceNum - minSavingsNum;
   } else if (targetPriceNum !== null) {
@@ -439,6 +495,7 @@ async function generateVehicleReport(rawData, vin) {
     (Array.isArray(data.comparables) ? data.comparables.length : null);
 
   // Negotiation / value block
+  ensureSpace(7);
   const negBoxX = marginX;
   const negBoxWidth = width - marginX * 2;
   const negBoxHeight = 80;
@@ -452,7 +509,6 @@ async function generateVehicleReport(rawData, vin) {
     color: rgb(0.01, 0.04, 0.09),
   });
 
-  y -= 4;
   page.drawText('MARKET VALUE & SUGGESTED OFFER RANGE', {
     x: negBoxX + 10,
     y: negBoxY + negBoxHeight - 16,
@@ -507,10 +563,10 @@ async function generateVehicleReport(rawData, vin) {
     maxWidth: negBoxWidth - 20,
   });
 
-  y = negBoxY - 18;
+  y = negBoxY - 22;
 
   // Market snapshot small card
-  ensureSpace(6);
+  ensureSpace(5);
   const cardY = y;
   const cardHeight = 64;
   page.drawRectangle({
@@ -593,10 +649,9 @@ async function generateVehicleReport(rawData, vin) {
     color: rgb(0.07, 0.09, 0.15),
   });
 
-  y = cardY - cardHeight - 24;
+  y = cardY - cardHeight - 20;
 
   // ---------- COMPARABLE VEHICLES ----------
-  ensureSpace(6);
   drawSectionTitle('Comparable vehicles');
 
   if (data.comparables && data.comparables.length) {
@@ -606,6 +661,7 @@ async function generateVehicleReport(rawData, vin) {
     const colPrice = marginX + 320;
     const colTag = marginX + 430;
 
+    ensureSpace(2);
     page.drawText('Vehicle', {
       x: colVehicle,
       y: tableHeaderY,
@@ -685,17 +741,16 @@ async function generateVehicleReport(rawData, vin) {
       y -= lineHeight;
     });
 
-    y -= 8;
+    y -= 10;
   } else {
     drawText(
       'Comparable vehicle data is not available for this report.',
-      marginX + 2,
+      marginX + 4,
       { size: 10, font: fontRegular, color: rgb(0.35, 0.39, 0.42) }
     );
   }
 
   // ---------- QUICK MARKET HIGHLIGHTS ----------
-  ensureSpace(5);
   drawSectionTitle('Quick market highlights');
 
   const highlights = [];
@@ -720,7 +775,6 @@ async function generateVehicleReport(rawData, vin) {
   }
 
   highlights.forEach((line) => {
-    ensureSpace(1);
     drawText(line, marginX + 4, {
       size: 9.5,
       font: fontRegular,
@@ -729,11 +783,9 @@ async function generateVehicleReport(rawData, vin) {
   });
 
   // ---------- NEGOTIATION STRATEGY ----------
-  ensureSpace(5);
   drawSectionTitle('Negotiation strategy');
 
   const strategyLines = [];
-
   if (targetPriceLowNum !== null || targetPriceHighNum !== null) {
     const startOfferText =
       targetPriceLowNum !== null ? moneyOr(targetPriceLowNum) : targetRangeText;
@@ -746,12 +798,13 @@ async function generateVehicleReport(rawData, vin) {
     strategyLines.push('Use the estimated market value and comparable listings as your anchor.');
   }
 
-  strategyLines.push('');
-  strategyLines.push('These numbers are based on active local listings,');
-  strategyLines.push('and frame you as an informed buyer with real data.');
+  strategyLines.push(
+    '',
+    'These numbers are based on active local listings,',
+    'and frame you as an informed buyer with real data.'
+  );
 
   strategyLines.forEach((line) => {
-    ensureSpace(1);
     drawText(line, marginX + 4, {
       size: 9.5,
       font: fontRegular,
@@ -760,7 +813,6 @@ async function generateVehicleReport(rawData, vin) {
   });
 
   // ---------- NEGOTIATION SCRIPT ----------
-  ensureSpace(5);
   drawSectionTitle('Suggested negotiation script');
 
   const scriptRangeLowText =
@@ -799,16 +851,15 @@ async function generateVehicleReport(rawData, vin) {
   ];
 
   scriptLines.forEach((line) => {
-    ensureSpace(1);
     drawText(line, marginX + 4, {
-      size: 9,
+      size: 8.5,
       font: fontRegular,
       color: rgb(0.11, 0.15, 0.2),
     });
   });
 
   // ---------- DISCLAIMER ----------
-  ensureSpace(5);
+  ensureSpace(6);
   const disclaimerY = y - 4;
   page.drawLine({
     start: { x: marginX, y: disclaimerY + 16 },
@@ -824,33 +875,35 @@ async function generateVehicleReport(rawData, vin) {
     'financial, legal, or purchasing advice. Vehicle history, condition, and final sale prices may vary. ' +
     'CarSaavy is not responsible for purchase decisions or outcomes related to the use of this report.';
 
-  const words = disclaimerText.split(' ');
-  let line = '';
+  const disclaimerWords = disclaimerText.split(' ');
+  let dLine = '';
   const maxWidth = width - marginX * 2;
 
   y = disclaimerY;
 
-  words.forEach((word) => {
-    const testLine = line + word + ' ';
+  disclaimerWords.forEach((word) => {
+    const testLine = dLine + word + ' ';
     const lineWidth = fontRegular.widthOfTextAtSize(testLine, 8);
 
     if (lineWidth > maxWidth) {
-      page.drawText(line.trim(), {
+      ensureSpace(1);
+      page.drawText(dLine.trim(), {
         x: marginX,
         y,
         size: 8,
         font: fontRegular,
         color: rgb(0.45, 0.51, 0.59),
       });
-      line = word + ' ';
+      dLine = word + ' ';
       y -= 9;
     } else {
-      line = testLine;
+      dLine = testLine;
     }
   });
 
-  if (line.trim()) {
-    page.drawText(line.trim(), {
+  if (dLine.trim()) {
+    ensureSpace(1);
+    page.drawText(dLine.trim(), {
       x: marginX,
       y,
       size: 8,
@@ -864,7 +917,7 @@ async function generateVehicleReport(rawData, vin) {
     `© ${now.getFullYear()} CarSaavy — Smarter Car Buying Starts Here — www.carsaavy.com`,
     {
       x: marginX,
-      y: 40,
+      y: bottomMargin - 10,
       size: 7.5,
       font: fontRegular,
       color: rgb(0.62, 0.68, 0.76),
