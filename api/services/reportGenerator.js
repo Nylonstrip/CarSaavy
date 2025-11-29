@@ -184,6 +184,239 @@ function drawHeader(doc, vin) {
   // Content starts below header
   return headerHeight + 40;
 }
+function buildNegotiationContext(t = {}) {
+  // Helper to coerce to number or null
+  const num = (v) => {
+    if (typeof v === "number") return v;
+    if (typeof v === "string" && v.trim() && !isNaN(Number(v))) {
+      return Number(v);
+    }
+    return null;
+  };
+
+  const price = num(t.price);
+  const minPrice = num(t.minPrice);
+  const maxPrice = num(t.maxPrice);
+  const mileage = num(t.mileage);
+
+  const comps = Array.isArray(t.comparables) ? t.comparables : [];
+
+  // Compute average comparable price & mileage if available
+  let compAvgPrice = null;
+  let compAvgMileage = null;
+
+  if (comps.length) {
+    const priceVals = comps
+      .map((c) => num(c.price))
+      .filter((n) => n !== null);
+    const milesVals = comps
+      .map((c) => num(c.mileage))
+      .filter((n) => n !== null);
+
+    if (priceVals.length) {
+      compAvgPrice =
+        priceVals.reduce((sum, v) => sum + v, 0) / priceVals.length;
+    }
+
+    if (milesVals.length) {
+      compAvgMileage =
+        milesVals.reduce((sum, v) => sum + v, 0) / milesVals.length;
+    }
+  }
+
+  // Basic price delta vs comps
+  let priceDeltaPct = null;
+  if (price !== null && compAvgPrice !== null && compAvgPrice > 0) {
+    priceDeltaPct = ((price - compAvgPrice) / compAvgPrice) * 100;
+  }
+
+  // Mileage delta vs comps
+  let mileageFlag = "normal";
+  if (mileage !== null && compAvgMileage !== null && compAvgMileage > 0) {
+    const mDelta = (mileage - compAvgMileage) / compAvgMileage;
+    if (mDelta > 0.2) mileageFlag = "high";
+    else if (mDelta < -0.15) mileageFlag = "low";
+  }
+
+  // Days on market (optional, future)
+  const daysOnMarket = num(t.daysOnMarket);
+  let domFlag = "unknown";
+  if (daysOnMarket !== null) {
+    if (daysOnMarket > 60) domFlag = "long";
+    else if (daysOnMarket >= 30) domFlag = "medium";
+    else domFlag = "short";
+  }
+
+  // Build leverage score
+  let score = 0;
+
+  // Price component
+  if (priceDeltaPct !== null) {
+    if (priceDeltaPct >= 8) score += 2;         // well overpriced
+    else if (priceDeltaPct >= 3) score += 1;    // slightly overpriced
+    else if (priceDeltaPct <= -3) score -= 2;   // underpriced vs comps
+    else if (priceDeltaPct < 0) score -= 1;     // a bit under comps
+  }
+
+  // Mileage component
+  if (mileageFlag === "high") score += 1;
+  else if (mileageFlag === "low") score -= 1;
+
+  // Days-on-market component
+  if (domFlag === "long") score += 2;
+  else if (domFlag === "medium") score += 1;
+  else if (domFlag === "short") score -= 1;
+
+  // Map score → leverageLevel
+  let leverageLevel = "balanced";
+  if (score >= 3) leverageLevel = "strong";
+  else if (score >= 1) leverageLevel = "moderate";
+  else if (score <= -2) leverageLevel = "weak";
+  else if (score <= 0) leverageLevel = "balanced";
+
+  if (priceDeltaPct === null && comps.length === 0) {
+    leverageLevel = "unknown";
+  }
+
+  // Format helpers
+  const fmtMoney = (v) =>
+    typeof v === "number"
+      ? v.toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 0,
+        })
+      : "N/A";
+
+  const targetBand =
+    minPrice !== null && maxPrice !== null
+      ? `${fmtMoney(minPrice)} – ${fmtMoney(maxPrice)}`
+      : null;
+
+  // --- Strategy text (changes with leverage) ---
+
+  let strategyText = "";
+  const reasons = [];
+
+  if (priceDeltaPct !== null) {
+    if (priceDeltaPct >= 3) {
+      reasons.push("the asking price is above similar listings in your area");
+    } else if (priceDeltaPct <= -3) {
+      reasons.push("this vehicle is priced competitively against similar listings");
+    }
+  }
+
+  if (mileageFlag === "high") {
+    reasons.push("the mileage is higher than comparable vehicles");
+  } else if (mileageFlag === "low") {
+    reasons.push("the mileage is lower than comparable vehicles");
+  }
+
+  if (domFlag === "long") {
+    reasons.push("the listing has been on the market for an extended period");
+  } else if (domFlag === "medium") {
+    reasons.push("the listing has been on the market for a moderate amount of time");
+  } else if (domFlag === "short") {
+    reasons.push("the listing appears relatively new to the market");
+  }
+
+  const reasonSentence = reasons.length
+    ? "This is based on factors such as " +
+      reasons.join(", ").replace(/,([^,]*)$/, " and$1") +
+      "."
+    : "";
+
+  // Hybrid tone: assertive when leverage is strong, softer when low/unknown
+  if (leverageLevel === "strong") {
+    strategyText =
+      `You have strong leverage to negotiate on this vehicle. ` +
+      reasonSentence +
+      (targetBand
+        ? ` Start near the lower end of the suggested range (${targetBand}) and be prepared to move upward only if the dealer is responsive and transparent about reconditioning, history, and demand.`
+        : ` Start with a firm offer meaningfully below the asking price and only move if the dealer provides clear justification for their number.`);
+  } else if (leverageLevel === "moderate") {
+    strategyText =
+      `You have reasonable room to negotiate, but expect some pushback from the dealer. ` +
+      reasonSentence +
+      (targetBand
+        ? ` Aim to begin closer to the lower half of the suggested range (${targetBand}) and gradually move upward if the dealer offers value such as service records, reconditioning, or favorable financing.`
+        : ` Open with a respectful but firm offer below the asking price and be ready to meet the dealer partway if the vehicle condition and history support it.`);
+  } else if (leverageLevel === "weak") {
+    strategyText =
+      `This vehicle appears to be priced competitively, which may limit how far a dealer is willing to move on price. ` +
+      (reasonSentence
+        ? reasonSentence + " "
+        : "") +
+      (targetBand
+        ? `Focus your negotiation around the upper portion of the suggested range (${targetBand}), and look for savings in fees, add-ons, or trade-in value rather than expecting a large discount on the vehicle itself.`
+        : `Focus on small but meaningful improvements—such as reduced fees, better trade-in value, or included services—rather than a large reduction off the advertised price.`);
+  } else {
+    // balanced or unknown
+    strategyText =
+      `You may have some room to negotiate, but outcomes will depend heavily on the specific dealer and local demand. ` +
+      (reasonSentence
+        ? reasonSentence + " "
+        : "") +
+      (targetBand
+        ? `Use the suggested price range (${targetBand}) as your guardrail: start closer to the lower end and move carefully toward the middle if the dealer is cooperative.`
+        : `Use available comparable listings and any online pricing tools as your reference, and position your offer as fair but open to discussion based on condition and history.`);
+  }
+
+  // --- Script text (also hybrid tone) ---
+
+  let scriptText = "";
+
+  const midTarget =
+    minPrice !== null && maxPrice !== null
+      ? Math.round((minPrice + maxPrice) / 2)
+      : null;
+
+  const midTargetText = midTarget !== null ? fmtMoney(midTarget) : null;
+
+  if (leverageLevel === "strong") {
+    scriptText = (
+      `“I’ve been looking at similar vehicles in the area, and based on the pricing and mileage I’m seeing, this one looks a bit high. ` +
+      (midTargetText
+        ? `A fair number for me would be around ${midTargetText} out-the-door. `
+        : `I’m targeting a fair number that’s meaningfully below the current asking price. `) +
+      `If we can get close to that today, I’d be comfortable moving forward.”`
+    );
+  } else if (leverageLevel === "moderate") {
+    scriptText = (
+      `“From what I’m seeing in the market, this price is in the ballpark, but there is still some room for adjustment. ` +
+      (midTargetText
+        ? `If we can get this closer to ${midTargetText} out-the-door, I’d be very interested in moving ahead. `
+        : `If we can bring the total number down a bit from the advertised price, I’d be very interested in moving ahead. `) +
+      `What can you do on the price if I’m ready to buy today?”`
+    );
+  } else if (leverageLevel === "weak") {
+    scriptText = (
+      `“I can see this vehicle is priced pretty aggressively given its condition and the current market. ` +
+      (midTargetText
+        ? `If there’s any room to get closer to ${midTargetText} out-the-door, I’d appreciate it, but I understand if there’s limited flexibility. `
+        : `If there’s any room to improve the total number a bit, I’d appreciate it, but I understand there may not be much flexibility. `) +
+      `Are there any fees you can reduce or value you can add to help make this work?”`
+    );
+  } else {
+    // balanced / unknown
+    scriptText = (
+      `“I’ve done some research on similar vehicles, and I’d like to make a fair offer based on what I’m seeing in the market. ` +
+      (midTargetText
+        ? `If we can get close to ${midTargetText} out-the-door, I’d feel good about moving forward. `
+        : `If we can get the total price to a fair, market-based number, I’d feel good about moving forward. `) +
+      `What’s the best number you can do if I’m ready to make a decision today?”`
+    );
+  }
+
+  return {
+    leverageLevel,
+    priceDeltaPct,
+    mileageFlag,
+    domFlag,
+    strategyText,
+    scriptText,
+  };
+}
 
 /* =======================================================================
    MAIN REPORT GENERATOR
@@ -346,10 +579,11 @@ Location: ${c.location || "N/A"}
          NEGOTIATION STRATEGY (short paragraph, no justification, extra spacing)
       --------------------------------------------------------------- */
       drawSection("NEGOTIATION STRATEGY", (currentY) => {
-        const strategy = `
-Be polite, clear, and confident during negotiation. Start slightly below your target figure, allow the dealer to counter, and rely on objective factors such as mileage, condition, and comparable listings to support your position.
-        `;
-
+        const t = vehicleData || {};
+        const ctx = buildNegotiationContext(t);
+      
+        const strategy = ctx.strategyText;
+      
         return drawHybridParagraph(doc, strategy, {
           y: currentY,
           disableJustify: true,
@@ -363,11 +597,10 @@ Be polite, clear, and confident during negotiation. Start slightly below your ta
       --------------------------------------------------------------- */
       drawSection("SUGGESTED NEGOTIATION SCRIPT", (currentY) => {
         const t = vehicleData || {};
-
-        const script = `
-"Hi, I'm interested in this vehicle. Based on similar listings and current market trends, it appears the fair purchasing value should be around $${t.minPrice || "N/A"}. I’d like to move forward near that number. What flexibility do you have on pricing today?"
-        `;
-
+        const ctx = buildNegotiationContext(t);
+      
+        const script = ctx.scriptText;
+      
         return drawHybridParagraph(doc, script, {
           y: currentY,
           disableJustify: true,
