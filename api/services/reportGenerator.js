@@ -3,36 +3,38 @@ const fs = require("fs");
 const path = require("path");
 const { put } = require("@vercel/blob");
 
-/* ------------------------------------------------------------
-   HELPER: Hybrid Paragraph Formatter
-   (Left alignment + mild justification for long lines)
------------------------------------------------------------- */
-function drawHybridParagraph(doc, text, options = {}) {
+/* =======================================================================
+   HYBRID PARAGRAPH ENGINE
+   - Hybrid justification ONLY for long, multi-line paragraphs.
+   - Short paragraphs remain left-aligned always.
+   ======================================================================= */
+function drawHybridParagraph(doc, text, opts = {}) {
   const {
     x = 60,
     y,
     width = 475,
-    lineHeight = 14.5,
     fontSize = 11.5,
-  } = options;
+    lineHeight = 14.5,
+  } = opts;
 
   doc.fontSize(fontSize);
 
-  const paragraphs = text.split("\n").filter((p) => p.trim() !== "");
+  const paragraphs = text
+    .split("\n")
+    .map((p) => p.trim())
+    .filter((p) => p !== "");
 
   let cursorY = y;
 
   for (const paragraph of paragraphs) {
-    // Break paragraph into lines using pdfkit measurement
     const words = paragraph.split(" ");
     let line = "";
     const lines = [];
 
+    // Word-wrap
     for (const word of words) {
-      const testLine = line ? line + " " + word : word;
-      const testWidth = doc.widthOfString(testLine, { fontSize });
-
-      if (testWidth > width) {
+      const testLine = line ? `${line} ${word}` : word;
+      if (doc.widthOfString(testLine, { fontSize }) > width) {
         lines.push(line);
         line = word;
       } else {
@@ -41,32 +43,33 @@ function drawHybridParagraph(doc, text, options = {}) {
     }
     if (line) lines.push(line);
 
-    // Render each line (left aligned unless it's a long line)
+    // Render lines properly
     for (let i = 0; i < lines.length; i++) {
-      const isLongLine =
-        doc.widthOfString(lines[i], { fontSize }) > width * 0.9;
+      const isLastLine = i === lines.length - 1;
+      const currentLine = lines[i];
+      const wordsInLine = currentLine.split(" ");
+      const wordCount = wordsInLine.length;
+      const naturalWidth = doc.widthOfString(currentLine, { fontSize });
 
-      if (isLongLine && i !== lines.length - 1) {
+      const shouldJustify =
+        !isLastLine &&
+        wordCount >= 10 &&
+        naturalWidth >= width * 0.92 &&
+        currentLine.length >= 80;
+
+      if (shouldJustify) {
         // Mild justification
-        const wordsInLine = lines[i].split(" ");
-        const gaps = wordsInLine.length - 1;
+        const gaps = wordCount - 1;
+        const extra = (width - naturalWidth) / gaps;
+        let cursorX = x;
 
-        if (gaps > 0) {
-          const naturalWidth = doc.widthOfString(lines[i], { fontSize });
-          const extraSpacePerGap = (width - naturalWidth) / gaps;
-
-          let cursorX = x;
-          for (const w of wordsInLine) {
-            doc.text(w, cursorX, cursorY, { lineBreak: false });
-            cursorX +=
-              doc.widthOfString(w, { fontSize }) + extraSpacePerGap;
-          }
-        } else {
-          doc.text(lines[i], x, cursorY);
+        for (const w of wordsInLine) {
+          doc.text(w, cursorX, cursorY, { lineBreak: false });
+          cursorX += doc.widthOfString(w, { fontSize }) + extra;
         }
       } else {
-        // Normal left-aligned line
-        doc.text(lines[i], x, cursorY, { width });
+        // Left aligned (default)
+        doc.text(currentLine, x, cursorY, { width });
       }
 
       cursorY += lineHeight;
@@ -78,88 +81,78 @@ function drawHybridParagraph(doc, text, options = {}) {
   return cursorY;
 }
 
-/* ------------------------------------------------------------
-   HELPER: Section Title Bar (Medium Width)
------------------------------------------------------------- */
+/* =======================================================================
+   SECTION HEADER (Option B — Medium Width)
+   ======================================================================= */
 function drawSectionHeader(doc, title, y) {
-  const xStart = 60;
-  const width = 475;
+  const barX = 60;
+  const barWidth = 475;
   const barHeight = 22;
 
-  // Top gap
   y += 14;
 
-  // Bar
-  doc.rect(xStart, y, width, barHeight)
-    .fill("#000000");
+  doc.rect(barX, y, barWidth, barHeight).fill("#000000");
 
-  // Text
   doc
     .fillColor("#FFFFFF")
     .font("Helvetica-Bold")
     .fontSize(13)
-    .text(title, xStart + 10, y + 5);
+    .text(title, barX + 10, y + 5);
 
-  // Restore fill for body text
   doc.fillColor("#000000");
 
-  // Bottom gap
   return y + barHeight + 20;
 }
 
-/* ------------------------------------------------------------
-   PAGE BREAK HANDLER
------------------------------------------------------------- */
-function ensureSpace(doc, y, needed = 120) {
-  if (y + needed > doc.page.height - 70) {
+/* =======================================================================
+   PAGE SPACE CHECKER
+   ======================================================================= */
+function ensureSpace(doc, y, needed = 140) {
+  const limit = doc.page.height - 70;
+  if (y + needed > limit) {
     doc.addPage();
-    return 120; // reset y for each new page
+    return 120;
   }
   return y;
 }
 
-/* ------------------------------------------------------------
-   HEADER (Style C)
------------------------------------------------------------- */
+/* =======================================================================
+   HEADER STYLE C
+   ======================================================================= */
 function drawHeader(doc, vin) {
   const headerHeight = 70;
 
-  // Header bar
   doc.rect(0, 0, doc.page.width, headerHeight).fill("#000000");
 
-  // Title
   doc
     .fillColor("#FFFFFF")
     .font("Helvetica-Bold")
     .fontSize(18)
     .text("CARSAAVY VEHICLE MARKET REPORT", 50, 18);
 
-  // Subtitle
   doc
     .font("Helvetica")
     .fontSize(11)
     .text("Market value • Comparables • Negotiation strategy", 50, 42);
 
-  // VIN + Date
   doc
     .font("Helvetica")
     .fontSize(10)
-    .text(`VIN: ${vin}`, 400, 20, { align: "right", width: 150 });
+    .text(`VIN: ${vin}`, 400, 20, { width: 150, align: "right" });
 
   doc.text(`Generated: ${new Date().toLocaleDateString()}`, 400, 38, {
-    align: "right",
     width: 150,
+    align: "right",
   });
 
-  // Reset fill
   doc.fillColor("#000");
 
-  return headerHeight + 40; // spacing before first section
+  return headerHeight + 40;
 }
 
-/* ------------------------------------------------------------
+/* =======================================================================
    MAIN REPORT GENERATOR
------------------------------------------------------------- */
+   ======================================================================= */
 async function generateVehicleReport(vehicleData, vin) {
   return new Promise(async (resolve, reject) => {
     try {
@@ -168,95 +161,152 @@ async function generateVehicleReport(vehicleData, vin) {
         margin: 50,
       });
 
-      const tempFilePath = `/tmp/report-${vin}-${new Date()
+      const timestamp = new Date()
         .toISOString()
-        .replace(/[:.]/g, "-")}.pdf`;
+        .replace(/[:.]/g, "-");
+
+      const tempFilePath = `/tmp/report-${vin}-${timestamp}.pdf`;
       const stream = fs.createWriteStream(tempFilePath);
       doc.pipe(stream);
 
       let y = drawHeader(doc, vin);
 
-      /* ===== SECTION: EXECUTIVE SUMMARY ===== */
-      y = drawSectionHeader(doc, "EXECUTIVE SUMMARY", y);
-      y = ensureSpace(doc, y);
+      /* ---------------------------------------------------------------
+         SECTION TEMPLATE: ALWAYS SHOW + FALLBACK MESSAGE
+      --------------------------------------------------------------- */
+      function drawSection(title, contentRenderer) {
+        y = drawSectionHeader(doc, title, y);
+        y = ensureSpace(doc, y);
 
-      const summary = `
-This report provides a clear view of the current market position for the selected vehicle, using available sales data, estimated values, and historical trends. Prices shown represent estimates based on currently accessible API data; actual dealer pricing may vary.
-      `;
-      y = drawHybridParagraph(doc, summary, { y });
+        const beforeY = y;
+        y = contentRenderer(y);
 
-      /* ===== SECTION: VEHICLE OVERVIEW ===== */
-      y = drawSectionHeader(doc, "VEHICLE OVERVIEW", y);
-      y = ensureSpace(doc, y);
-
-      const overviewText = `
-Year: ${vehicleData?.year || "N/A"}
-Make: ${vehicleData?.make || "N/A"}
-Model: ${vehicleData?.model || "N/A"}
-Trim: ${vehicleData?.trim || "N/A"}
-Mileage: ${vehicleData?.mileage || "N/A"}
-      `;
-      y = drawHybridParagraph(doc, overviewText, { y });
-
-      /* ===== SECTION: MARKET VALUE & RANGE ===== */
-      y = drawSectionHeader(doc, "MARKET VALUE & NEGOTIATION RANGE", y);
-      y = ensureSpace(doc, y);
-
-      const priceText = `
-Estimated Market Value: $${vehicleData?.price || "N/A"}
-Expected Negotiation Range: $${vehicleData?.minPrice || "N/A"} - $${vehicleData?.maxPrice || "N/A"}
-      `;
-      y = drawHybridParagraph(doc, priceText, { y });
-
-      /* ===== SECTION: COMPARABLES ===== */
-      y = drawSectionHeader(doc, "COMPARABLE VEHICLES", y);
-      y = ensureSpace(doc, y);
-
-      if (!vehicleData?.comparables || vehicleData.comparables.length === 0) {
-        y = drawHybridParagraph(
-          doc,
-          "No comparable vehicles were available at the time of this report.",
-          { y }
-        );
-      } else {
-        for (const comp of vehicleData.comparables) {
-          const compText = `
-${comp.year} ${comp.make} ${comp.model} — ${comp.mileage} mi — $${comp.price}
-Location: ${comp.location}
-          `;
-          y = drawHybridParagraph(doc, compText, { y });
-          y += 4;
+        // If renderer produced no content → fallback
+        if (y === beforeY) {
+          y = drawHybridParagraph(
+            doc,
+            "The necessary data for this section was not available at the time of this report.",
+            { y }
+          );
         }
+
+        y += 18; // option B bottom spacing
       }
 
-      /* ===== SECTION: NEGOTIATION STRATEGY ===== */
-      y = drawSectionHeader(doc, "NEGOTIATION STRATEGY", y);
-      y = ensureSpace(doc, y);
+      /* ---------------------------------------------------------------
+         EXECUTIVE SUMMARY
+      --------------------------------------------------------------- */
+      drawSection("EXECUTIVE SUMMARY", (y) => {
+        const summary = `
+This report provides a structured overview of the selected vehicle’s pricing, market position, and negotiation guidance. Values shown represent estimates based on available automotive data sources; final pricing may vary between individual dealerships.
+        `;
+        return drawHybridParagraph(doc, summary, { y });
+      });
 
-      const strategy = `
-Be polite but assertive. Start below your target price and let the dealer counter. Focus on items like mileage, time on market, and vehicle condition to justify your offer.
-      `;
-      y = drawHybridParagraph(doc, strategy, { y });
+      /* ---------------------------------------------------------------
+         VEHICLE OVERVIEW
+      --------------------------------------------------------------- */
+      drawSection("VEHICLE OVERVIEW", (y) => {
+        const t = vehicleData;
 
-      /* ===== SECTION: SCRIPT ===== */
-      y = drawSectionHeader(doc, "NEGOTIATION SCRIPT", y);
-      y = ensureSpace(doc, y);
+        const text = `
+Year: ${t?.year || "N/A"}
+Make: ${t?.make || "N/A"}
+Model: ${t?.model || "N/A"}
+Trim: ${t?.trim || "N/A"}
+Mileage: ${t?.mileage || "N/A"}
+        `;
 
-      const script = `
-"Hi, I’m interested in this vehicle. Based on current market trends and comparable listings, it appears the fair purchase price should be around $${vehicleData.minPrice}. I’d like to move forward at that number if possible. What flexibility do you have on price?"
-      `;
-      y = drawHybridParagraph(doc, script, { y });
+        return drawHybridParagraph(doc, text, { y });
+      });
 
-      /* ===== SECTION: DISCLAIMER ===== */
-      y = drawSectionHeader(doc, "DISCLAIMER", y);
-      y = ensureSpace(doc, y);
+      /* ---------------------------------------------------------------
+         MARKET VALUE & RANGE
+      --------------------------------------------------------------- */
+      drawSection("MARKET VALUE & NEGOTIATION RANGE", (y) => {
+        const t = vehicleData;
 
-      const disclaimer = `
-This report reflects estimates and information accessible through external automotive data sources. CarSaavy does not guarantee dealer participation, final pricing, or the availability of specific vehicles. All values are subject to change.
-      `;
-      y = drawHybridParagraph(doc, disclaimer, { y });
+        const text = `
+Estimated Market Value: $${t?.price || "N/A"}
+Expected Negotiation Range: $${t?.minPrice || "N/A"} - $${t?.maxPrice || "N/A"}
+        `;
 
-      /* Finish PDF */
+        return drawHybridParagraph(doc, text, { y });
+      });
+
+      /* ---------------------------------------------------------------
+         COMPARABLE VEHICLES
+      --------------------------------------------------------------- */
+      drawSection("COMPARABLE VEHICLES", (y) => {
+        const comps = vehicleData?.comparables || [];
+
+        if (!comps.length) return y; // triggers fallback
+
+        for (const c of comps) {
+          const block = `
+${c.year} ${c.make} ${c.model} — ${c.mileage} mi — $${c.price}
+Location: ${c.location}
+          `;
+          y = drawHybridParagraph(doc, block, { y });
+          y += 6;
+          y = ensureSpace(doc, y);
+        }
+
+        return y;
+      });
+
+      /* ---------------------------------------------------------------
+         QUICK MARKET HIGHLIGHTS
+      --------------------------------------------------------------- */
+      drawSection("QUICK MARKET HIGHLIGHTS", (y) => {
+        const highlights = vehicleData?.highlights || [];
+
+        if (!highlights.length) return y;
+
+        for (const h of highlights) {
+          y = drawHybridParagraph(doc, `• ${h}`, { y });
+        }
+
+        return y;
+      });
+
+      /* ---------------------------------------------------------------
+         NEGOTIATION STRATEGY (NO JUSTIFICATION)
+      --------------------------------------------------------------- */
+      drawSection("NEGOTIATION STRATEGY", (y) => {
+        const strategy = `
+Be polite, clear, and confident during negotiation. Start slightly below your target figure, allow the dealer to counter, and rely on objective factors such as mileage, condition, and comparable listings to support your position.
+        `;
+        return drawHybridParagraph(doc, strategy, { y });
+      });
+
+      /* ---------------------------------------------------------------
+         NEGOTIATION SCRIPT (NO JUSTIFICATION)
+      --------------------------------------------------------------- */
+      drawSection("SUGGESTED NEGOTIATION SCRIPT", (y) => {
+        const t = vehicleData;
+
+        const script = `
+"Hi, I'm interested in this vehicle. Based on similar listings and current market trends, it appears the fair purchasing value should be around $${t?.minPrice ||
+          "N/A"}. I’d like to move forward near that number. What flexibility do you have on pricing today?"
+        `;
+
+        return drawHybridParagraph(doc, script, { y });
+      });
+
+      /* ---------------------------------------------------------------
+         DISCLAIMER (NO JUSTIFICATION)
+      --------------------------------------------------------------- */
+      drawSection("DISCLAIMER", (y) => {
+        const disclaimer = `
+This report summarizes available data retrieved from external automotive sources at the time of generation. CarSaavy does not guarantee vehicle availability, accuracy of third-party data, or that any dealership will agree to the estimated pricing or negotiation targets outlined in this report.
+        `;
+        return drawHybridParagraph(doc, disclaimer, { y });
+      });
+
+      /* ---------------------------------------------------------------
+         FINALIZE DOCUMENT
+      --------------------------------------------------------------- */
       doc.end();
 
       stream.on("finish", async () => {
