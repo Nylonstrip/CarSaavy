@@ -1,188 +1,216 @@
-// /api/services/vehicleData.js
-const logger = require("./logger");
-const { sendAdminAlert } = require("./emailService");
-const fetch = global.fetch || require("node-fetch"); // Vercel has fetch, this is just a safe fallback
+/**
+ * vehicleData.js (Basic Tier Optimized)
+ *
+ * Uses ONLY ONE MarketCheck Basic endpoint:
+ *   /v2/listings?vin={vin}&radius=100
+ *
+ * Extracts:
+ *  - Specs (make/model/year/trim)
+ *  - Pricing (avg/median/low/high)
+ *  - Mileage (avg)
+ *  - Dealer info
+ *  - Days on Market (derived)
+ *  - Sample size
+ *  - Derived negotiation pricing metrics
+ *
+ * Fully MVP compatible. Safe to upgrade later for Standard/Advanced API.
+ */
 
-// ---- ENV / DEFAULTS ----
-const MOCK_MODE = process.env.MOCK_MODE !== "false"; // default true unless explicitly "false"
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "carsaavy@gmail.com";
-const MARKETCHECK_API_KEY = process.env.MARKETCHECK_API_KEY || "";
+const fetch = require("node-fetch");
 
-// ---- In-memory state (resets on redeploy) ----
-let apiCallCount = 0;
-const seenVINs = new Set();
-const vinAttemptWindow = new Map(); // vin -> { count, windowStart }
+const MARKETCHECK_API_KEY = process.env.MARKETCHECK_API_KEY;
+const MOCK_MODE = process.env.MOCK_MODE === "true";
+const LOG_LEVEL = process.env.LOG_LEVEL || "info";
 
-// ---- VIN helpers ----
-function normalizeVin(v) {
-  return String(v || "").trim().toUpperCase();
-}
-function isLikelyVin(v) {
-  return /^[A-HJ-NPR-Z0-9]{11,17}$/.test(v); // simple VIN pattern (excludes I,O,Q)
-}
-
-// Basic per-VIN rate limit: 5 requests / 10 minutes per deploy
-function checkVinRateLimit(vin) {
-  const WINDOW_MS = 10 * 60 * 1000;
-  const LIMIT = 5;
-  const now = Date.now();
-  const entry = vinAttemptWindow.get(vin) || { count: 0, windowStart: now };
-  if (now - entry.windowStart > WINDOW_MS) {
-    entry.count = 0;
-    entry.windowStart = now;
+const log = (msg, ...args) => {
+  if (LOG_LEVEL === "debug" || LOG_LEVEL === "info") {
+    console.log(`[VehicleData] ${msg}`, ...args);
   }
-  entry.count += 1;
-  vinAttemptWindow.set(vin, entry);
-  return entry.count <= LIMIT;
-}
+};
 
-// ---- Usage alerts (non-blocking) ----
-async function maybeSendUsageAlert(count) {
+async function getAllVehicleData(vin) {
+  log(`Start for VIN: ${vin}`);
+
+  // Mock mode (for dev safety)
+  if (MOCK_MODE) {
+    log(`MOCK_MODE active for VIN ${vin}`);
+    return mockResponse(vin);
+  }
+
   try {
-    if (!ADMIN_EMAIL) return;
-    if (count >= 500) {
-      await sendAdminAlert(
-        ADMIN_EMAIL,
-        "MarketCheck quota exceeded",
-        `<p>Calls: ${count}/500. Fallback should engage.</p><p>${new Date().toISOString()}</p>`
-      );
-      return;
+    const url =
+      `https://api.marketcheck.com/v2/listings?` +
+      `vin=${vin}&radius=100&include_recommendations=true&api_key=${MARKETCHECK_API_KEY}`;
+
+    log("Fetching MarketCheck listings:", url);
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`MarketCheck failed: ${res.statusText}`);
     }
-    if (count === 400) {
-      await sendAdminAlert(
-        ADMIN_EMAIL,
-        "MarketCheck usage at 80%",
-        `<p>Calls: ${count}/500. Consider upgrading or enabling paid fallback.</p>`
-      );
-    } else if (count === 200) {
-      await sendAdminAlert(
-        ADMIN_EMAIL,
-        "MarketCheck usage at 50%",
-        `<p>Calls: ${count}/500. Monitoring recommended.</p>`
-      );
+
+    const json = await res.json();
+
+    const listings = Array.isArray(json.listings) ? json.listings : [];
+
+    if (listings.length === 0) {
+      log("No listings found for VIN. Returning partial data.");
+      return {
+        vin,
+        specs: extractSpecs(json),
+        pricing: {},
+        mileage: null,
+        comparables: [],
+        marketStats: {
+          sampleSize: 0,
+          domAvg: null,
+        },
+      };
     }
-  } catch (e) {
-    logger.warn(`[VehicleData] Usage alert failed: ${e.message}`);
+
+    // Extract comps-based metrics
+    const compsPricing = extractPricingFromListings(listings);
+    const mileage = extractMileage(listings);
+    const domAvg = extractDaysOnMarket(listings);
+    const specs = extractSpecs(listings[0]);
+
+    const final = {
+      vin,
+      specs,
+      pricing: compsPricing,
+      mileage,
+      comparables: listings.map(cleanComparable),
+      marketStats: {
+        sampleSize: listings.length,
+        domAvg,
+      },
+    };
+
+    log("Completed for VIN:", final);
+    return final;
+
+  } catch (err) {
+    console.error("[VehicleData] ERROR:", err);
+    return {
+      vin,
+      specs: {},
+      pricing: {},
+      mileage: null,
+      comparables: [],
+      marketStats: {
+        sampleSize: 0,
+        domAvg: null,
+      },
+      error: err.message,
+    };
   }
 }
 
-// ---- Mock response for quick testing ----
-function getMockVehicleData(vin) {
-  logger.info(`[VehicleData] MOCK_MODE active for VIN ${vin}`);
+/* ----------------------------- Extraction Helpers ----------------------------- */
+
+function extractSpecs(source) {
+  if (!source) return {};
+
   return {
-    vin,
-    specs: { make: "Honda", model: "Civic", year: 2020, trim: "EX" },
-    pricing: { asking: 18500, estFair: 17900, variance: -600 },
-    recalls: [{ id: "NHTSA-FAKE-123", title: "Brake hose recall", status: "OPEN" }],
-    repairs: [{ type: "Oil change", date: "2024-08-10", miles: 32000 }],
+    make: source.build?.make || source.make || null,
+    model: source.build?.model || source.model || null,
+    year: source.build?.year || source.year || null,
+    trim: source.build?.trim || source.trim || null,
   };
 }
 
-// ---- Real data fetch (keep simple for MVP) ----
-async function fetchMarketcheckSpecs(vin) {
-  if (!MARKETCHECK_API_KEY) {
-    throw new Error("Missing MARKETCHECK_API_KEY");
-  }
-  const url = `https://api.marketcheck.com/v2/decode/car/${vin}/specs?api_key=${MARKETCHECK_API_KEY}`;
-  try {
-    const r = await fetch(url);
-    if (!r.ok) {
-      const text = await r.text();
-      throw new Error(`MarketCheck error: ${r.status} ${r.statusText} — body: ${text}`);
-    }
-    const json = await r.json();
-    return json;
-  } catch (err) {
-    logger.error(`[VehicleData] fetchMarketcheckSpecs error for VIN ${vin}: ${err.stack}`);
-    throw err; // ensure upstream caller knows
-  }
+function extractMileage(listings) {
+  const miles = listings
+    .map((l) => l.miles)
+    .filter((m) => typeof m === "number" && m > 0);
+
+  if (miles.length === 0) return null;
+
+  return Math.round(miles.reduce((a, b) => a + b, 0) / miles.length);
 }
 
-// ---- Public API ----
-async function getAllVehicleData(rawVin) {
-  const vin = normalizeVin(rawVin);
-  logger.info(`[VehicleData] Start for VIN: ${vin}`);
+function extractDaysOnMarket(listings) {
+  const dom = listings
+    .map((l) => l.dom)
+    .filter((d) => typeof d === "number" && d > 0);
 
-  // Validate VIN format
-  if (!isLikelyVin(vin)) {
-    const msg = "Invalid or missing VIN";
-    logger.warn(`[VehicleData] ${msg}: "${rawVin}"`);
-    await sendAdminAlert(ADMIN_EMAIL, "Invalid VIN passed to vehicleData", `<p>VIN: ${rawVin}</p>`);
-    return { success: false, error: msg };
+  if (dom.length === 0) return null;
+
+  return Math.round(dom.reduce((a, b) => a + b, 0) / dom.length);
+}
+
+function extractPricingFromListings(listings) {
+  const prices = listings
+    .map((l) => l.price)
+    .filter((p) => typeof p === "number" && p > 500); // filter nonsense
+
+  if (prices.length === 0) {
+    return {
+      average: null,
+      median: null,
+      low: null,
+      high: null,
+      target: null,
+      deltaToMedian: null,
+    };
   }
 
-  // Duplicate prevention (per deploy)
-  if (seenVINs.has(vin)) {
-    logger.warn(`[VehicleData] Duplicate VIN lookup prevented: ${vin}`);
-    return { success: true, duplicate: true, vin };
-  }
+  const sorted = prices.slice().sort((a, b) => a - b);
+  const low = sorted[0];
+  const high = sorted[sorted.length - 1];
+  const average = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+  const median = sorted[Math.floor(sorted.length / 2)];
 
-  // Per-VIN rate limit (cheap anti-abuse)
-  if (!checkVinRateLimit(vin)) {
-    const msg = "VIN rate limit exceeded";
-    logger.warn(`[VehicleData] ${msg}: ${vin}`);
-    await sendAdminAlert(ADMIN_EMAIL, "VIN rate limit exceeded", `<p>VIN: ${vin}</p>`);
-    return { success: false, error: msg };
-  }
+  // Derived negotiation target — soft formula for MVP
+  const target = Math.round(median - Math.min(1200, median * 0.05));
 
-  // Usage counter (only for live MarketCheck calls)
-  const willCallExternal = (MOCK_MODE === false);
-  if (willCallExternal) {
-    // Soft cap: if already >=500, short-circuit to minimal data
-    if (apiCallCount >= 500) {
-      logger.warn("[VehicleData] Quota exceeded — returning minimal data.");
-      return {
-        vin,
-        specs: { note: "Quota exceeded; minimal data returned." },
-        pricing: {},
-        recalls: [],
-        repairs: [],
-        quotaExceeded: true,
-      };
-    }
-    apiCallCount += 1;
-    logger.info(`[VehicleData] MarketCheck call #${apiCallCount}`);
-    // non-blocking usage alert
-    // no await — don't delay user flow
-    // eslint-disable-next-line promise/catch-or-return
-    maybeSendUsageAlert(apiCallCount);
-  }
+  return {
+    average,
+    median,
+    low,
+    high,
+    target,
+    deltaToMedian: null, // filled in PDF stage if needed
+  };
+}
 
-  try {
-    let vehicleData;
-    if (MOCK_MODE) {
-      vehicleData = getMockVehicleData(vin);
-    } else {
-      const specs = await fetchMarketcheckSpecs(vin);
-      // Shape minimal MVP structure
-      vehicleData = {
-        vin,
-        specs: {
-          make: specs.make || "Unknown",
-          model: specs.model || "Unknown",
-          year: specs.year || "Unknown",
-          trim: specs.trim || "",
-        },
-        pricing: {},   // fill when pricing source is added
-        recalls: [],   // fill when NHTSA is wired
-        repairs: [],   // fill when repair source is wired
-      };
-    }
+function cleanComparable(l) {
+  return {
+    price: l.price || null,
+    miles: l.miles || null,
+    dom: l.dom || null,
+    dealer: l.dealer?.name || null,
+    city: l.dealer?.city || null,
+    state: l.dealer?.state || null,
+    distance: l.distance || null,
+    url: l.vdp_url || null,
+  };
+}
 
-    seenVINs.add(vin);
-    logger.info(`[VehicleData] Completed for VIN: ${vin}`);
-    return vehicleData;
-  } catch (err) {
-    logger.error(`[VehicleData] Fetch error for ${vin}: ${err.message}`);
-    try {
-      await sendAdminAlert(
-        ADMIN_EMAIL,
-        "Vehicle data fetch failed",
-        `<p>VIN: ${vin}</p><p>Error: ${err.message}</p>`
-      );
-    } catch (_) {}
-    return { success: false, error: "vehicle_data_fetch_failed" };
-  }
+/* ----------------------------- Mock Response ----------------------------- */
+function mockResponse(vin) {
+  return {
+    vin,
+    specs: {
+      make: "Honda",
+      model: "Civic",
+      year: 2018,
+      trim: "LX",
+    },
+    pricing: {
+      average: 17500,
+      median: 17000,
+      low: 16000,
+      high: 19000,
+      target: 15800,
+    },
+    mileage: 42000,
+    comparables: [],
+    marketStats: {
+      sampleSize: 5,
+      domAvg: 24,
+    },
+  };
 }
 
 module.exports = { getAllVehicleData };
