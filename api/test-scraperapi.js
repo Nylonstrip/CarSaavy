@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
 
     console.log("🔍 Scraping:", targetUrl);
 
-    // Build ScraperAPI request
+    // ScraperAPI request
     const scraperUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(
       targetUrl
     )}`;
@@ -25,17 +25,26 @@ module.exports = async (req, res) => {
     // Fetch page
     const response = await axios.get(scraperUrl, {
       timeout: 20000,
-      validateStatus: () => true
+      validateStatus: () => true,
     });
 
     if (!response.data) {
+      console.log("❌ No response body from ScraperAPI");
       return res.status(500).json({ error: "ScraperAPI returned no data" });
     }
 
     const html = response.data;
+
+    // 🟥 TEMPORARY DEBUG LOGGING — FIRST 2500 CHARACTERS
+    const preview = html.substring(0, 2500);
+    console.log("\n\n🟦 ===== HTML PREVIEW START =====");
+    console.log(preview);
+    console.log("🟦 ===== HTML PREVIEW END =====\n\n");
+
+    // Load into Cheerio
     const $ = cheerio.load(html);
 
-    // --- GENERIC EXTRACTORS ---
+    // Simple extractors (we’ll replace these after analyzing the HTML)
     const extractors = {
       price: () =>
         $("meta[itemprop='price']").attr("content") ||
@@ -63,20 +72,19 @@ module.exports = async (req, res) => {
         $("div[class*='address']").first().text(),
     };
 
-    // Execute extractors
     const scraped = {};
-    for (const [key, fn] of Object.entries(extractors)) {
-      scraped[key] = fn()?.trim() || "";
+    for (const [k, fn] of Object.entries(extractors)) {
+      scraped[k] = fn()?.trim() || "";
     }
 
-    // Clean formatting
+    // Clean
     scraped.price = scraped.price.replace(/[^0-9$,.]/g, "");
     scraped.mileage = scraped.mileage.replace(/[^0-9]/g, "");
     scraped.vin = scraped.vin.replace(/[^A-Z0-9]/g, "");
 
-    // Response
     return res.json({
       success: true,
+      debugMessage: "Check Vercel logs for HTML preview",
       targetUrl,
       scraped,
     });
