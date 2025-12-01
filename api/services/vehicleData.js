@@ -1,216 +1,135 @@
+// api/services/vehicleData.js
+// Central orchestrator for vehicle data.
+// Primary source: Cars.com
+// Future fallback: CarGurus (stubbed for now).
+
+const { scrapeByVIN: carsScrapeByVIN, scrapeByURL: carsScrapeByURL } = require('./sources/carsDotCom');
+// Placeholder for future CarGurus implementation:
+// const { scrapeByVIN: guruScrapeByVIN } = require('./sources/carGurus');
+
+const LOG_PREFIX = '[VehicleData]';
+
+const FORCE_SOURCE = process.env.FORCE_SOURCE; // 'cars', 'cargurus', etc.
+const USE_CARGURUS_BACKUP =
+  (process.env.USE_CARGURUS_BACKUP || '').toLowerCase() === 'true';
+
+function logSourceChoice(message, extra) {
+  console.info(`${LOG_PREFIX} ${message}`, extra || '');
+}
+
 /**
- * vehicleData.js (Basic Tier Optimized)
- *
- * Uses ONLY ONE MarketCheck Basic endpoint:
- *   /v2/listings?vin={vin}&radius=100
- *
- * Extracts:
- *  - Specs (make/model/year/trim)
- *  - Pricing (avg/median/low/high)
- *  - Mileage (avg)
- *  - Dealer info
- *  - Days on Market (derived)
- *  - Sample size
- *  - Derived negotiation pricing metrics
- *
- * Fully MVP compatible. Safe to upgrade later for Standard/Advanced API.
+ * Normalize the vehicle payload to the shape your report generator expects.
+ * You can extend this over time without breaking callers.
  */
-
-const fetch = require("node-fetch");
-
-const MARKETCHECK_API_KEY = process.env.MARKETCHECK_API_KEY;
-const MOCK_MODE = process.env.MOCK_MODE === "true";
-const LOG_LEVEL = process.env.LOG_LEVEL || "info";
-
-const log = (msg, ...args) => {
-  if (LOG_LEVEL === "debug" || LOG_LEVEL === "info") {
-    console.log(`[VehicleData] ${msg}`, ...args);
-  }
-};
-
-async function getAllVehicleData(vin) {
-  log(`Start for VIN: ${vin}`);
-
-  // Mock mode (for dev safety)
-  if (MOCK_MODE) {
-    log(`MOCK_MODE active for VIN ${vin}`);
-    return mockResponse(vin);
+function normalizeVehicleResult(raw, meta = {}) {
+  if (!raw || !raw.vehicle) {
+    throw new Error('normalizeVehicleResult: missing raw.vehicle');
   }
 
+  const v = raw.vehicle;
+
+  return {
+    // Core identity
+    vin: v.vin || meta.vin || null,
+    year: v.year || null,
+    make: v.make || null,
+    model: v.model || null,
+    trim: v.trim || null,
+
+    // Pricing & mileage
+    price: v.price || null,
+    mileage: v.mileage || null,
+
+    // Dealer info (may be null for now)
+    dealerName: v.dealerName || null,
+    dealerAddress: v.dealerAddress || null,
+
+    // Source metadata
+    source: raw.source || meta.source || null,
+    scrapeMode: raw.mode || null,
+    sourceUrl: raw.url || null,
+  };
+}
+
+/**
+ * Primary entrypoint: fetch vehicle data from whichever source is appropriate.
+ * Arguments:
+ *   - vin (string) – required
+ *   - options:
+ *       - url: optional listing URL supplied by user
+ */
+async function fetchVehicleData(vin, options = {}) {
+  const { url } = options || {};
+
+  if (!vin && !url) {
+    throw new Error('fetchVehicleData requires at least a VIN or a listing URL');
+  }
+
+  const effectiveVin = vin || null;
+
+  // If FORCE_SOURCE is set, we can honor that here later (cars vs cargurus).
+  if (FORCE_SOURCE && FORCE_SOURCE.toLowerCase() === 'cars') {
+    logSourceChoice('FORCE_SOURCE=cars active');
+    return fetchFromCars(effectiveVin, url);
+  }
+
+  if (FORCE_SOURCE && FORCE_SOURCE.toLowerCase() === 'cargurus') {
+    logSourceChoice('FORCE_SOURCE=cargurus active');
+    // Placeholder – will implement CarGurus later.
+    throw new Error('CarGurus source is not implemented yet.');
+  }
+
+  // Default: try Cars.com first, then optionally fallback to CarGurus
   try {
-    const url =
-      `https://api.marketcheck.com/v2/listings?` +
-      `vin=${vin}&radius=100&include_recommendations=true&api_key=${MARKETCHECK_API_KEY}`;
-
-    log("Fetching MarketCheck listings:", url);
-
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`MarketCheck failed: ${res.statusText}`);
-    }
-
-    const json = await res.json();
-
-    const listings = Array.isArray(json.listings) ? json.listings : [];
-
-    if (listings.length === 0) {
-      log("No listings found for VIN. Returning partial data.");
-      return {
-        vin,
-        specs: extractSpecs(json),
-        pricing: {},
-        mileage: null,
-        comparables: [],
-        marketStats: {
-          sampleSize: 0,
-          domAvg: null,
-        },
-      };
-    }
-
-    // Extract comps-based metrics
-    const compsPricing = extractPricingFromListings(listings);
-    const mileage = extractMileage(listings);
-    const domAvg = extractDaysOnMarket(listings);
-    const specs = extractSpecs(listings[0]);
-
-    const final = {
-      vin,
-      specs,
-      pricing: compsPricing,
-      mileage,
-      comparables: listings.map(cleanComparable),
-      marketStats: {
-        sampleSize: listings.length,
-        domAvg,
-      },
-    };
-
-    log("Completed for VIN:", final);
-    return final;
-
+    return await fetchFromCars(effectiveVin, url);
   } catch (err) {
-    console.error("[VehicleData] ERROR:", err);
-    return {
-      vin,
-      specs: {},
-      pricing: {},
-      mileage: null,
-      comparables: [],
-      marketStats: {
-        sampleSize: 0,
-        domAvg: null,
-      },
-      error: err.message,
-    };
+    console.error(`${LOG_PREFIX} Cars.com error:`, err.message || err);
+
+    if (!USE_CARGURUS_BACKUP) {
+      console.warn(
+        `${LOG_PREFIX} USE_CARGURUS_BACKUP is false – not attempting fallback.`
+      );
+      throw err;
+    }
+
+    console.warn(
+      `${LOG_PREFIX} Cars.com failed and USE_CARGURUS_BACKUP=true – would fallback to CarGurus here, but it is not yet implemented.`
+    );
+    throw err;
   }
 }
 
-/* ----------------------------- Extraction Helpers ----------------------------- */
+async function fetchFromCars(vin, url) {
+  let raw;
 
-function extractSpecs(source) {
-  if (!source) return {};
-
-  return {
-    make: source.build?.make || source.make || null,
-    model: source.build?.model || source.model || null,
-    year: source.build?.year || source.year || null,
-    trim: source.build?.trim || source.trim || null,
-  };
-}
-
-function extractMileage(listings) {
-  const miles = listings
-    .map((l) => l.miles)
-    .filter((m) => typeof m === "number" && m > 0);
-
-  if (miles.length === 0) return null;
-
-  return Math.round(miles.reduce((a, b) => a + b, 0) / miles.length);
-}
-
-function extractDaysOnMarket(listings) {
-  const dom = listings
-    .map((l) => l.dom)
-    .filter((d) => typeof d === "number" && d > 0);
-
-  if (dom.length === 0) return null;
-
-  return Math.round(dom.reduce((a, b) => a + b, 0) / dom.length);
-}
-
-function extractPricingFromListings(listings) {
-  const prices = listings
-    .map((l) => l.price)
-    .filter((p) => typeof p === "number" && p > 500); // filter nonsense
-
-  if (prices.length === 0) {
-    return {
-      average: null,
-      median: null,
-      low: null,
-      high: null,
-      target: null,
-      deltaToMedian: null,
-    };
+  if (url) {
+    logSourceChoice('Using Cars.com by URL', { url });
+    raw = await carsScrapeByURL(url);
+  } else if (vin) {
+    logSourceChoice('Using Cars.com by VIN', { vin });
+    raw = await carsScrapeByVIN(vin);
+  } else {
+    throw new Error('Cars.com fetch requires vin or url');
   }
 
-  const sorted = prices.slice().sort((a, b) => a - b);
-  const low = sorted[0];
-  const high = sorted[sorted.length - 1];
-  const average = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
-  const median = sorted[Math.floor(sorted.length / 2)];
-
-  // Derived negotiation target — soft formula for MVP
-  const target = Math.round(median - Math.min(1200, median * 0.05));
-
-  return {
-    average,
-    median,
-    low,
-    high,
-    target,
-    deltaToMedian: null, // filled in PDF stage if needed
-  };
-}
-
-function cleanComparable(l) {
-  return {
-    price: l.price || null,
-    miles: l.miles || null,
-    dom: l.dom || null,
-    dealer: l.dealer?.name || null,
-    city: l.dealer?.city || null,
-    state: l.dealer?.state || null,
-    distance: l.distance || null,
-    url: l.vdp_url || null,
-  };
-}
-
-/* ----------------------------- Mock Response ----------------------------- */
-function mockResponse(vin) {
-  return {
+  const normalized = normalizeVehicleResult(raw, {
     vin,
-    specs: {
-      make: "Honda",
-      model: "Civic",
-      year: 2018,
-      trim: "LX",
-    },
-    pricing: {
-      average: 17500,
-      median: 17000,
-      low: 16000,
-      high: 19000,
-      target: 15800,
-    },
-    mileage: 42000,
-    comparables: [],
-    marketStats: {
-      sampleSize: 5,
-      domAvg: 24,
-    },
-  };
+    source: 'cars',
+  });
+
+  console.info(`${LOG_PREFIX} ✅ Normalized vehicle from Cars.com:`, {
+    vin: normalized.vin,
+    year: normalized.year,
+    make: normalized.make,
+    model: normalized.model,
+    trim: normalized.trim,
+    price: normalized.price,
+    mileage: normalized.mileage,
+  });
+
+  return normalized;
 }
 
-module.exports = { getAllVehicleData };
+module.exports = {
+  fetchVehicleData,
+};
