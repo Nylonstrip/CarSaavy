@@ -17,76 +17,76 @@ module.exports = async (req, res) => {
 
     console.log("🔍 Scraping:", targetUrl);
 
-    // ScraperAPI request
-    const scraperUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(
+    // FULL JS rendering enabled
+    const scraperUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&render=true&device=desktop&url=${encodeURIComponent(
       targetUrl
     )}`;
 
-    // Fetch page
+    // Fetch rendered HTML
     const response = await axios.get(scraperUrl, {
-      timeout: 20000,
+      timeout: 25000,
       validateStatus: () => true,
     });
 
-    if (!response.data) {
-      console.log("❌ No response body from ScraperAPI");
-      return res.status(500).json({ error: "ScraperAPI returned no data" });
+    const html = response.data;
+    if (!html || typeof html !== "string") {
+      console.log("❌ ScraperAPI returned invalid HTML");
+      return res.status(500).json({ error: "Invalid HTML returned" });
     }
 
-    const html = response.data;
-
-    // 🟥 TEMPORARY DEBUG LOGGING — FIRST 2500 CHARACTERS
+    // TEMPORARY DEBUG: Show the first 2,500 chars of rendered output
     const preview = html.substring(0, 2500);
-    console.log("\n\n🟦 ===== HTML PREVIEW START =====");
+    console.log("\n\n🟦 ===== RENDERED HTML PREVIEW START =====");
     console.log(preview);
-    console.log("🟦 ===== HTML PREVIEW END =====\n\n");
+    console.log("🟦 ===== RENDERED HTML PREVIEW END =====\n\n");
 
-    // Load into Cheerio
     const $ = cheerio.load(html);
 
-    // Simple extractors (we’ll replace these after analyzing the HTML)
+    // --- Improved extractors (early stage) ---
+    // AutoTrader-specific selectors (these will refine as we see real HTML)
+
     const extractors = {
       price: () =>
+        $("[data-cmp='pricing']").first().text().trim() ||
         $("meta[itemprop='price']").attr("content") ||
-        $("[data-test='vehiclePrice']").text() ||
-        $("[class*='price']").first().text() ||
         $("span:contains('$')").first().text(),
 
       mileage: () =>
-        $("meta[itemprop='mileageFromOdometer']").attr("content") ||
-        $("[data-test='mileage']").text() ||
+        $("[data-cmp='mileage']").first().text().trim() ||
         $("span:contains('miles')").first().text(),
 
       vin: () =>
-        $("span:contains('VIN')").next().text() ||
-        $("div:contains('VIN')").text()?.replace(/[^A-Z0-9]/g, "") ||
+        $("span:contains('VIN')").next().text().trim() ||
+        $("div:contains('VIN')").text().replace(/[^A-Z0-9]/g, "") ||
         "",
 
       dealerName: () =>
-        $("[data-test='dealerName']").text() ||
-        $("div[class*='dealer']").first().text() ||
-        $("h3:contains('Dealer')").text(),
+        $("[data-cmp='seller-name']").first().text().trim() ||
+        $("div[class*='Dealer']").first().text().trim(),
 
       dealerAddress: () =>
-        $("address").text() ||
-        $("div[class*='address']").first().text(),
+        $("[data-cmp='address']").first().text().trim() ||
+        $("address").first().text().trim(),
     };
 
     const scraped = {};
-    for (const [k, fn] of Object.entries(extractors)) {
-      scraped[k] = fn()?.trim() || "";
+    for (const [key, fn] of Object.entries(extractors)) {
+      try {
+        scraped[key] = fn() || "";
+      } catch (_) {
+        scraped[key] = "";
+      }
     }
 
-    // Clean
     scraped.price = scraped.price.replace(/[^0-9$,.]/g, "");
     scraped.mileage = scraped.mileage.replace(/[^0-9]/g, "");
     scraped.vin = scraped.vin.replace(/[^A-Z0-9]/g, "");
 
     return res.json({
       success: true,
-      debugMessage: "Check Vercel logs for HTML preview",
       targetUrl,
       scraped,
+      note: "Check Vercel logs for HTML preview to refine selectors",
     });
   } catch (err) {
     console.error("❌ Test scraper error:", err);
