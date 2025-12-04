@@ -2,6 +2,7 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 const { put } = require("@vercel/blob");
+const { buildMvpAnalysis } = require('./mvpEngine');
 
 /* =======================================================================
    PROTECTIVE SPACING (Option C - FULL)
