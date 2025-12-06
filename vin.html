@@ -198,6 +198,7 @@
     <form id="vinForm">
       <input type="text" id="vin" placeholder="Enter 17-digit VIN" maxlength="17" required />
       <input type="email" id="email" placeholder="Enter your email" required />
+      <input type="url" id="listingUrl" name="listingUrl" placeholder="https://www.cars.com/vehicledetail/xxxxx/" required />
       <button type="submit" id="submitBtn">Generate Report</button>
       <div class="message" id="message"></div>
     </form>
@@ -218,6 +219,20 @@
     function isValidVIN(vin) {
       const regex = /^[A-HJ-NPR-Z0-9]{17}$/i;
       return regex.test(vin.trim());
+    }
+
+    function isValidCarsUrl(url) {
+      if (!url) return false;
+      try {
+        const u = new URL(url.trim());
+        // Must be a Cars.com vehicle detail page
+        return (
+          u.hostname.includes("cars.com") &&
+          u.pathname.includes("/vehicledetail/")
+        );
+      } catch (e) {
+        return false;
+      }
     }
 
     function setStep(activeIndex) {
@@ -243,6 +258,7 @@
       e.preventDefault();
       const vin = document.getElementById('vin').value.trim().toUpperCase();
       const email = document.getElementById('email').value.trim();
+      const listingUrl = document.getElementById("listingUrl").value.trim();
 
       if (!isValidVIN(vin)) {
         messageEl.textContent = '❌ Invalid VIN. Please enter a 17-character VIN (no I, O, or Q).';
@@ -256,6 +272,16 @@
         messageEl.textContent = '❌ Please enter a valid email address.';
         messageEl.classList.remove('success');
         messageEl.style.display = 'block';
+        setStep(0);
+        return;
+      }
+
+      if (!isValidCarsUrl(listingUrl)) {
+        messageEl.textContent =
+          '❌ Please enter a valid Cars.com vehicle URL (for example: https://www.cars.com/vehicledetail/xxxxxx/).';
+        messageEl.classList.remove('success');
+        messageEl.style.display = 'block';
+        setStep(0);
         return;
       }
 
@@ -272,7 +298,7 @@
         const response = await fetch('/api/create-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vin, email })
+          body: JSON.stringify({ vin, email, listingUrl })
         });
 
         const data = await response.json();
@@ -292,5 +318,6 @@
       }
     });
   </script>
+
 </body>
 </html>

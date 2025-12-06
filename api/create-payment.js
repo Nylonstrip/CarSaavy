@@ -1,5 +1,18 @@
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
+function isValidCarsComUrl(url) {
+  if (!url) return false;
+  try {
+    const u = new URL(url.trim());
+    return (
+      u.hostname.includes("cars.com") &&
+      u.pathname.includes("/vehicledetail/")
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -11,15 +24,26 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { vin, email } = req.body;
+    const { vin, email, listingUrl } = req.body || {};
 
-    if (!vin || !email) {
-      return res.status(400).json({ error: "VIN and email are required" });
+    if (!vin || !email || !listingUrl) {
+      return res
+        .status(400)
+        .json({ error: "VIN, email, and listing URL are required." });
     }
 
+    const normalizedVin = String(vin).trim().toUpperCase();
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: "Invalid email" });
+    if (!emailRegex.test(String(email).trim())) {
+      return res.status(400).json({ error: "Invalid email." });
+    }
+
+    if (!isValidCarsComUrl(listingUrl)) {
+      return res.status(400).json({
+        error:
+          "Listing URL must be a valid Cars.com vehicle detail page (https://www.cars.com/vehicledetail/...).",
+      });
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -30,9 +54,9 @@ module.exports = async (req, res) => {
         {
           price_data: {
             currency: "usd",
-            unit_amount: 2000,
+            unit_amount: 2000, // $20.00
             product_data: {
-              name: `VIN Report for ${vin.toUpperCase()}`,
+              name: `VIN Report for ${normalizedVin}`,
             },
           },
           quantity: 1,
@@ -40,11 +64,19 @@ module.exports = async (req, res) => {
       ],
 
       // Metadata on the SESSION itself
-      metadata: { vin: vin.toUpperCase(), email },
+      metadata: {
+        vin: normalizedVin,
+        email,
+        listingUrl,
+      },
 
       // Metadata propagated to the INTERNAL PAYMENT INTENT
       payment_intent_data: {
-        metadata: { vin: vin.toUpperCase(), email },
+        metadata: {
+          vin: normalizedVin,
+          email,
+          listingUrl,
+        },
       },
 
       customer_email: email,
@@ -56,6 +88,8 @@ module.exports = async (req, res) => {
     return res.status(200).json({ url: session.url });
   } catch (error) {
     console.error("Checkout Session Error:", error);
-    return res.status(500).json({ error: "Failed", message: error.message });
+    return res
+      .status(500)
+      .json({ error: "Failed", message: error.message || "Unknown error" });
   }
 };

@@ -30,6 +30,20 @@ async function scraperGet(url, opts = {}) {
   }
 }
 
+/* ========== Cars.com URL Validation ========== */
+function isValidCarsComUrl(url) {
+  if (!url) return false;
+  try {
+    const u = new URL(url.trim());
+    return (
+      u.hostname.includes("cars.com") &&
+      u.pathname.includes("/vehicledetail/")
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
 /* ========== Parse Vehicle Page ========== */
 function parseVehicle(html) {
   const $ = cheerio.load(html);
@@ -37,13 +51,18 @@ function parseVehicle(html) {
   const title = $("h1").first().text().trim();
   const priceText = $('[data-test="vd-price"]').first().text().trim();
   const mileageText = $('[data-test="vd-mileage"]').first().text().trim();
+
+  // This is a bit heuristic, but works for Cars.com:
   const vinText = $("div:contains('VIN')").last().text().trim();
 
   const price = parseInt(priceText.replace(/\D/g, "")) || null;
   const mileage = parseInt(mileageText.replace(/\D/g, "")) || null;
-  const vin = vinText.replace("VIN:", "").trim() || null;
+  const vin = vinText.replace("VIN", "").replace(":", "").trim() || null;
 
-  let year = null, make = null, model = null, trim = null;
+  let year = null,
+    make = null,
+    model = null,
+    trim = null;
   if (title) {
     const parts = title.split(" ");
     year = parseInt(parts[0]) || null;
@@ -62,7 +81,7 @@ function buildSearchUrl(vehicle) {
   return (
     "https://www.cars.com/shopping/results/?" +
     `makes[]=${encodeURIComponent(make)}` +
-    `&models[]=${encodeURIComponent(model.toLowerCase())}` +
+    `&models[]=${encodeURIComponent((model || "").toLowerCase())}` +
     `&year_min=${year}&year_max=${year}` +
     "&stock_type=used" +
     "&maximum_distance=100"
@@ -77,9 +96,18 @@ function parseComparables(html) {
   $(".vehicle-card").each((i, card) => {
     if (results.length >= 3) return; // LIMIT: 3 comps
 
-    const priceText = $(card).find('[data-test="vehicleCardPrice"]').text().trim();
-    const mileageText = $(card).find('[data-test="vehicleMileage"]').text().trim();
-    const title = $(card).find('[data-test="vehicleCardTitle"]').text().trim();
+    const priceText = $(card)
+      .find('[data-test="vehicleCardPrice"]')
+      .text()
+      .trim();
+    const mileageText = $(card)
+      .find('[data-test="vehicleMileage"]')
+      .text()
+      .trim();
+    const title = $(card)
+      .find('[data-test="vehicleCardTitle"]')
+      .text()
+      .trim();
     const linkEl = $(card).find("a.vehicle-card-link").attr("href");
 
     if (!priceText || !title) return;
@@ -94,9 +122,7 @@ function parseComparables(html) {
     const model = tParts[2] || null;
     const trim = tParts.slice(3).join(" ") || null;
 
-    const sourceUrl = linkEl
-      ? `https://www.cars.com${linkEl}`
-      : null;
+    const sourceUrl = linkEl ? `https://www.cars.com${linkEl}` : null;
 
     results.push({ price, mileage, year, make, model, trim, sourceUrl });
   });
@@ -114,16 +140,27 @@ function computePricing(comps, listingPrice) {
       priceRank: null,
     };
 
-  const prices = comps.map(c => c.price).filter(Boolean);
+  const prices = comps.map((c) => c.price).filter(Boolean);
+  if (prices.length === 0)
+    return {
+      minPrice: null,
+      maxPrice: null,
+      avgPrice: null,
+      priceRank: null,
+    };
+
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
-  const avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+  const avgPrice = Math.round(
+    prices.reduce((a, b) => a + b, 0) / prices.length
+  );
 
   // percentile rank
   const priceRank =
     listingPrice && prices.length > 1
       ? Math.round(
-          (prices.filter(p => p <= listingPrice).length / prices.length) * 100
+          (prices.filter((p) => p <= listingPrice).length / prices.length) *
+            100
         )
       : null;
 
@@ -176,15 +213,60 @@ function estimateDOM(main, comps, pricing) {
 }
 
 /* ========== MAIN EXPORT FUNCTION ========== */
-module.exports = async function fetchVehicleData(url) {
+// Now accepts both URL + input VIN for verification
+module.exports = async function fetchVehicleData(url, inputVinRaw) {
   console.log(`[VehicleData] Starting scrape for: ${url}`);
+
+  if (!isValidCarsComUrl(url)) {
+    console.error("[VehicleData] Invalid Cars.com URL:", url);
+    return {
+      error: "INVALID_CARS_URL",
+      url,
+    };
+  }
+
+  const normalizedInputVin = inputVinRaw
+    ? String(inputVinRaw).trim().toUpperCase()
+    : null;
 
   // Step 1: Scrape Main Listing
   const html = await scraperGet(url);
-  if (!html)
-    return { error: "Failed to scrape main listing.", url };
+  if (!html) {
+    return {
+      error: "SCRAPE_FAILED",
+      url,
+    };
+  }
 
   const main = parseVehicle(html);
+  const scrapedVin = main.vin ? String(main.vin).trim().toUpperCase() : null;
+
+  if (normalizedInputVin) {
+    if (scrapedVin && scrapedVin !== normalizedInputVin) {
+      console.error(
+        `[VehicleData] VIN mismatch. Input: ${normalizedInputVin}, Scraped: ${scrapedVin}`
+      );
+      return {
+        error: "VIN_MISMATCH",
+        url,
+        inputVin: normalizedInputVin,
+        scrapedVin,
+        vehicle: main,
+      };
+    }
+
+    if (!scrapedVin) {
+      console.warn(
+        "[VehicleData] VIN not found on Cars.com page for verification."
+      );
+      return {
+        error: "VIN_NOT_FOUND_ON_PAGE",
+        url,
+        inputVin: normalizedInputVin,
+        vehicle: main,
+      };
+    }
+  }
 
   // If key data missing -> mild fallback
   if (!main.year || !main.make || !main.model) {
