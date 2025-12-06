@@ -1,122 +1,175 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// api/webhook.js
+//
+// FULLY PATCHED FOR:
+// - Vercel’s new runtime (raw body requirement)
+// - Stripe signature verification
+// - VIN + URL match validation
+// - Scraper-powered data fetching
+// - Report generation + email sending
+// --------------------------------------------------
+
+import Stripe from "stripe";
+import getRawBody from "raw-body";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-const fetchVehicleData = require("./services/vehicleData");
-const generateReport = require("./services/reportGenerator");
-const sendVehicleReportEmail = require("./services/emailService");
+// Import your internal modules
+const getAllVehicleData = require("./services/vehicleData.js");
+const generateReport = require("./services/reportGenerator.js");
+const sendVehicleReportEmail = require("./services/emailService.js");
+
+// Required for Stripe webhooks in Vercel
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 module.exports = async (req, res) => {
+  console.log("🔥 Webhook event received");
+
   let event;
 
   try {
-    const sig = req.headers["stripe-signature"];
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+    const rawBody = await getRawBody(req);
+    const signature = req.headers["stripe-signature"];
+
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      endpointSecret
+    );
   } catch (err) {
     console.error("❌ Signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  try {
-    const eventType = event.type;
-    console.log("🔥 Webhook event received:", eventType);
-
-    if (eventType === "payment_intent.succeeded") {
-      const paymentIntent = event.data.object;
-
-      const vin = paymentIntent.metadata?.vin;
-      const email = paymentIntent.metadata?.email;
-      const listingUrl = paymentIntent.metadata?.listingUrl;
-
-      console.log("VIN:", vin, "| Email:", email, "| Listing URL:", listingUrl);
-
-      if (!vin || !email || !listingUrl) {
-        console.error(
-          "❌ Missing metadata. VIN, email, and listingUrl are required in payment_intent.metadata."
-        );
-        // Acknowledge to Stripe but don't generate a report
-        return res.json({
-          received: true,
-          status: "missing_metadata",
-        });
-      }
-
-      // 🔍 Scrape + verify VIN
-      const vehicleData = await fetchVehicleData(listingUrl, vin);
-
-      if (vehicleData && vehicleData.error) {
-        // Handle various verification / scrape errors
-        if (vehicleData.error === "INVALID_CARS_URL") {
-          console.error("❌ Invalid Cars.com URL in metadata:", listingUrl);
-          return res.json({
-            received: true,
-            status: "invalid_cars_url",
-          });
-        }
-
-        if (vehicleData.error === "VIN_MISMATCH") {
-          console.error(
-            "❌ VIN mismatch between user input and listing:",
-            vehicleData
-          );
-          return res.json({
-            received: true,
-            status: "vin_mismatch",
-            details: {
-              inputVin: vehicleData.inputVin,
-              scrapedVin: vehicleData.scrapedVin,
-            },
-          });
-        }
-
-        if (vehicleData.error === "VIN_NOT_FOUND_ON_PAGE") {
-          console.error(
-            "❌ VIN not found on Cars.com page for verification:",
-            listingUrl
-          );
-          return res.json({
-            received: true,
-            status: "vin_not_found_on_page",
-          });
-        }
-
-        if (vehicleData.error === "SCRAPE_FAILED") {
-          console.error("❌ Failed to scrape listing:", listingUrl);
-          return res.json({
-            received: true,
-            status: "scrape_failed",
-          });
-        }
-
-        // Generic catch-all
-        console.error("❌ VehicleData error:", vehicleData.error);
-        return res.json({
-          received: true,
-          status: "vehicledata_error",
-        });
-      }
-
-      // 📝 Generate PDF report
-      const { reportUrl } = await generateReport(vin, vehicleData);
-      console.log("📄 Report URL:", reportUrl);
-
-      // ✉️ Email it
-      await sendVehicleReportEmail(email, reportUrl);
-      console.log("📨 Email sent successfully to:", email);
-
-      return res.json({ received: true, status: "report_sent" });
-    }
-
-    if (eventType === "payment_intent.payment_failed") {
-      console.error("❌ Payment failed");
-      return res.json({ received: true, status: "payment_failed" });
-    }
-
-    // Other event types (if ever enabled)
-    return res.json({ received: true, status: "ignored_event_type" });
-  } catch (err) {
-    console.error("❌ Webhook handler error:", err);
-    // Return 200 so Stripe doesn't infinitely retry on a bug,
-    // but log everything for debugging.
-    return res.json({ received: true, status: "internal_error" });
+  // We only care about payment success events
+  if (event.type !== "payment_intent.succeeded") {
+    return res.status(200).send("Ignored event");
   }
+
+  const paymentIntent = event.data.object;
+
+  const vin = paymentIntent.metadata?.vin || null;
+  const url = paymentIntent.metadata?.url || null;
+  const email = paymentIntent.metadata?.email || null;
+
+  console.log("📌 Extracted metadata:", { vin, url, email });
+
+  // Basic guard
+  if (!vin || !url || !email) {
+    console.error("❌ Missing metadata in payment intent");
+    return res.status(400).json({
+      error:
+        "Required metadata missing (vin, url, email). Payment processed but cannot fulfill report.",
+    });
+  }
+
+  // STEP 1 — Fetch & validate vehicle data (includes VIN verification)
+  let vehicleData;
+
+  try {
+    vehicleData = await getAllVehicleData(url, vin);
+  } catch (err) {
+    console.error("❌ Vehicle data lookup failed:", err.message);
+
+    // Email user about failure
+    await sendVehicleReportEmail({
+      to: email,
+      subject: "CarSaavy Report Error",
+      body: `
+        We attempted to process your CarSaavy report, but the system could not
+        retrieve data from the provided vehicle listing.
+
+        Error: ${err.message}
+
+        Please verify the URL and VIN and try again.
+      `,
+    });
+
+    return res.status(500).json({ error: "Vehicle data lookup failed" });
+  }
+
+  // VIN mismatch
+  if (vehicleData?.vinMismatch === true) {
+    console.warn("⚠ VIN mismatch detected");
+
+    await sendVehicleReportEmail({
+      to: email,
+      subject: "CarSaavy Verification Failed",
+      body: `
+        Your report could not be generated because the VIN you entered
+        (${vin}) does not match the VIN listed on the provided vehicle page.
+
+        This safety check ensures all reports remain accurate.
+
+        Please double-check:
+
+        • The VIN entered
+        • The Cars.com URL you provided
+
+        You may retry the report once corrected.
+      `,
+    });
+
+    return res.status(200).json({ error: "VIN mismatch — report not generated" });
+  }
+
+  if (!vehicleData || !vehicleData.vin) {
+    console.error("❌ Vehicle scrape returned empty or invalid data");
+
+    await sendVehicleReportEmail({
+      to: email,
+      subject: "CarSaavy Report Error",
+      body: `
+        We were unable to extract vehicle data from the provided URL.
+
+        Please verify the URL is a valid Cars.com listing and try again.
+      `,
+    });
+
+    return res.status(200).json({ error: "Invalid scrape data" });
+  }
+
+  console.log("✅ Vehicle data verified:", vehicleData.vin);
+
+  // STEP 2 — Generate PDF Report
+  let reportUrl;
+  try {
+    reportUrl = await generateReport(vehicleData);
+  } catch (err) {
+    console.error("❌ Report generation failed:", err.message);
+
+    await sendVehicleReportEmail({
+      to: email,
+      subject: "CarSaavy Report Error",
+      body: `
+        We attempted to generate your PDF report, but an internal error occurred.
+
+        Please try again shortly.
+      `,
+    });
+
+    return res.status(500).json({ error: "Report generation failed" });
+  }
+
+  console.log("📄 Report URL created:", reportUrl);
+
+  // STEP 3 — Email the report
+  try {
+    await sendVehicleReportEmail({
+      to: email,
+      reportUrl,
+      vin: vehicleData.vin,
+      vehicle: vehicleData,
+    });
+  } catch (err) {
+    console.error("❌ Email delivery failed:", err.message);
+    return res.status(500).json({ error: "Email delivery failed" });
+  }
+
+  console.log("📨 Report sent successfully to:", email);
+
+  return res.status(200).json({ success: true });
 };
