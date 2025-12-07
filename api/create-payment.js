@@ -1,64 +1,52 @@
 // api/create-payment.js
-import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-// Lightweight Cars.com URL validation
-function isCarsComUrl(url) {
+module.exports = async (req, res) => {
   try {
-    const parsed = new URL(url);
-    return (
-      parsed.hostname.includes("cars.com") &&
-      /^\/vehicledetail\/[a-zA-Z0-9-]+\/?$/.test(parsed.pathname)
-    );
-  } catch (e) {
-    return false;
-  }
-}
+    console.log("📩 Incoming create-payment request:", req.body);
 
-function getBaseUrl() {
-  let url = process.env.VERCEL_URL || "";
-  if (!url.startsWith("http")) {
-    url = "https://" + url;
-  }
-  return url;
-}
+    const { vin, email, listingUrl } = req.body;
 
-export default async function handler(req, res) {
-  console.log("📩 Incoming create-payment request:", req.body);
+    // ----------------------------
+    // 1️⃣ Basic required checks
+    // ----------------------------
+    if (!vin || !email || !listingUrl) {
+      return res.status(400).json({ error: "VIN, email, and listing URL are required." });
+    }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+    // ----------------------------
+    // 2️⃣ Validate Cars.com URL format
+    // ----------------------------
+    console.log("🔍 Validating Cars.com URL...");
 
-  const { vin, email, listingUrl } = req.body;
+    const carsRegex = /^https:\/\/www\.cars\.com\/vehicledetail\/[a-zA-Z0-9-]+\/*$/;
 
-  if (!vin || !email || !listingUrl) {
-    return res
-      .status(400)
-      .json({ error: "VIN, email, and listing URL are required" });
-  }
+    if (!carsRegex.test(listingUrl)) {
+      console.log("❌ URL failed lightweight validation:", listingUrl);
+      return res.status(400).json({
+        error: "Invalid Cars.com URL format. Please provide a direct Cars.com vehicle listing link.",
+      });
+    }
 
-  console.log("🔍 Validating Cars.com URL...");
-  if (!isCarsComUrl(listingUrl)) {
-    console.log("❌ Failed: URL does not match Cars.com format.");
-    return res.status(400).json({
-      error:
-        "Invalid Cars.com link. Please provide the exact full Cars.com listing URL.",
-    });
-  }
+    console.log("✅ Cars.com URL passed lightweight validation.");
 
-  console.log("✅ Cars.com URL passed lightweight validation.");
-
-  try {
+    // ----------------------------
+    // 3️⃣ Create Stripe Checkout Session
+    // ----------------------------
     console.log("💳 Creating Stripe Checkout Session...");
 
-    const baseUrl = getBaseUrl();
+    const baseUrl = process.env.NODE_ENV === "production"
+      ? "https://www.carsaavy.com"
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000";
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       customer_email: email,
+
       line_items: [
         {
           price_data: {
@@ -67,16 +55,28 @@ export default async function handler(req, res) {
               name: "CarSaavy Vehicle Report",
               description: "Full negotiation-ready vehicle analysis",
             },
-            unit_amount: 1500,
+            unit_amount: 1500, // $15.00
           },
           quantity: 1,
         },
       ],
+
+      // ✅ CRITICAL — metadata MUST be put here for Stripe to pass to payment_intent
+      payment_intent_data: {
+        metadata: {
+          vin,
+          email,
+          listingUrl,
+        },
+      },
+
+      // Also include on session (optional but helps debugging)
       metadata: {
         vin,
         email,
         listingUrl,
       },
+
       success_url: `${baseUrl}/success`,
       cancel_url: `${baseUrl}/cancel`,
     });
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
-    console.error("❌ Stripe session creation failed:", err);
-    return res.status(500).json({ error: "Stripe error", details: err.message });
+    console.error("❌ create-payment error:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
-}
+};
