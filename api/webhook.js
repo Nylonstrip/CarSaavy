@@ -3,7 +3,7 @@ const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const { getAllVehicleData } = require("./services/vehicleData");
-const { generateReport } = require("./services/reportGenerator");
+const { generateVehicleReport } = require("./services/reportGenerator");
 const { sendVehicleReportEmail } = require("./services/emailService");
 
 // Vercel requires this to receive raw body for Stripe signature validation
@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
       const vehicleData = await getAllVehicleData(vin, listingUrl);
 
       console.log("📄 Generating PDF report...");
-      const reportUrl = await generateReport(vin, vehicleData);
+      const reportUrl = await generateVehicleReport(vin, vehicleData);
 
       console.log("📧 Sending report email...");
       await sendVehicleReportEmail(email, reportUrl, vehicleData);
