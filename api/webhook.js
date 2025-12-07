@@ -1,20 +1,19 @@
-// ---------- REQUIRED FOR STRIPE W/ VERCEL ------------
-// Disable automatic body parsing so we can access rawBody
+// --------- REQUIRED FOR STRIPE ON VERCEL ----------
 module.exports.config = {
   api: {
     bodyParser: false,
   },
 };
+// --------------------------------------------------
 
-// -----------------------------------------------------
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const getRawBody = require("raw-body");
 
-// Your modules - now flattened into /api/
+// Now that you flattened the structure:
 const parseCarsDotCom = require("./carsDotCom");
 const generateReport = require("./reportGenerator");
 
-module.exports.handler = async (req, res) => {
+module.exports = async function (req, res) {
   if (req.method !== "POST") {
     return res.status(405).send("Method not allowed");
   }
@@ -23,7 +22,7 @@ module.exports.handler = async (req, res) => {
   let rawBody;
 
   try {
-    // Get unparsed raw body from Vercel
+    // Capture raw request body for Stripe verification
     rawBody = await getRawBody(req);
 
     const signature = req.headers["stripe-signature"];
@@ -40,52 +39,53 @@ module.exports.handler = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle successful payment
+  // ---- Handle successful payment ----
   if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object;
 
-    const vin = paymentIntent.metadata?.vin || null;
-    const email = paymentIntent.metadata?.email || null;
-    const listingUrl = paymentIntent.metadata?.listingUrl || null;
+    const metadata = {
+      vin: paymentIntent.metadata?.vin || null,
+      email: paymentIntent.metadata?.email || null,
+      listingUrl: paymentIntent.metadata?.listingUrl || null,
+    };
 
-    console.log("📌 Extracted metadata:", { vin, email, listingUrl });
+    console.log("📌 Extracted metadata:", metadata);
 
-    if (!vin || !email || !listingUrl) {
+    if (!metadata.vin || !metadata.email || !metadata.listingUrl) {
       console.error("❌ Missing metadata in payment intent");
-      return res.status(400).json({ error: "Missing required metadata" });
+      return res.status(400).json({ error: "Missing metadata" });
     }
 
     try {
-      // 1. Scrape / Parse Cars.com Listing
-      console.log("🔍 Scraping listing:", listingUrl);
-      const scrapedData = await parseCarsDotCom(listingUrl);
+      // SCRAPE LISTING
+      console.log("🔍 Scraping listing:", metadata.listingUrl);
+      const scrapedData = await parseCarsDotCom(metadata.listingUrl);
       console.log("🧩 Parsed data:", scrapedData);
 
-      // 2. Generate PDF Report
+      // PDF GENERATION
       console.log("📄 Generating PDF report...");
       const pdfBuffer = await generateReport({
-        vin,
-        email,
-        listingUrl,
+        vin: metadata.vin,
+        email: metadata.email,
+        listingUrl: metadata.listingUrl,
         scrapedData,
       });
 
       if (!pdfBuffer) {
-        console.error("❌ PDF generation returned empty buffer");
-        return res.status(500).send("Report failed to generate");
+        console.error("❌ generateReport returned empty buffer");
+        return res.status(500).send("Report generation failed");
       }
 
       console.log("📄 PDF generated successfully!");
 
-      // 3. Upload & Email (your existing logic here)
-      // You likely call your email service here.
-      // If you want, send me the email API and I’ll hard-patch it too.
+      // EMAIL LOGIC (your existing system)
+      // If you want me to inspect this, upload your emailService or mailer file.
 
     } catch (err) {
       console.error("❌ Webhook handler error:", err);
-      return res.status(500).json({ error: "Webhook processing failed" });
+      return res.status(500).json({ error: "Webhook internal error" });
     }
   }
 
-  res.status(200).json({ received: true });
+  return res.status(200).json({ received: true });
 };
