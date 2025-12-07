@@ -1,84 +1,130 @@
-import Stripe from "stripe";
+// api/create-payment.js
+const Stripe = require("stripe");
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
+module.exports = async function handler(req, res) {
   try {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
     const { vin, email, listingUrl } = req.body;
 
-    // ---------------------------
-    // BASIC VALIDATION
-    // ---------------------------
-    if (!vin || !email || !listingUrl) {
+    console.log("📩 Incoming create-payment request:", { vin, email, listingUrl });
+
+    // -----------------------------------------------------------
+    // 1️⃣ Require VIN + email
+    // -----------------------------------------------------------
+    if (!vin || !email) {
+      console.log("❌ Missing VIN or email");
       return res.status(400).json({
-        error: "VIN, email, and Cars.com listing URL are required.",
+        error: "VIN and email are required."
       });
     }
 
-    // Validate Cars.com URL format
-    const carsUrlRegex = /^https:\/\/www\.cars\.com\/vehicledetail\/[A-Za-z0-9-]+\/?$/;
-    if (!carsUrlRegex.test(listingUrl)) {
+    // -----------------------------------------------------------
+    // 2️⃣ Require Cars.com URL
+    // -----------------------------------------------------------
+    if (!listingUrl) {
+      console.log("❌ Missing Cars.com URL");
       return res.status(400).json({
-        error: "Invalid listing URL. Only Cars.com vehicle detail links are allowed.",
+        error: "A Cars.com listing URL is required."
       });
     }
 
-    // ---------------------------
-    // SERVER-SIDE URL CHECK (HEAD)
-    // Prevents users submitting dead URLs
-    // ---------------------------
-    try {
-      const check = await fetch(listingUrl, { method: "HEAD" });
+    // -----------------------------------------------------------
+    // 3️⃣ Validate Cars.com domain format
+    // -----------------------------------------------------------
+    const isCarsDotCom = /^https?:\/\/(www\.)?cars\.com\/vehicledetail\//i.test(listingUrl);
 
-      if (!check.ok) {
-        return res.status(400).json({
-          error: "Cars.com listing appears to be unavailable. Please verify the link.",
+    if (!isCarsDotCom) {
+      console.log("❌ Invalid listing domain:", listingUrl);
+      return res.status(400).json({
+        error: "Only Cars.com vehicle listing URLs are supported."
+      });
+    }
+
+    // -----------------------------------------------------------
+    // 4️⃣ Lightweight Cars.com URL check (GET with timeout)
+    // -----------------------------------------------------------
+    async function validateCarsUrl(url) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          signal: controller.signal,
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123 Safari/537.36"
+          }
         });
+
+        clearTimeout(timeout);
+
+        // Accept 200–399 as "alive"
+        if (response.status >= 200 && response.status < 400) {
+          return true;
+        }
+
+        console.log("⚠ Cars.com returned non-OK status:", response.status);
+        return false;
+      } catch (err) {
+        console.error("❌ Cars.com URL validation failed:", err);
+        return false;
       }
-    } catch (err) {
-      console.error("URL HEAD check failed:", err);
+    }
+
+    console.log("🔍 Validating Cars.com URL...");
+    const urlIsValid = await validateCarsUrl(listingUrl);
+
+    if (!urlIsValid) {
       return res.status(400).json({
-        error:
-          "Unable to reach the Cars.com listing. Please ensure the link is correct.",
+        error: "Invalid or unreachable Cars.com listing. Please double-check the URL."
       });
     }
 
-    // ---------------------------
-    // STRIPE SETUP
-    // ---------------------------
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    console.log("✅ Cars.com URL validated successfully.");
 
-    const priceInCents = 2000; // $20 for MVP scraping-based report
+    // -----------------------------------------------------------
+    // 5️⃣ Create Stripe Checkout Session
+    // -----------------------------------------------------------
+    console.log("💳 Creating Stripe Checkout session...");
 
-    // ---------------------------
-    // CREATE STRIPE PAYMENT INTENT
-    // ---------------------------
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: priceInCents,
-      currency: "usd",
-      automatic_payment_methods: { enabled: true },
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "CarSaavy Vehicle Report"
+            },
+            unit_amount: 1000 // still $10 for MVP
+          },
+          quantity: 1
+        }
+      ],
+      success_url: `${process.env.VERCEL_URL}/vin?success=true`,
+      cancel_url: `${process.env.VERCEL_URL}/vin?canceled=true`,
 
-      // 🔥 **METADATA MUST MATCH WEBHOOK**
+      // The webhook relies on these EXACT metadata keys
       metadata: {
         vin,
         email,
-        listingUrl,
-      },
+        listingUrl
+      }
     });
 
-    // ---------------------------
-    // RETURN CLIENT SECRET TO VIN TOOL
-    // ---------------------------
-    return res.status(200).json({
-      clientSecret: paymentIntent.client_secret,
-      message: "Payment initialized successfully.",
-    });
-  } catch (error) {
-    console.error("❌ create-payment error:", error);
+    console.log("✅ Stripe session created:", session.id);
+
+    return res.status(200).json({ id: session.id });
+  } catch (err) {
+    console.error("🔥 Error in create-payment:", err);
     return res.status(500).json({
-      error: "An unexpected error occurred while starting checkout.",
+      error: "Something went wrong while creating your payment session."
     });
   }
-}
+};

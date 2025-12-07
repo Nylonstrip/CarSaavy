@@ -1,175 +1,89 @@
 // api/webhook.js
-//
-// FULLY PATCHED FOR:
-// - Vercel’s new runtime (raw body requirement)
-// - Stripe signature verification
-// - VIN + URL match validation
-// - Scraper-powered data fetching
-// - Report generation + email sending
-// --------------------------------------------------
+const Stripe = require("stripe");
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-import Stripe from "stripe";
-import getRawBody from "raw-body";
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const { getAllVehicleData } = require("./services/vehicleData");
+const { generateReport } = require("./services/reportGenerator");
+const { sendVehicleReportEmail } = require("./services/emailService");
 
-// Import your internal modules
-const getAllVehicleData = require("./services/vehicleData.js");
-const generateReport = require("./services/reportGenerator.js");
-const sendVehicleReportEmail = require("./services/emailService.js");
-
-// Required for Stripe webhooks in Vercel
-export const config = {
+// Vercel requires this to receive raw body for Stripe signature validation
+module.exports.config = {
   api: {
     bodyParser: false,
   },
 };
 
-module.exports = async (req, res) => {
-  console.log("🔥 Webhook event received");
+// Helper to read raw body for Stripe verification
+function buffer(readable) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    readable.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    readable.on("end", () => resolve(Buffer.concat(chunks)));
+    readable.on("error", reject);
+  });
+}
+
+module.exports = async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).send("Method not allowed");
+  }
 
   let event;
+  let rawBody;
 
   try {
-    const rawBody = await getRawBody(req);
-    const signature = req.headers["stripe-signature"];
+    rawBody = await buffer(req);
+  } catch (err) {
+    console.error("❌ Failed to read raw request body:", err);
+    return res.status(400).send(`Webhook Error: Invalid body`);
+  }
 
-    event = stripe.webhooks.constructEvent(
-      rawBody,
-      signature,
-      endpointSecret
-    );
+  const sig = req.headers["stripe-signature"];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  try {
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err) {
     console.error("❌ Signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // We only care about payment success events
-  if (event.type !== "payment_intent.succeeded") {
-    return res.status(200).send("Ignored event");
+  console.log("🔥 Webhook event received:", event.type);
+
+  // Only handle successful payments
+  if (event.type === "payment_intent.succeeded") {
+    const intent = event.data.object;
+
+    // Extract metadata exactly as set in create-payment.js
+    const vin = intent.metadata.vin || null;
+    const email = intent.metadata.email || null;
+    const listingUrl = intent.metadata.listingUrl || null;
+
+    console.log("📌 Extracted metadata:", { vin, email, listingUrl });
+
+    if (!vin || !email || !listingUrl) {
+      console.error("❌ Missing metadata in payment intent");
+      return res.status(400).send("Missing required metadata");
+    }
+
+    try {
+      console.log("🚗 Fetching all vehicle data (scrape + inference)...");
+      const vehicleData = await getAllVehicleData(vin, listingUrl);
+
+      console.log("📄 Generating PDF report...");
+      const reportUrl = await generateReport(vin, vehicleData);
+
+      console.log("📧 Sending report email...");
+      await sendVehicleReportEmail(email, reportUrl, vehicleData);
+
+      console.log("✅ Webhook processing complete!");
+      return res.status(200).send("Success");
+    } catch (err) {
+      console.error("❌ Webhook handler error:", err);
+      return res.status(500).send("Internal webhook error");
+    }
   }
 
-  const paymentIntent = event.data.object;
-
-  const vin = paymentIntent.metadata?.vin || null;
-  const url = paymentIntent.metadata?.url || null;
-  const email = paymentIntent.metadata?.email || null;
-
-  console.log("📌 Extracted metadata:", { vin, url, email });
-
-  // Basic guard
-  if (!vin || !url || !email) {
-    console.error("❌ Missing metadata in payment intent");
-    return res.status(400).json({
-      error:
-        "Required metadata missing (vin, url, email). Payment processed but cannot fulfill report.",
-    });
-  }
-
-  // STEP 1 — Fetch & validate vehicle data (includes VIN verification)
-  let vehicleData;
-
-  try {
-    vehicleData = await getAllVehicleData(url, vin);
-  } catch (err) {
-    console.error("❌ Vehicle data lookup failed:", err.message);
-
-    // Email user about failure
-    await sendVehicleReportEmail({
-      to: email,
-      subject: "CarSaavy Report Error",
-      body: `
-        We attempted to process your CarSaavy report, but the system could not
-        retrieve data from the provided vehicle listing.
-
-        Error: ${err.message}
-
-        Please verify the URL and VIN and try again.
-      `,
-    });
-
-    return res.status(500).json({ error: "Vehicle data lookup failed" });
-  }
-
-  // VIN mismatch
-  if (vehicleData?.vinMismatch === true) {
-    console.warn("⚠ VIN mismatch detected");
-
-    await sendVehicleReportEmail({
-      to: email,
-      subject: "CarSaavy Verification Failed",
-      body: `
-        Your report could not be generated because the VIN you entered
-        (${vin}) does not match the VIN listed on the provided vehicle page.
-
-        This safety check ensures all reports remain accurate.
-
-        Please double-check:
-
-        • The VIN entered
-        • The Cars.com URL you provided
-
-        You may retry the report once corrected.
-      `,
-    });
-
-    return res.status(200).json({ error: "VIN mismatch — report not generated" });
-  }
-
-  if (!vehicleData || !vehicleData.vin) {
-    console.error("❌ Vehicle scrape returned empty or invalid data");
-
-    await sendVehicleReportEmail({
-      to: email,
-      subject: "CarSaavy Report Error",
-      body: `
-        We were unable to extract vehicle data from the provided URL.
-
-        Please verify the URL is a valid Cars.com listing and try again.
-      `,
-    });
-
-    return res.status(200).json({ error: "Invalid scrape data" });
-  }
-
-  console.log("✅ Vehicle data verified:", vehicleData.vin);
-
-  // STEP 2 — Generate PDF Report
-  let reportUrl;
-  try {
-    reportUrl = await generateReport(vehicleData);
-  } catch (err) {
-    console.error("❌ Report generation failed:", err.message);
-
-    await sendVehicleReportEmail({
-      to: email,
-      subject: "CarSaavy Report Error",
-      body: `
-        We attempted to generate your PDF report, but an internal error occurred.
-
-        Please try again shortly.
-      `,
-    });
-
-    return res.status(500).json({ error: "Report generation failed" });
-  }
-
-  console.log("📄 Report URL created:", reportUrl);
-
-  // STEP 3 — Email the report
-  try {
-    await sendVehicleReportEmail({
-      to: email,
-      reportUrl,
-      vin: vehicleData.vin,
-      vehicle: vehicleData,
-    });
-  } catch (err) {
-    console.error("❌ Email delivery failed:", err.message);
-    return res.status(500).json({ error: "Email delivery failed" });
-  }
-
-  console.log("📨 Report sent successfully to:", email);
-
-  return res.status(200).json({ success: true });
+  // Unhandled event
+  return res.status(200).send("Event ignored");
 };
