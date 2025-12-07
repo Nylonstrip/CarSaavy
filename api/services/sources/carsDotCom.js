@@ -1,176 +1,167 @@
-// api/services/sources/carsDotCom.js
-// Scraper for Cars.com vehicle detail pages and VIN search.
-// Uses ScraperAPI (fast mode first, then render=true fallback).
+// api/carsDotCom.js
 
-const axios = require('axios');
-const cheerio = require('cheerio');
+const axios = require("axios");
+const cheerio = require("cheerio");
 
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
-const LOG_PREFIX = '[CarsDotCom]';
-
 if (!SCRAPER_API_KEY) {
-  console.warn(`${LOG_PREFIX} SCRAPER_API_KEY is not set. Scraping will fail.`);
+  console.warn("[CarsDotCom] SCRAPER_API_KEY is not set. Scraping will fail.");
 }
 
-function buildScraperApiUrl(targetUrl, options = {}) {
-  const {
-    render = false,
-    premium = false,
-    country = 'us',
-    device = 'desktop',
-  } = options;
+const SCRAPER_BASE = "http://api.scraperapi.com";
 
+/**
+ * Build ScraperAPI URL for a target URL
+ */
+function buildScraperUrl(targetUrl, options = {}) {
   const params = new URLSearchParams({
     api_key: SCRAPER_API_KEY,
     url: targetUrl,
-    country,
-    device,
+    country: "us",
+    device: "desktop",
   });
 
-  if (render) params.set('render', 'true');
-  if (premium) params.set('premium', 'true');
-
-  return `http://api.scraperapi.com/?${params.toString()}`;
-}
-
-async function fetchHtml(targetUrl, useRenderFallback = true) {
-  if (!SCRAPER_API_KEY) {
-    throw new Error('SCRAPER_API_KEY is missing');
+  if (options.render) {
+    params.set("render", "true");
+    params.set("premium", "true");
   }
 
-  const fastUrl = buildScraperApiUrl(targetUrl, { render: false });
-  const renderUrl = buildScraperApiUrl(targetUrl, { render: true, premium: true });
-
-  console.info(`${LOG_PREFIX} 🔍 Scraping: ${targetUrl}`);
-  console.info(`${LOG_PREFIX} ⚡ Fast mode URL: ${fastUrl}`);
-
-  try {
-    const fastRes = await axios.get(fastUrl, {
-      timeout: 15000,
-      validateStatus: () => true,
-    });
-
-    if (fastRes.status >= 200 && fastRes.status < 300 && fastRes.data) {
-      return {
-        mode: 'fast',
-        html: typeof fastRes.data === 'string' ? fastRes.data : JSON.stringify(fastRes.data),
-      };
-    }
-
-    console.warn(
-      `${LOG_PREFIX} ⚠ Fast mode HTTP ${fastRes.status} – body length: ${
-        fastRes.data ? String(fastRes.data).length : 0
-      }`
-    );
-  } catch (err) {
-    console.warn(`${LOG_PREFIX} ⚠ Fast mode error: ${err.message}`);
-    if (err.code === 'ECONNABORTED') {
-      console.warn(`${LOG_PREFIX} ⏱ Fast mode timeout (${err.code})`);
-    }
-  }
-
-  if (!useRenderFallback) {
-    throw new Error('Fast mode failed and render fallback is disabled');
-  }
-
-  console.info(`${LOG_PREFIX} 🕒 Fast mode insufficient → trying render=true fallback...`);
-  console.info(`${LOG_PREFIX} 🧠 Render mode URL: ${renderUrl}`);
-
-  const renderRes = await axios.get(renderUrl, {
-    timeout: 30000,
-    validateStatus: () => true,
-  });
-
-  if (renderRes.status >= 200 && renderRes.status < 300 && renderRes.data) {
-    const html = typeof renderRes.data === 'string' ? renderRes.data : JSON.stringify(renderRes.data);
-
-    // Optional: log a small preview to Vercel logs
-    const snippet = html.slice(0, 2000);
-    console.info(`${LOG_PREFIX} 🟦 ===== RENDERED HTML PREVIEW START =====`);
-    console.info(snippet);
-    console.info(`${LOG_PREFIX} 🟦 ===== RENDERED HTML PREVIEW END =====`);
-
-    return { mode: 'render-fallback', html };
-  }
-
-  throw new Error(
-    `${LOG_PREFIX} Render mode failed with status ${renderRes.status}`
-  );
+  return `${SCRAPER_BASE}/?${params.toString()}`;
 }
 
-// Basic text helpers
-function cleanText(str) {
-  if (!str) return '';
-  return String(str).replace(/\s+/g, ' ').trim();
+/**
+ * Small helper to try multiple selectors and return the first non-empty text.
+ */
+function firstText($, selectors) {
+  for (const sel of selectors) {
+    const txt = $(sel).first().text().trim();
+    if (txt) return txt;
+  }
+  return null;
 }
 
-function extractNumeric(str) {
-  if (!str) return null;
-  const match = String(str).replace(/,/g, '').match(/(\d+(\.\d+)?)/);
-  return match ? Number(match[1]) : null;
-}
-
-function parseVehicleDetailHtml(html) {
+/**
+ * Parse a Cars.com vehicle detail HTML page into a normalized object.
+ *
+ * Returns a hybrid object:
+ *  - flat fields: title, year, make, model, trim, price, mileage, vin, dealerName, dealerAddress
+ *  - structured: { basic, dealer, source, url }
+ */
+function parseVehicleDetailHtml(html, listingUrl = null) {
   const $ = cheerio.load(html);
 
-  // We’ll use combined text scraping for robustness
-  const fullText = cleanText($('body').text());
+  // -----------------------------
+  // 1️⃣ Title
+  // -----------------------------
+  const title =
+    firstText($, [
+      "h1.listing-title",
+      "h1[data-qa='vehicle-title']",
+      ".vehicle-info__title",
+      ".vdp-details-basics__heading",
+    ]) || null;
 
-  // Title: e.g. "2018 Chevrolet Camaro 1LT"
-  let title = '';
-  const h1 = $('h1').first().text() || $('h1, h2').first().text();
-  title = cleanText(h1);
+  // -----------------------------
+  // 2️⃣ Price
+  // -----------------------------
+  const rawPrice =
+    firstText($, [
+      "span.primary-price",
+      "span[data-qa='primary-price']",
+      "span[data-qa='price-value']",
+      ".price-section .price",
+      ".vehicle-info__price-display",
+    ]) || null;
 
-  let year = null;
-  let make = '';
-  let model = '';
-  let trim = '';
+  let price = null;
+  if (rawPrice) {
+    const clean = rawPrice.replace(/[^0-9]/g, "");
+    price = clean ? Number(clean) : null;
+  }
 
-  if (title) {
-    const yearMatch = title.match(/\b(19|20)\d{2}\b/);
-    if (yearMatch) {
-      year = Number(yearMatch[0]);
-      const afterYear = title.replace(yearMatch[0], '').trim();
-      const parts = afterYear.split(' ');
-      if (parts.length >= 1) make = parts[0];
-      if (parts.length >= 2) model = parts[1];
-      if (parts.length >= 3) {
-        trim = parts.slice(2).join(' ');
-      }
+  // -----------------------------
+  // 3️⃣ Mileage
+  // -----------------------------
+  const rawMileage =
+    firstText($, [
+      "div.mileage",
+      "span[data-qa='mileage']",
+      "li:contains('mi')",
+      "li:contains('miles')",
+      ".vdp-details-basics__item:contains('mi')",
+    ]) || null;
+
+  let mileage = null;
+  if (rawMileage) {
+    const clean = rawMileage.replace(/[^0-9]/g, "");
+    mileage = clean ? Number(clean) : null;
+  }
+
+  // -----------------------------
+  // 4️⃣ VIN – safe subset only
+  // -----------------------------
+  let vin = null;
+
+  const vinSelectors = [
+    "li:contains('VIN')",
+    "div:contains('VIN')",
+    "[data-qa='vin']",
+    ".vdp-details-basics__item:contains('VIN')",
+  ];
+
+  for (const selector of vinSelectors) {
+    const txt = $(selector).first().text() || "";
+    if (!txt.includes("VIN")) continue;
+
+    const cleaned = txt.replace(/VIN[:\s]*/i, "").trim();
+
+    // Strict VIN validation: 17 chars, uppercase, excludes I/O/Q.
+    if (/^[A-HJ-NPR-Z0-9]{17}$/.test(cleaned)) {
+      vin = cleaned;
+      break;
     }
   }
 
-  // Price: first $X,XXX that looks like the main price near the top
-  let price = null;
-  const priceMatch = fullText.match(/\$[\d,]+/);
-  if (priceMatch) {
-    price = extractNumeric(priceMatch[0]);
+  // -----------------------------
+  // 5️⃣ Dealer name / address
+  // -----------------------------
+  const dealerName =
+    firstText($, [
+      "h3.seller-name",
+      "div[data-qa='seller-name']",
+      ".dealer-name",
+      ".dealer-info__name",
+      ".seller-info__name",
+    ]) || null;
+
+  const dealerAddress =
+    firstText($, [
+      "div.seller-address",
+      "div[data-qa='seller-address']",
+      ".dealer-address",
+      ".dealer-info__address",
+      ".seller-info__address",
+    ]) || null;
+
+  // -----------------------------
+  // 6️⃣ Derive year / make / model / trim from title
+  // -----------------------------
+  let year = null;
+  let make = null;
+  let model = null;
+  let trim = null;
+
+  if (title) {
+    const parts = title.split(/\s+/);
+    if (parts.length >= 2 && /^\d{4}$/.test(parts[0])) {
+      year = Number(parts[0]) || null;
+      make = parts[1] || null;
+      model = parts[2] || null;
+      trim = parts.slice(3).join(" ").trim() || null;
+    }
   }
 
-  // Mileage: "93,567 mi."
-  let mileage = null;
-  const mileageMatch = fullText.match(/(\d[\d,]*)\s*mi\./i);
-  if (mileageMatch) {
-    mileage = extractNumeric(mileageMatch[1]);
-  }
-
-  // VIN: look for "VIN" and the following token that looks like a VIN
-  let vin = null;
-  const vinMatch = fullText.match(/VIN\s+([A-HJ-NPR-Z0-9]{11,17})/i);
-  if (vinMatch) {
-    vin = vinMatch[1];
-  }
-
-  // Dealer name & address — leave as best-effort for now
-  // We can refine selectors later once we see more variety of listings.
-  let dealerName = '';
-  let dealerAddress = '';
-
-  // Try heuristic: Dealer name sometimes appears near "Contact seller" or "Call (xxx)"
-  // For MVP we’ll leave these empty if not easily extracted.
-  // You’re still getting strong negotiation value from price/mileage/specs alone.
-
-  const vehicle = {
+  const flat = {
     title,
     year,
     make,
@@ -179,74 +170,106 @@ function parseVehicleDetailHtml(html) {
     price,
     mileage,
     vin,
-    dealerName: cleanText(dealerName) || null,
-    dealerAddress: cleanText(dealerAddress) || null,
+    dealerName,
+    dealerAddress,
   };
 
-  console.info(`${LOG_PREFIX} ✅ Parsed vehicle:`, {
-    title,
-    year,
-    make,
-    model,
-    trim,
-    price,
-    mileage,
-    vin,
-  });
-
-  return vehicle;
-}
-
-// Scrape a specific Cars.com vehicle URL
-async function scrapeByURL(url) {
-  const { mode, html } = await fetchHtml(url, true);
-  const vehicle = parseVehicleDetailHtml(html);
+  const structured = {
+    basic: {
+      title,
+      year,
+      make,
+      model,
+      trim,
+      price,
+      mileage,
+      vin,
+    },
+    dealer: {
+      name: dealerName,
+      address: dealerAddress,
+    },
+    source: "cars.com",
+    url: listingUrl,
+  };
 
   return {
-    source: 'cars',
-    mode,
-    url,
+    ...flat,
+    structured,
+  };
+}
+
+/**
+ * Scrape a Cars.com vehicle detail page given its URL.
+ *
+ * Returns:
+ * {
+ *   success: boolean,
+ *   modeUsed: "fast" | "render" | "render-fallback",
+ *   source: "cars",
+ *   url: listingUrl,
+ *   vehicle: { ...hybrid object from parseVehicleDetailHtml }
+ * }
+ */
+async function scrapeByURL(listingUrl, options = {}) {
+  if (!SCRAPER_API_KEY) {
+    console.error("[CarsDotCom] SCRAPER_API_KEY is missing.");
+    throw new Error("SCRAPER_API_KEY missing");
+  }
+
+  if (!listingUrl || typeof listingUrl !== "string") {
+    throw new Error("listingUrl is required");
+  }
+
+  console.info("[CarsDotCom] 🔍 Scraping:", listingUrl);
+
+  const useRender = options.render === true;
+
+  const url = buildScraperUrl(listingUrl, { render: useRender });
+
+  let html;
+  try {
+    const resp = await axios.get(url, {
+      timeout: useRender ? 25000 : 15000,
+    });
+    html = resp.data;
+  } catch (err) {
+    console.error(
+      "[CarsDotCom] ❌ ScraperAPI request failed:",
+      err.message || err
+    );
+    throw new Error("ScraperAPI request failed");
+  }
+
+  if (!html || typeof html !== "string") {
+    console.error("[CarsDotCom] ❌ Empty HTML from ScraperAPI");
+    throw new Error("Empty HTML from ScraperAPI");
+  }
+
+  const vehicle = parseVehicleDetailHtml(html, listingUrl);
+
+  console.info("[CarsDotCom] 🧩 Parsed vehicle:", {
+    title: vehicle.title,
+    year: vehicle.year,
+    make: vehicle.make,
+    model: vehicle.model,
+    trim: vehicle.trim,
+    price: vehicle.price,
+    mileage: vehicle.mileage,
+    vin: vehicle.vin,
+    dealerName: vehicle.dealerName,
+  });
+
+  return {
+    success: true,
+    modeUsed: useRender ? "render" : "fast",
+    source: "cars",
+    url: listingUrl,
     vehicle,
   };
 }
 
-// VIN search → find first matching listing, then scrape it
-async function scrapeByVIN(vin) {
-  if (!vin) throw new Error('VIN is required for Cars.com VIN search');
-
-  const searchUrl = `https://www.cars.com/shopping/results/?stock_type=all&maximum_distance=all&searchSource=GN_BREADCRUMB&keyword=${encodeURIComponent(
-    vin
-  )}`;
-
-  console.info(`${LOG_PREFIX} 🔍 VIN search URL: ${searchUrl}`);
-
-  const { html: searchHtml } = await fetchHtml(searchUrl, true);
-  const $ = cheerio.load(searchHtml);
-
-  // Cars.com search pages typically contain links like /vehicledetail/<id>/
-  let listingPath = null;
-
-  $('a').each((_, el) => {
-    const href = $(el).attr('href') || '';
-    if (!listingPath && /\/vehicledetail\//.test(href)) {
-      listingPath = href;
-    }
-  });
-
-  if (!listingPath) {
-    throw new Error(`${LOG_PREFIX} No vehicledetail link found for VIN ${vin}`);
-  }
-
-  const listingUrl = listingPath.startsWith('http')
-    ? listingPath
-    : `https://www.cars.com${listingPath}`;
-
-  console.info(`${LOG_PREFIX} 🔗 First listing URL for VIN ${vin}: ${listingUrl}`);
-
-  return scrapeByURL(listingUrl);
-}
-
 module.exports = {
   scrapeByURL,
-  scrapeByVIN,
+  parseVehicleDetailHtml,
 };
