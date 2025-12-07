@@ -1,130 +1,107 @@
-// api/create-payment.js
-const Stripe = require("stripe");
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 module.exports = async function handler(req, res) {
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
+    console.log("📩 Incoming create-payment request:", req.body);
 
     const { vin, email, listingUrl } = req.body;
 
-    console.log("📩 Incoming create-payment request:", { vin, email, listingUrl });
-
-    // -----------------------------------------------------------
-    // 1️⃣ Require VIN + email
-    // -----------------------------------------------------------
-    if (!vin || !email) {
-      console.log("❌ Missing VIN or email");
-      return res.status(400).json({
-        error: "VIN and email are required."
-      });
+    //-----------------------------------------------------------
+    // 1️⃣ Validate required fields
+    //-----------------------------------------------------------
+    if (!vin || !email || !listingUrl) {
+      return res.status(400).json({ error: "VIN, email, and Cars.com URL are required." });
     }
 
-    // -----------------------------------------------------------
-    // 2️⃣ Require Cars.com URL
-    // -----------------------------------------------------------
-    if (!listingUrl) {
-      console.log("❌ Missing Cars.com URL");
-      return res.status(400).json({
-        error: "A Cars.com listing URL is required."
-      });
+    //-----------------------------------------------------------
+    // 2️⃣ Domain check (fast early rejection)
+    //-----------------------------------------------------------
+    if (!listingUrl.startsWith("https://www.cars.com/")) {
+      return res.status(400).json({ error: "Please provide a valid Cars.com listing URL." });
     }
 
-    // -----------------------------------------------------------
-    // 3️⃣ Validate Cars.com domain format
-    // -----------------------------------------------------------
-    const isCarsDotCom = /^https?:\/\/(www\.)?cars\.com\/vehicledetail\//i.test(listingUrl);
+    //-----------------------------------------------------------
+    // 3️⃣ Normalized user-friendly format check
+    //-----------------------------------------------------------
+    const normalizedUrl = listingUrl.trim();
 
-    if (!isCarsDotCom) {
-      console.log("❌ Invalid listing domain:", listingUrl);
-      return res.status(400).json({
-        error: "Only Cars.com vehicle listing URLs are supported."
-      });
-    }
-
-    // -----------------------------------------------------------
-    // 4️⃣ Lightweight Cars.com URL check (GET with timeout)
-    // -----------------------------------------------------------
+    //-----------------------------------------------------------
+    // 4️⃣ Cars.com URL validation (robust: retry + longer timeout)
+    //-----------------------------------------------------------
     async function validateCarsUrl(url) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      async function attempt() {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 7000); // 7 sec timeout
 
-      try {
-        const response = await fetch(url, {
-          method: "GET",
-          signal: controller.signal,
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123 Safari/537.36"
+        try {
+          const response = await fetch(url, {
+            method: "GET",
+            signal: controller.signal,
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123 Safari/537.36"
+            }
+          });
+
+          clearTimeout(timeout);
+
+          if (response.status >= 200 && response.status < 400) {
+            return true;
           }
-        });
 
-        clearTimeout(timeout);
-
-        // Accept 200–399 as "alive"
-        if (response.status >= 200 && response.status < 400) {
-          return true;
+          console.log("⚠ Cars.com responded with status:", response.status);
+          return false;
+        } catch (err) {
+          console.log("⚠ Cars.com validation attempt failed:", err.message);
+          return false;
         }
-
-        console.log("⚠ Cars.com returned non-OK status:", response.status);
-        return false;
-      } catch (err) {
-        console.error("❌ Cars.com URL validation failed:", err);
-        return false;
       }
+
+      const firstTry = await attempt();
+      if (firstTry) return true;
+
+      console.log("🔁 Retrying Cars.com validation...");
+      return await attempt();
     }
 
     console.log("🔍 Validating Cars.com URL...");
-    const urlIsValid = await validateCarsUrl(listingUrl);
+    const validUrl = await validateCarsUrl(normalizedUrl);
 
-    if (!urlIsValid) {
+    if (!validUrl) {
       return res.status(400).json({
-        error: "Invalid or unreachable Cars.com listing. Please double-check the URL."
+        error: "Unable to reach this Cars.com listing. Please verify the URL or try again."
       });
     }
 
     console.log("✅ Cars.com URL validated successfully.");
 
-    // -----------------------------------------------------------
-    // 5️⃣ Create Stripe Checkout Session
-    // -----------------------------------------------------------
-    console.log("💳 Creating Stripe Checkout session...");
+    //-----------------------------------------------------------
+    // 5️⃣ Create Stripe payment intent
+    //-----------------------------------------------------------
+    console.log("💳 Creating Stripe payment intent...");
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "CarSaavy Vehicle Report"
-            },
-            unit_amount: 1000 // still $10 for MVP
-          },
-          quantity: 1
-        }
-      ],
-      success_url: `${process.env.VERCEL_URL}/vin?success=true`,
-      cancel_url: `${process.env.VERCEL_URL}/vin?canceled=true`,
-
-      // The webhook relies on these EXACT metadata keys
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 2000, // $20 — adjust later if needed
+      currency: "usd",
+      automatic_payment_methods: { enabled: true },
       metadata: {
         vin,
         email,
-        listingUrl
+        url: normalizedUrl
       }
     });
 
-    console.log("✅ Stripe session created:", session.id);
+    console.log("✅ Payment intent created:", paymentIntent.id);
 
-    return res.status(200).json({ id: session.id });
-  } catch (err) {
-    console.error("🔥 Error in create-payment:", err);
-    return res.status(500).json({
-      error: "Something went wrong while creating your payment session."
+    //-----------------------------------------------------------
+    // 6️⃣ Return client secret back to VIN tool
+    //-----------------------------------------------------------
+    return res.status(200).json({
+      clientSecret: paymentIntent.client_secret
     });
+
+  } catch (error) {
+    console.error("❌ create-payment error:", error);
+    return res.status(500).json({ error: "Internal server error." });
   }
 };
