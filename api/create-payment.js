@@ -3,7 +3,7 @@ import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Lightweight Cars.com URL validation (no fetch calls)
+// Lightweight Cars.com URL validation
 function isCarsComUrl(url) {
   try {
     const parsed = new URL(url);
@@ -14,6 +14,14 @@ function isCarsComUrl(url) {
   } catch (e) {
     return false;
   }
+}
+
+function getBaseUrl() {
+  let url = process.env.VERCEL_URL || "";
+  if (!url.startsWith("http")) {
+    url = "https://" + url;
+  }
+  return url;
 }
 
 export default async function handler(req, res) {
@@ -31,11 +39,9 @@ export default async function handler(req, res) {
       .json({ error: "VIN, email, and listing URL are required" });
   }
 
-  // --- SIMPLE VALIDATION ---
   console.log("🔍 Validating Cars.com URL...");
-
   if (!isCarsComUrl(listingUrl)) {
-    console.log("❌ Failed: URL does not match Cars.com pattern.");
+    console.log("❌ Failed: URL does not match Cars.com format.");
     return res.status(400).json({
       error:
         "Invalid Cars.com link. Please provide the exact full Cars.com listing URL.",
@@ -46,6 +52,8 @@ export default async function handler(req, res) {
 
   try {
     console.log("💳 Creating Stripe Checkout Session...");
+
+    const baseUrl = getBaseUrl();
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -59,7 +67,7 @@ export default async function handler(req, res) {
               name: "CarSaavy Vehicle Report",
               description: "Full negotiation-ready vehicle analysis",
             },
-            unit_amount: 1500, // $15.00
+            unit_amount: 1500,
           },
           quantity: 1,
         },
@@ -69,8 +77,8 @@ export default async function handler(req, res) {
         email,
         listingUrl,
       },
-      success_url: `${process.env.VERCEL_URL}/success`,
-      cancel_url: `${process.env.VERCEL_URL}/cancel`,
+      success_url: `${baseUrl}/success`,
+      cancel_url: `${baseUrl}/cancel`,
     });
 
     console.log("✅ Checkout session created:", session.id);
