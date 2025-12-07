@@ -10,7 +10,7 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const getRawBody = require("raw-body");
 
 // Now that you flattened the structure:
-const parseCarsDotCom = require("./carsDotCom");
+const { scrapeByURL, parseVehicleDetailHtml } = require("./carsDotCom");
 const generateReport = require("./reportGenerator");
 
 module.exports = async function (req, res) {
@@ -59,7 +59,7 @@ module.exports = async function (req, res) {
     try {
       // SCRAPE LISTING
       console.log("🔍 Scraping listing:", metadata.listingUrl);
-      const scrapedData = await parseCarsDotCom(metadata.listingUrl);
+      const scrapedData = await parseVehicleDetailHtml(metadata.listingUrl);
       console.log("🧩 Parsed data:", scrapedData);
 
       // PDF GENERATION
