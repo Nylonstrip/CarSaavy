@@ -1,61 +1,83 @@
 // api/create-payment.js
+import Stripe from "stripe";
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-module.exports = async function handler(req, res) {
+// Lightweight Cars.com URL validation (no fetch calls)
+function isCarsComUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.hostname.includes("cars.com") &&
+      /^\/vehicledetail\/[a-zA-Z0-9-]+\/?$/.test(parsed.pathname)
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+export default async function handler(req, res) {
+  console.log("📩 Incoming create-payment request:", req.body);
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const { vin, email, listingUrl } = req.body;
+
+  if (!vin || !email || !listingUrl) {
+    return res
+      .status(400)
+      .json({ error: "VIN, email, and listing URL are required" });
+  }
+
+  // --- SIMPLE VALIDATION ---
+  console.log("🔍 Validating Cars.com URL...");
+
+  if (!isCarsComUrl(listingUrl)) {
+    console.log("❌ Failed: URL does not match Cars.com pattern.");
+    return res.status(400).json({
+      error:
+        "Invalid Cars.com link. Please provide the exact full Cars.com listing URL.",
+    });
+  }
+
+  console.log("✅ Cars.com URL passed lightweight validation.");
+
   try {
-    const { vin, email, listingUrl } = req.body;
+    console.log("💳 Creating Stripe Checkout Session...");
 
-    console.log("📩 Incoming create-payment request:", { vin, email, listingUrl });
-
-    // ===== 1) BASIC FIELD CHECK =====
-    if (!vin || !email || !listingUrl) {
-      console.log("❌ Missing fields");
-      return res.status(400).json({
-        error: "VIN, email, and Cars.com URL are required."
-      });
-    }
-
-    // ===== 2) LIGHTWEIGHT URL PATTERN VALIDATION (Option B) =====
-    const urlPattern = /^https?:\/\/(www\.)?cars\.com\/vehicledetail\/[a-zA-Z0-9-]+\/?$/;
-
-    if (!urlPattern.test(listingUrl)) {
-      console.log("❌ URL failed lightweight validation:", listingUrl);
-      return res.status(400).json({
-        error: "Invalid Cars.com listing URL format. Please verify and try again."
-      });
-    }
-
-    console.log("✅ Cars.com URL passed lightweight pattern validation.");
-
-    // ===== 3) STRIPE PAYMENT INTENT CREATION =====
-    console.log("💳 Creating Stripe payment intent...");
-
-    const intent = await stripe.paymentIntents.create({
-      amount: 1000, // $10.00
-      currency: "usd",
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      customer_email: email,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "CarSaavy Vehicle Report",
+              description: "Full negotiation-ready vehicle analysis",
+            },
+            unit_amount: 1500, // $15.00
+          },
+          quantity: 1,
+        },
+      ],
       metadata: {
         vin,
         email,
-        listingUrl
+        listingUrl,
       },
+      success_url: `${process.env.VERCEL_URL}/success`,
+      cancel_url: `${process.env.VERCEL_URL}/cancel`,
     });
 
-    console.log("✅ Payment intent created:", intent.id);
+    console.log("✅ Checkout session created:", session.id);
 
-    // Return client secret to front-end
-    return res.json({
-      clientSecret: intent.client_secret
-    });
-
+    return res.status(200).json({ url: session.url });
   } catch (err) {
-    console.error("❌ Error in create-payment:", err);
-    return res.status(500).json({
-      error: "Internal server error creating payment."
-    });
+    console.error("❌ Stripe session creation failed:", err);
+    return res.status(500).json({ error: "Stripe error", details: err.message });
   }
-};
+}
