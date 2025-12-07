@@ -9,9 +9,11 @@ module.exports.config = {
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const getRawBody = require("raw-body");
 
-// Now that you flattened the structure:
-const { scrapeByURL, parseVehicleDetailHtml } = require("./carsDotCom");
-const generateReport = require("./reportGenerator");
+// Cars.com scraper
+const { scrapeByURL } = require("./carsDotCom");
+
+// Report generator (named export)
+const { generateReport } = require("./reportGenerator");
 
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
@@ -57,12 +59,25 @@ module.exports = async function (req, res) {
     }
 
     try {
-      // SCRAPE LISTING
+      // 1️⃣ SCRAPE LISTING VIA ScraperAPI + Cars.com parser
       console.log("🔍 Scraping listing:", metadata.listingUrl);
-      const scrapedData = await parseVehicleDetailHtml(metadata.listingUrl);
-      console.log("🧩 Parsed data:", scrapedData);
 
-      // PDF GENERATION
+      // This actually calls ScraperAPI and parses HTML
+      const scrapeResult = await scrapeByURL(metadata.listingUrl, {
+        render: false, // you can flip to true later if needed
+      });
+
+      const scrapedData = scrapeResult?.vehicle || scrapeResult;
+
+      console.log("🧩 Parsed data (summary):", {
+        title: scrapedData?.title,
+        price: scrapedData?.price,
+        mileage: scrapedData?.mileage,
+        vin: scrapedData?.vin,
+        dealerName: scrapedData?.dealerName,
+      });
+
+      // 2️⃣ GENERATE PDF REPORT
       console.log("📄 Generating PDF report...");
       const pdfBuffer = await generateReport({
         vin: metadata.vin,
@@ -78,8 +93,9 @@ module.exports = async function (req, res) {
 
       console.log("📄 PDF generated successfully!");
 
-      // EMAIL LOGIC (your existing system)
-      // If you want me to inspect this, upload your emailService or mailer file.
+      // ⬆ At this point, generateReport should already be
+      // handling Blob upload + calling your email service,
+      // like in the earlier working version.
 
     } catch (err) {
       console.error("❌ Webhook handler error:", err);
