@@ -1,95 +1,84 @@
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+import Stripe from "stripe";
 
-function isValidCarsComUrl(url) {
-  if (!url) return false;
-  try {
-    const u = new URL(url.trim());
-    return (
-      u.hostname.includes("cars.com") &&
-      u.pathname.includes("/vehicledetail/")
-    );
-  } catch (e) {
-    return false;
-  }
-}
-
-module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") return res.status(200).end();
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { vin, email, listingUrl } = req.body || {};
+    const { vin, email, listingUrl } = req.body;
 
+    // ---------------------------
+    // BASIC VALIDATION
+    // ---------------------------
     if (!vin || !email || !listingUrl) {
-      return res
-        .status(400)
-        .json({ error: "VIN, email, and listing URL are required." });
-    }
-
-    const normalizedVin = String(vin).trim().toUpperCase();
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(String(email).trim())) {
-      return res.status(400).json({ error: "Invalid email." });
-    }
-
-    if (!isValidCarsComUrl(listingUrl)) {
       return res.status(400).json({
-        error:
-          "Listing URL must be a valid Cars.com vehicle detail page (https://www.cars.com/vehicledetail/...).",
+        error: "VIN, email, and Cars.com listing URL are required.",
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
+    // Validate Cars.com URL format
+    const carsUrlRegex = /^https:\/\/www\.cars\.com\/vehicledetail\/[A-Za-z0-9-]+\/?$/;
+    if (!carsUrlRegex.test(listingUrl)) {
+      return res.status(400).json({
+        error: "Invalid listing URL. Only Cars.com vehicle detail links are allowed.",
+      });
+    }
 
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            unit_amount: 2000, // $20.00
-            product_data: {
-              name: `VIN Report for ${normalizedVin}`,
-            },
-          },
-          quantity: 1,
-        },
-      ],
+    // ---------------------------
+    // SERVER-SIDE URL CHECK (HEAD)
+    // Prevents users submitting dead URLs
+    // ---------------------------
+    try {
+      const check = await fetch(listingUrl, { method: "HEAD" });
 
-      // Metadata on the SESSION itself
+      if (!check.ok) {
+        return res.status(400).json({
+          error: "Cars.com listing appears to be unavailable. Please verify the link.",
+        });
+      }
+    } catch (err) {
+      console.error("URL HEAD check failed:", err);
+      return res.status(400).json({
+        error:
+          "Unable to reach the Cars.com listing. Please ensure the link is correct.",
+      });
+    }
+
+    // ---------------------------
+    // STRIPE SETUP
+    // ---------------------------
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const priceInCents = 2000; // $20 for MVP scraping-based report
+
+    // ---------------------------
+    // CREATE STRIPE PAYMENT INTENT
+    // ---------------------------
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: priceInCents,
+      currency: "usd",
+      automatic_payment_methods: { enabled: true },
+
+      // 🔥 **METADATA MUST MATCH WEBHOOK**
       metadata: {
-        vin: normalizedVin,
+        vin,
         email,
         listingUrl,
       },
-
-      // Metadata propagated to the INTERNAL PAYMENT INTENT
-      payment_intent_data: {
-        metadata: {
-          vin: normalizedVin,
-          email,
-          listingUrl,
-        },
-      },
-
-      customer_email: email,
-
-      success_url: "https://www.carsaavy.com/vin?status=success",
-      cancel_url: "https://www.carsaavy.com/vin?status=cancel",
     });
 
-    return res.status(200).json({ url: session.url });
+    // ---------------------------
+    // RETURN CLIENT SECRET TO VIN TOOL
+    // ---------------------------
+    return res.status(200).json({
+      clientSecret: paymentIntent.client_secret,
+      message: "Payment initialized successfully.",
+    });
   } catch (error) {
-    console.error("Checkout Session Error:", error);
-    return res
-      .status(500)
-      .json({ error: "Failed", message: error.message || "Unknown error" });
+    console.error("❌ create-payment error:", error);
+    return res.status(500).json({
+      error: "An unexpected error occurred while starting checkout.",
+    });
   }
-};
+}
