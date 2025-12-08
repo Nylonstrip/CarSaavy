@@ -10,10 +10,10 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const getRawBody = require("raw-body");
 
 // Cars.com scraper
-const { scrapeByURL } = require("./carsDotCom");
+const { scrapeByURL } = require("./carsDotCom.js");
 
 // Report generator (named export)
-const { generateReport } = require("./reportGenerator");
+const  generateReport  = require("./reportGenerator.js");
 
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
