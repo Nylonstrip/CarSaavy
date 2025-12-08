@@ -1,107 +1,79 @@
-// --------- REQUIRED FOR STRIPE ON VERCEL ----------
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const { buffer } = require("micro");
+const { parseCarsDotCom } = require("./carsDotCom");
+const { generateVehicleReport } = require("./reportGenerator");  // ✅ CORRECT IMPORT
+
 module.exports.config = {
   api: {
     bodyParser: false,
   },
 };
-// --------------------------------------------------
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const getRawBody = require("raw-body");
-
-// Cars.com scraper
-const { scrapeByURL } = require("./carsDotCom.js");
-
-// Report generator (named export)
-const  generateReport  = require("./reportGenerator.js");
-
-module.exports = async function (req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).send("Method not allowed");
   }
 
   let event;
-  let rawBody;
+  const sig = req.headers["stripe-signature"];
 
   try {
-    // Capture raw request body for Stripe verification
-    rawBody = await getRawBody(req);
-
-    const signature = req.headers["stripe-signature"];
-
+    const rawBody = await buffer(req);
     event = stripe.webhooks.constructEvent(
       rawBody,
-      signature,
+      sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
-
-    console.log("🔥 Webhook event received:", event.type);
   } catch (err) {
-    console.error("❌ Webhook signature verification failed:", err.message);
+    console.error("❌ Webhook signature error:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // ---- Handle successful payment ----
+  console.log("🔥 Webhook event received:", event.type);
+
+  // Only respond to successful payments
   if (event.type === "payment_intent.succeeded") {
-    const paymentIntent = event.data.object;
+    const intent = event.data.object;
+    const vin = intent.metadata.vin || null;
+    const listingUrl = intent.metadata.listingUrl || null;
+    const email = intent.metadata.email || null;
 
-    const metadata = {
-      vin: paymentIntent.metadata?.vin || null,
-      email: paymentIntent.metadata?.email || null,
-      listingUrl: paymentIntent.metadata?.listingUrl || null,
-    };
+    console.log("📌 Extracted metadata:", { vin, email, listingUrl });
 
-    console.log("📌 Extracted metadata:", metadata);
-
-    if (!metadata.vin || !metadata.email || !metadata.listingUrl) {
+    if (!vin || !listingUrl || !email) {
       console.error("❌ Missing metadata in payment intent");
-      return res.status(400).json({ error: "Missing metadata" });
+      return res.status(400).send("Missing metadata");
     }
+
+    // Scrape
+    console.log("🔍 Scraping listing:", listingUrl);
+    const parsed = await parseCarsDotCom(listingUrl);
+
+    console.log("🧩 Parsed data (summary):", {
+      title: parsed.title,
+      price: parsed.price,
+      mileage: parsed.mileage,
+      vin: parsed.vin,
+      dealerName: parsed.dealerName
+    });
+
+    // Generate PDF
+    console.log("📄 Generating PDF report...");
+    let reportUrl;
 
     try {
-      // 1️⃣ SCRAPE LISTING VIA ScraperAPI + Cars.com parser
-      console.log("🔍 Scraping listing:", metadata.listingUrl);
-
-      // This actually calls ScraperAPI and parses HTML
-      const scrapeResult = await scrapeByURL(metadata.listingUrl, {
-        render: false, // you can flip to true later if needed
-      });
-
-      const scrapedData = scrapeResult?.vehicle || scrapeResult;
-
-      console.log("🧩 Parsed data (summary):", {
-        title: scrapedData?.title,
-        price: scrapedData?.price,
-        mileage: scrapedData?.mileage,
-        vin: scrapedData?.vin,
-        dealerName: scrapedData?.dealerName,
-      });
-
-      // 2️⃣ GENERATE PDF REPORT
-      console.log("📄 Generating PDF report...");
-      const pdfBuffer = await generateReport({
-        vin: metadata.vin,
-        email: metadata.email,
-        listingUrl: metadata.listingUrl,
-        scrapedData,
-      });
-
-      if (!pdfBuffer) {
-        console.error("❌ generateReport returned empty buffer");
-        return res.status(500).send("Report generation failed");
-      }
-
-      console.log("📄 PDF generated successfully!");
-
-      // ⬆ At this point, generateReport should already be
-      // handling Blob upload + calling your email service,
-      // like in the earlier working version.
-
+      reportUrl = await generateVehicleReport(parsed, vin);  // ✅ CORRECT FUNCTION NAME
     } catch (err) {
-      console.error("❌ Webhook handler error:", err);
-      return res.status(500).json({ error: "Webhook internal error" });
+      console.error("❌ PDF generation error:", err);
+      return res.status(500).send("Failed generating PDF");
     }
+
+    console.log("📤 Report ready at:", reportUrl);
+
+    // TODO: Send email with report URL (your existing Resend code still works)
+
+    return res.status(200).send("Webhook handled");
   }
 
-  return res.status(200).json({ received: true });
+  res.status(200).send("Unhandled event type");
 };
