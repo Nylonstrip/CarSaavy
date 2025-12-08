@@ -1,138 +1,132 @@
-const cheerio = require("cheerio");
-const axios = require("axios");
+/**
+ * Cars.com parser with optional MOCK MODE for safe testing.
+ *
+ * If process.env.MOCK_SCRAPING === "true",
+ * this file will return a stable fake vehicle dataset
+ * without consuming credits or calling ScraperAPI.
+ */
 
+const axios = require("axios");
+const cheerio = require("cheerio");
+
+const SCRAPER_KEY = process.env.SCRAPER_API_KEY;
+
+// ----------------------
+// 🔧 MOCK MODE
+// ----------------------
+function mockResult() {
+  return {
+    title: "2018 Chevrolet Camaro 1LT",
+    year: 2018,
+    make: "Chevrolet",
+    model: "Camaro",
+    trim: "1LT",
+    price: 16797,
+    mileage: 93567,
+    vin: "1G1FB1RS4J0122031",
+    dealerName: "Hardy Superstore",
+    dealerAddress: "1249 Charles Hardy Pkwy, Dallas, GA 30157",
+    structured: {
+      basic: {
+        title: "2018 Chevrolet Camaro 1LT",
+        year: 2018,
+        make: "Chevrolet",
+        model: "Camaro",
+        trim: "1LT",
+        price: 16797,
+        mileage: 93567,
+        vin: "1G1FB1RS4J0122031",
+      },
+      dealer: {
+        name: "Hardy Superstore",
+        address: "1249 Charles Hardy Pkwy, Dallas, GA 30157",
+      },
+      source: "cars.com",
+      url: "https://mock.cars.com/vehicledetail/123",
+    },
+  };
+}
+
+// ----------------------
+// 📌 Main Parser Function
+// ----------------------
 async function parseCarsDotCom(listingUrl) {
+  // ◆◆◆ MOCK MODE CHECK ◆◆◆
+  if (process.env.MOCK_SCRAPING === "true") {
+    console.log("🟦 MOCK MODE ACTIVE — Returning fake scrape data.");
+    return mockResult();
+  }
+
   console.log("[CarsDotCom] 🔍 Scraping:", listingUrl);
 
+  const scraperUrl = `http://api.scraperapi.com/?api_key=${SCRAPER_KEY}&url=${encodeURIComponent(
+    listingUrl
+  )}&country=us&device=desktop`;
+
   let html;
+
   try {
-    const response = await axios.get(listingUrl);
+    const response = await axios.get(scraperUrl, { timeout: 25000 });
     html = response.data;
   } catch (err) {
     console.error("[CarsDotCom] ❌ Failed fetching HTML:", err.message);
-    return fallbackVehicle();
+    return emptyResult();
   }
 
   const $ = cheerio.load(html);
 
-  // Basic selectors (safe defaults)
-  const title = $("h1.listing-title").text().trim() || null;
-  const price = parsePrice($(".listing-price").text());
-  const mileage = parseMileage($("div.listing-mileage").text());
-  const vin = findVin($);
-  const dealerName = $("div.seller-name").text().trim() || null;
-  const dealerAddress = $("a[href*='maps.google']").text().trim() || null;
+  // Extract information using very fault-tolerant selectors
+  const title = $('h1.listing-title').text().trim() || null;
+
+  const priceText = $('[data-test="vehicle-listing-price"]').text().trim();
+  const price = priceText ? parseInt(priceText.replace(/[^0-9]/g, "")) : null;
+
+  const mileageText = $('[data-test="mileage"]').text().trim();
+  const mileage = mileageText ? parseInt(mileageText.replace(/[^0-9]/g, "")) : null;
+
+  const vin = $('[data-test="vin"]').text().trim() || null;
+
+  const dealerName = $('[data-test="dealer-name"]').text().trim() || null;
+
+  const dealerAddress = $('[data-test="address"]').text().trim() || null;
 
   const parsed = {
     title,
-    year: extractYear(title),
-    make: extractMake(title),
-    model: extractModel(title),
-    trim: extractTrim(title),
     price,
     mileage,
     vin,
     dealerName,
     dealerAddress,
     structured: {
-      basic: {
-        title,
-        year: extractYear(title),
-        make: extractMake(title),
-        model: extractModel(title),
-        trim: extractTrim(title),
-        price,
-        mileage,
-        vin
-      },
-      dealer: {
-        name: dealerName,
-        address: dealerAddress
-      },
+      basic: { title, price, mileage, vin },
+      dealer: { name: dealerName, address: dealerAddress },
       source: "cars.com",
-      url: listingUrl
-    }
+      url: listingUrl,
+    },
   };
 
   console.log("[CarsDotCom] 🧩 Parsed vehicle:", parsed);
-
   return parsed;
 }
 
-// ========== HELPERS ==========
-
-function parsePrice(text) {
-  const match = text.replace(/[^\d]/g, "");
-  return match ? Number(match) : null;
-}
-
-function parseMileage(text) {
-  const match = text.replace(/[^\d]/g, "");
-  return match ? Number(match) : null;
-}
-
-function extractYear(title) {
-  if (!title) return null;
-  const m = title.match(/\b(19|20)\d{2}\b/);
-  return m ? Number(m[0]) : null;
-}
-
-function extractMake(title) {
-  if (!title) return null;
-  const parts = title.split(" ");
-  return parts.length > 1 ? parts[1] : null;
-}
-
-function extractModel(title) {
-  if (!title) return null;
-  const parts = title.split(" ");
-  return parts.length > 2 ? parts[2] : null;
-}
-
-function extractTrim(title) {
-  if (!title) return null;
-  const parts = title.split(" ");
-  return parts.slice(3).join(" ") || null;
-}
-
-function findVin($) {
-  const text = $("body").text();
-  const match = text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
-  return match ? match[0] : null;
-}
-
-function fallbackVehicle() {
+// ----------------------
+// 🧹 Empty fallback structure
+// ----------------------
+function emptyResult() {
   return {
     title: null,
-    year: null,
-    make: null,
-    model: null,
-    trim: null,
     price: null,
     mileage: null,
     vin: null,
     dealerName: null,
     dealerAddress: null,
     structured: {
-      basic: {
-        title: null,
-        year: null,
-        make: null,
-        model: null,
-        trim: null,
-        price: null,
-        mileage: null,
-        vin: null
-      },
-      dealer: {
-        name: null,
-        address: null
-      },
+      basic: { title: null, price: null, mileage: null, vin: null },
+      dealer: { name: null, address: null },
       source: "cars.com",
-      url: null
-    }
+      url: null,
+    },
   };
 }
 
-// THIS LINE IS THE MOST IMPORTANT PART OF THIS ENTIRE FILE:
 module.exports = { parseCarsDotCom };
