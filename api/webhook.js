@@ -1,6 +1,10 @@
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { buffer } = require("micro");
 
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+
 // Local imports (CommonJS, same folder)
 const { parseCarsDotCom } = require("./carsDotCom");
 const { generateVehicleReport } = require("./reportGenerator");
@@ -45,6 +49,38 @@ function mockVehicle(vin) {
     }
   };
 }
+
+async function sendReportEmail(toEmail, reportUrl, vin) {
+  try {
+    const subject = `Your CarSaavy Report for VIN ${vin}`;
+    const html = `
+      <div style="font-family: Arial; padding: 20px;">
+        <h2>🚗 Your CarSaavy Vehicle Report is Ready</h2>
+        <p>Thank you for using CarSaavy!</p>
+        <p>Your report for <b>VIN ${vin}</b> is ready to download:</p>
+        <p><a href="${reportUrl}" style="color:#007bff; font-size:16px;">Click here to download your report</a></p>
+        <br>
+        <p>If you have any questions, reply to this email.</p>
+        <p>— CarSaavy Team</p>
+      </div>
+    `;
+
+    await resend.emails.send({
+      from: "CarSaavy Reports <reports@carsaavy.com>",
+      to: toEmail,
+      subject,
+      html,
+    });
+
+    console.log("📧 Email successfully sent to:", toEmail);
+    return true;
+
+  } catch (err) {
+    console.error("❌ Email sending failed:", err);
+    return false; // Do NOT break webhook
+  }
+}
+
 
 // -----------------------------
 // MAIN HANDLER
@@ -141,7 +177,12 @@ module.exports = async function handler(req, res) {
     // -----------------------------
     // 6. TODO: SEND EMAIL (Next Step)
     // -----------------------------
-    console.log("📧 Email sending step will be added next.");
+
+    console.log("📧 Sending email...");
+
+await sendReportEmail(email, reportUrl, vin);
+
+console.log("✅ Email step completed.");
 
     return res.status(200).send("Webhook processed.");
   }
