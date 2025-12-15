@@ -47,10 +47,6 @@ module.exports = async (req, res) => {
       payment_method_types: ["card"],
       customer_email: email,
 
-      name: "CarSaavy Market Negotiation Report",
-      description: "Negotiation strategy and market insights based on your vehicle details",
-      
-
 
       line_items: [
         {
