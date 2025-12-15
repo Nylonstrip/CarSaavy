@@ -6,39 +6,72 @@ module.exports = async (req, res) => {
   try {
     console.log("📩 Incoming create-payment request:", req.body);
 
-    const { vin, email, listingUrl } = req.body;
+    let { vin, email, listingUrl, reportType } = req.body;
+
+    // Default reportType for safety
+    reportType = reportType || "specified";
 
     // ----------------------------
     // 1️⃣ Basic required checks
     // ----------------------------
-    if (!vin || !email || !listingUrl) {
-      return res.status(400).json({ error: "VIN, email, and listing URL are required." });
+    if (!email) {
+      return res.status(400).json({ error: "Email is required." });
+    }
+
+    if (reportType === "specified") {
+      if (!vin || !listingUrl) {
+        return res.status(400).json({
+          error: "VIN and listing URL are required for a specified report.",
+        });
+      }
+    } else {
+      // General report: normalize fields so backend is happy
+      vin = "GENERAL-REPORT";
+      listingUrl = "N/A";
     }
 
     // ----------------------------
-    // 2️⃣ Validate Cars.com URL format
+    // 2️⃣ Validate Cars.com URL format (specified only)
     // ----------------------------
     console.log("🔍 Validating Cars.com URL...");
 
     const carsRegex = /^https:\/\/www\.cars\.com\/vehicledetail\/[a-zA-Z0-9-]+\/*$/;
 
-    if (!carsRegex.test(listingUrl)) {
-      console.log("❌ URL failed lightweight validation:", listingUrl);
-      return res.status(400).json({
-        error: "Invalid Cars.com URL format. Please provide a direct Cars.com vehicle listing link.",
-      });
+    if (reportType === "specified") {
+      if (!carsRegex.test(listingUrl)) {
+        console.log("❌ URL failed lightweight validation:", listingUrl);
+        return res.status(400).json({
+          error:
+            "Invalid Cars.com URL format. Please provide a direct Cars.com vehicle listing link.",
+        });
+      }
+
+      console.log("✅ Cars.com URL passed lightweight validation.");
     }
 
-    console.log("✅ Cars.com URL passed lightweight validation.");
+    // ----------------------------
+    // 3️⃣ Dynamic Pricing
+    // ----------------------------
+    let priceInCents;
+
+    if (reportType === "general") {
+      priceInCents = 1500; // $15.00
+    } else if (reportType === "specified") {
+      priceInCents = 1800; // $18.00
+    } else {
+      // Fallback safety (shouldn't normally hit)
+      priceInCents = 1500;
+    }
 
     // ----------------------------
-    // 3️⃣ Create Stripe Checkout Session
+    // 4️⃣ Create Stripe Checkout Session
     // ----------------------------
     console.log("💳 Creating Stripe Checkout Session...");
 
-    const baseUrl = process.env.NODE_ENV === "production"
-      ? "https://www.carsaavy.com"
-      : process.env.VERCEL_URL
+    const baseUrl =
+      process.env.NODE_ENV === "production"
+        ? "https://www.carsaavy.com"
+        : process.env.VERCEL_URL
         ? `https://${process.env.VERCEL_URL}`
         : "http://localhost:3000";
 
@@ -52,30 +85,28 @@ module.exports = async (req, res) => {
           price_data: {
             currency: "usd",
             product_data: {
-              name: "CarSaavy Vehicle Report",
-              description: "Full negotiation-ready vehicle analysis",
+              name:
+                reportType === "general"
+                  ? "CarSaavy General Market Report"
+                  : "CarSaavy Specified Vehicle Report",
+              description:
+                reportType === "general"
+                  ? "General negotiation strategy and market insights"
+                  : "Vehicle-specific negotiation analysis with listing insights",
             },
-            unit_amount: 1500, // $15.00
+            unit_amount: priceInCents,
           },
           quantity: 1,
         },
       ],
 
-      // ✅ CRITICAL — metadata MUST be put here for Stripe to pass to payment_intent
+      // ✅ CRITICAL — metadata MUST be on the payment intent
       payment_intent_data: {
-        metadata: {
-          vin,
-          email,
-          listingUrl,
-        },
+        metadata: { vin, email, listingUrl, reportType },
       },
 
-      // Also include on session (optional but helps debugging)
-      metadata: {
-        vin,
-        email,
-        listingUrl,
-      },
+      // Also include on session (optional but helpful for debugging)
+      metadata: { vin, email, listingUrl, reportType },
 
       success_url: `${baseUrl}/success`,
       cancel_url: `${baseUrl}/cancel`,
@@ -86,6 +117,9 @@ module.exports = async (req, res) => {
     return res.status(200).json({ url: session.url });
   } catch (err) {
     console.error("❌ create-payment error:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({
+      error: "Internal server error",
+      details: err.message,
+    });
   }
 };

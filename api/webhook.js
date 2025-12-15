@@ -5,9 +5,11 @@ const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 
+
+
 // Local imports (CommonJS, same folder)
-const { parseCarsDotCom } = require("./carsDotCom");
 const { generateVehicleReport } = require("./reportGenerator");
+const { buildMvpAnalysis } = require("./mvpEngine");
 
 // Required for raw body (Stripe verification)
 module.exports.config = {
@@ -115,6 +117,9 @@ module.exports = async function handler(req, res) {
     const vin = intent.metadata.vin || null;
     const email = intent.metadata.email || null;
     const listingUrl = intent.metadata.listingUrl || null;
+    const reportType = "general";
+
+
 
     console.log("📌 Extracted metadata:", { vin, email, listingUrl });
 
@@ -128,45 +133,97 @@ module.exports = async function handler(req, res) {
     // -----------------------------
     let vehicleData;
 
-    if (process.env.MOCK_SCRAPING === "true") {
-      console.log("🟦 MOCK MODE ACTIVE — skipping real scraping.");
-      vehicleData = mockVehicle(vin);
-    } else {
-      // -----------------------------
-      // 4. REAL SCRAPING MODE
-      // -----------------------------
-      if (!listingUrl) {
-        console.error("❌ Missing listing URL in metadata");
-        return res.status(400).send("Missing listing URL");
-      }
+// -----------------------------
+// GENERAL REPORT MODE
+// -----------------------------
+if (reportType === "general") {
+  console.log("🟦 GENERAL REPORT MODE — Skipping scraping.");
+  
+  vehicleData = {
+    title: "General Vehicle Market Report",
+    year: null,
+    make: null,
+    model: null,
+    trim: null,
+    price: null,
+    mileage: null,
+    vin: "GENERAL-REPORT",
 
-      console.log("🔍 Scraping listing:", listingUrl);
+    // Template structure so reportGenerator doesn't break
+    structured: {
+      basic: {
+        title: "General Vehicle Market Report",
+        year: null,
+        make: null,
+        model: null,
+        trim: null,
+        price: null,
+        mileage: null,
+        vin: "GENERAL-REPORT"
+      },
+      dealer: {
+        name: null,
+        address: null
+      },
+      source: "general",
+      url: null
+    },
 
-      try {
-        vehicleData = await parseCarsDotCom(listingUrl);
-      } catch (err) {
-        console.error("❌ Scraper failure:", err);
-        return res.status(500).send("Error scraping listing");
-      }
-    }
+    comparables: [],
+    highlights: []
+  };
+}
+
+// -----------------------------------------------------
+// STEP X — VIN MISMATCH CHECK
+// -----------------------------------------------------
+let vinMismatch = false;
+
+const userVin = (vin || "").trim().toUpperCase();
+const scrapedVin = (vehicleData.scrapedVin || "").trim().toUpperCase();
+
+if (scrapedVin && userVin && userVin !== scrapedVin) {
+  console.warn("⚠️ VIN mismatch detected:", { userVin, scrapedVin });
+  vinMismatch = true;
+}
+
+// Add to vehicle data so PDF can show advisory
+vehicleData.vinMismatch = vinMismatch;
+vehicleData.scrapedVin = scrapedVin;
+vehicleData.userVin = userVin;
+
+
+    // -----------------------------
+    // 4. Apply static valuation engine (min/max + highlights)
+    // -----------------------------
+    const enrichedVehicleData = buildMvpAnalysis(vehicleData, { reportType });
 
     console.log("🧩 Parsed data (summary):", {
-      title: vehicleData.title,
-      price: vehicleData.price,
-      mileage: vehicleData.mileage,
-      vin: vehicleData.vin,
-      dealerName: vehicleData.dealerName,
+      title: enrichedVehicleData.title,
+      price: enrichedVehicleData.price,
+      mileage: enrichedVehicleData.mileage,
+      vin: enrichedVehicleData.vin,
+      dealerName: enrichedVehicleData.dealerName,
+      minPrice: enrichedVehicleData.minPrice,
+      maxPrice: enrichedVehicleData.maxPrice,
     });
+
 
     // -----------------------------
     // 5. Generate PDF Report
     // -----------------------------
+    if (vinMismatch) {
+      console.log("🚨 VIN mismatch flagged for report generation");
+    }
+    
+
     console.log("📄 Generating PDF report...");
 
     let reportUrl;
 
     try {
-      reportUrl = await generateVehicleReport(vehicleData, vin);
+      reportUrl = await generateVehicleReport(enrichedVehicleData, vin);
+
     } catch (err) {
       console.error("❌ PDF generation error:", err);
       return res.status(500).send("PDF generation failed");
@@ -174,9 +231,6 @@ module.exports = async function handler(req, res) {
 
     console.log("📤 Report ready at:", reportUrl);
 
-    // -----------------------------
-    // 6. TODO: SEND EMAIL (Next Step)
-    // -----------------------------
 
     console.log("📧 Sending email...");
 
