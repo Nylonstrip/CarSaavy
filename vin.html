@@ -200,14 +200,12 @@
       <input type="email" id="email" placeholder="Enter your email" required />
 
       <!-- VIN + URL (hidden for General Report) -->
-      <div id="specifiedFields">
         <input type="text" id="year" placeholder="Year (e.g. 2019)" required />
         <input type="text" id="make" placeholder="Make (e.g. Toyota)" required />
         <input type="text" id="model" placeholder="Model (e.g. Camry)" required />
         <input type="text" id="trim" placeholder="Trim (optional)" />
         <input type="text" id="mileage" placeholder="Mileage (e.g. 45000)" required />
         <input type="text" id="price" placeholder="Asking Price (e.g. 18999)" required />
-      </div>
 
       <button type="submit" id="submitBtn">Generate Report</button>
       <div class="message" id="message"></div>
@@ -225,6 +223,46 @@
     const steps = document.querySelector('.steps');
     const stepEls = document.querySelectorAll('.step');
     const submitBtn = document.getElementById('submitBtn');
+
+    document.getElementById("vinForm").addEventListener("submit", async (e) => {
+    e.preventDefault(); // 🔴 THIS IS THE KEY LINE
+
+    console.log("Generate Report clicked");
+
+    // collect inputs
+    const email = document.getElementById("email").value;
+    const year = document.getElementById("year").value;
+    const make = document.getElementById("make").value;
+    const model = document.getElementById("model").value;
+    const trim = document.getElementById("trim")?.value || "";
+    const mileage = document.getElementById("mileage").value;
+    const price = document.getElementById("price").value;
+
+    console.log({ email, year, make, model, trim, mileage, price });
+
+    // call your backend
+    const res = await fetch("/api/create-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        year,
+        make,
+        model,
+        trim,
+        mileage,
+        price
+      })
+    });
+
+  const data = await res.json();
+
+  if (data.url) {
+    window.location.href = data.url;
+  } else {
+    alert("Failed to start checkout");
+  }
+});
 
     function isValidVIN(vin) {
       const regex = /^[A-HJ-NPR-Z0-9]{17}$/i;
