@@ -697,7 +697,7 @@ function buildMvpAnalysis(vehicleData = {}, options = {}) {
     dealerProfile,
     pricePositioning,
     pricingConfidenceScore,
-    conditionAdvisory,``
+    conditionAdvisory,
     negotiationPlan,
   };
   
