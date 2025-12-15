@@ -6,10 +6,7 @@ module.exports = async (req, res) => {
   try {
     console.log("📩 Incoming create-payment request:", req.body);
 
-    let { vin, email, listingUrl, reportType } = req.body;
-
-    // Default reportType for safety
-    reportType = reportType || "specified";
+    let { email, year, make, model, trim, mileage, price } = req.body;
 
     // ----------------------------
     // 1️⃣ Basic required checks
@@ -18,47 +15,17 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Email is required." });
     }
 
-    if (reportType === "specified") {
-      if (!vin || !listingUrl) {
-        return res.status(400).json({
-          error: "VIN and listing URL are required for a specified report.",
-        });
-      }
-    } else {
-      // General report: normalize fields so backend is happy
-      vin = "GENERAL-REPORT";
-      listingUrl = "N/A";
-    }
-
-    // ----------------------------
-    // 2️⃣ Validate Cars.com URL format (specified only)
-    // ----------------------------
-    console.log("🔍 Validating Cars.com URL...");
-
-    const carsRegex = /^https:\/\/www\.cars\.com\/vehicledetail\/[a-zA-Z0-9-]+\/*$/;
-
-    if (reportType === "specified") {
-      if (!carsRegex.test(listingUrl)) {
-        console.log("❌ URL failed lightweight validation:", listingUrl);
-        return res.status(400).json({
-          error:
-            "Invalid Cars.com URL format. Please provide a direct Cars.com vehicle listing link.",
-        });
-      }
-
-      console.log("✅ Cars.com URL passed lightweight validation.");
-    }
-
     // ----------------------------
     // 3️⃣ Dynamic Pricing
     // ----------------------------
     let priceInCents;
+    const reportType = "general";
+
+
 
     if (reportType === "general") {
       priceInCents = 1500; // $15.00
-    } else if (reportType === "specified") {
-      priceInCents = 1800; // $18.00
-    } else {
+    }else {
       // Fallback safety (shouldn't normally hit)
       priceInCents = 1500;
     }
@@ -80,19 +47,18 @@ module.exports = async (req, res) => {
       payment_method_types: ["card"],
       customer_email: email,
 
+      name: "CarSaavy Market Negotiation Report",
+      description: "Negotiation strategy and market insights based on your vehicle details",
+      
+
+
       line_items: [
         {
           price_data: {
             currency: "usd",
             product_data: {
-              name:
-                reportType === "general"
-                  ? "CarSaavy General Market Report"
-                  : "CarSaavy Specified Vehicle Report",
-              description:
-                reportType === "general"
-                  ? "General negotiation strategy and market insights"
-                  : "Vehicle-specific negotiation analysis with listing insights",
+              name: "CarSaavy Market Negotiation Report",
+              description: "Negotiation strategy and market insights based on your vehicle details",
             },
             unit_amount: priceInCents,
           },
@@ -102,11 +68,11 @@ module.exports = async (req, res) => {
 
       // ✅ CRITICAL — metadata MUST be on the payment intent
       payment_intent_data: {
-        metadata: { vin, email, listingUrl, reportType },
+        metadata: { email, year, make, model, trim, mileage, price },
       },
 
       // Also include on session (optional but helpful for debugging)
-      metadata: { vin, email, listingUrl, reportType },
+      metadata: { email, year, make, model, trim, mileage, price  },
 
       success_url: `${baseUrl}/success`,
       cancel_url: `${baseUrl}/cancel`,

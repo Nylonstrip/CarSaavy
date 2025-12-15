@@ -116,26 +116,34 @@ module.exports = async function handler(req, res) {
 
     const vin = intent.metadata.vin || null;
     const email = intent.metadata.email || null;
-    const listingUrl = intent.metadata.listingUrl || null;
-    const reportType = "general";
+    const year = intent.metadata.year || null;
+    const make = intent.metadata.make || null;
+    const model = intent.metadata.model || null;
+    const trim = intent.metadata.trim || null;
+    const mileage = intent.metadata.mileage || null;
+    const price = intent.metadata.price || null;
+    
+    
 
+    console.log("📌 Extracted metadata:", { vin, email, year, make, model, trim, mileage, price  });
 
-
-    console.log("📌 Extracted metadata:", { vin, email, listingUrl });
-
-    if (!vin || !email) {
-      console.error("❌ Missing VIN or email in metadata");
-      return res.status(400).send("Missing metadata");
+    if (!email) {
+      return res.status(400).send("Missing email metadata");
     }
+    
 
     // -----------------------------
     // 3. MOCK MODE OVERRIDE
     // -----------------------------
-    let vehicleData;
+    let vehicleData = {};
+
 
 // -----------------------------
 // GENERAL REPORT MODE
 // -----------------------------
+const reportType = "general";
+
+
 if (reportType === "general") {
   console.log("🟦 GENERAL REPORT MODE — Skipping scraping.");
   
@@ -180,16 +188,9 @@ if (reportType === "general") {
 let vinMismatch = false;
 
 const userVin = (vin || "").trim().toUpperCase();
-const scrapedVin = (vehicleData.scrapedVin || "").trim().toUpperCase();
-
-if (scrapedVin && userVin && userVin !== scrapedVin) {
-  console.warn("⚠️ VIN mismatch detected:", { userVin, scrapedVin });
-  vinMismatch = true;
-}
 
 // Add to vehicle data so PDF can show advisory
-vehicleData.vinMismatch = vinMismatch;
-vehicleData.scrapedVin = scrapedVin;
+
 vehicleData.userVin = userVin;
 
 
@@ -212,10 +213,6 @@ vehicleData.userVin = userVin;
     // -----------------------------
     // 5. Generate PDF Report
     // -----------------------------
-    if (vinMismatch) {
-      console.log("🚨 VIN mismatch flagged for report generation");
-    }
-    
 
     console.log("📄 Generating PDF report...");
 
