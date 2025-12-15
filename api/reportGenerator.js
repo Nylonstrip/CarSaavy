@@ -65,26 +65,6 @@ function applyProtectiveSpacing(text) {
     .replace(/(")(\S)/g, "$1\u00A0$2");
 }
 
-// ======================================
-// VIN MISMATCH ADVISORY (if applicable)
-// ======================================
-if (vehicleData.vinMismatch) {
-  drawSection("⚠️ IMPORTANT VIN NOTICE", (currentY) => {
-    const text = `
-The VIN you entered (${vehicleData.userVin}) does NOT match the VIN shown on the dealer listing (${vehicleData.scrapedVin}).
-
-This can happen due to:
-• User input mistakes
-• Dealers updating pages
-• Misprinted or placeholder VINs
-• Incorrect listing URLs
-
-Please verify the VIN before making a purchase decision.
-`;
-    drawHybridParagraph(doc, text, 40, currentY);
-  });
-}
-
 
 /* =======================================================================
    HYBRID PARAGRAPH ENGINE

@@ -196,24 +196,7 @@
     </div>
 
     <form id="vinForm">
-      <!-- Report Type Toggle -->
-      <div style="margin-bottom:1rem; text-align:left;">
-        <label style="font-weight:600; color:#9ed9ef;">Select Report Type:</label>
-
-        <div style="margin-top:8px;">
-          <label style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-            <input type="radio" name="reportType" value="general" id="reportGeneral">
-            <span>General Report (no VIN required)</span>
-          </label>
-
-          <label style="display:flex; align-items:center; gap:6px;">
-            <input type="radio" name="reportType" value="specified" id="reportSpecified" checked>
-            <span>Specified Report (VIN + Listing URL)</span>
-          </label>
-        </div>
-      </div>
-
-            <!-- Email (always shown) -->
+      <!-- Email (always shown) -->
       <input type="email" id="email" placeholder="Enter your email" required />
 
       <!-- VIN + URL (hidden for General Report) -->
@@ -221,6 +204,12 @@
         <input type="text" id="vin" placeholder="Enter 17-digit VIN" maxlength="17" />
         <input type="url" id="listingUrl" name="listingUrl"
               placeholder="https://www.cars.com/vehicledetail/xxxxx/" />
+        <input type="text" id="year" placeholder="Year (e.g. 2019)" required />
+        <input type="text" id="make" placeholder="Make (e.g. Toyota)" required />
+        <input type="text" id="model" placeholder="Model (e.g. Camry)" required />
+        <input type="text" id="trim" placeholder="Trim (optional)" />
+        <input type="text" id="mileage" placeholder="Mileage (e.g. 45000)" required />
+        <input type="text" id="price" placeholder="Asking Price (e.g. 18999)" required />
       </div>
 
       <button type="submit" id="submitBtn">Generate Report</button>
@@ -299,7 +288,6 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const reportType = document.querySelector('input[name="reportType"]:checked').value;
       const email = document.getElementById('email').value.trim();
 
       let vin = document.getElementById('vin').value.trim().toUpperCase();
@@ -314,32 +302,6 @@
       return;
     }
 
-    if (reportType === "specified") {
-      // Validate VIN
-      if (!isValidVIN(vin)) {
-        messageEl.textContent = '❌ Invalid VIN. Please enter a 17-character VIN.';
-        messageEl.classList.remove('success');
-        messageEl.style.display = 'block';
-        setStep(0);
-        return;
-      }
-
-      // Validate URL
-      if (!isValidCarsUrl(listingUrl)) {
-        messageEl.textContent =
-          '❌ Please enter a valid Cars.com vehicle URL.';
-        messageEl.classList.remove('success');
-        messageEl.style.display = 'block';
-        setStep(0);
-        return;
-      }
-    } else {
-      // General Report: override VIN + URL so backend isn't broken yet
-      vin = "GENERAL-REPORT";
-      listingUrl = "N/A";
-    }
-
-
       messageEl.textContent = '✅ VIN looks good! Redirecting to payment...';
       messageEl.classList.add('success');
       messageEl.style.display = 'block';
@@ -353,7 +315,7 @@
         const response = await fetch('/api/create-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vin, email, listingUrl, reportType })
+          body: JSON.stringify({ email, year, make, model, trim, mileage, price })
         });
 
         const data = await response.json();
