@@ -56,15 +56,17 @@ module.exports = async (req, res) => {
         {
           price_data: {
             currency: "usd",
+            unit_amount: priceInCents,
             product_data: {
               name: "CarSaavy Market Negotiation Report",
-              description: "Negotiation strategy and market insights based on your vehicle details",
+              description:
+                "Negotiation strategy and market insights based on your vehicle details",
             },
-            unit_amount: priceInCents,
           },
           quantity: 1,
         },
       ],
+      
 
       // ✅ CRITICAL — metadata MUST be on the payment intent
       payment_intent_data: {
