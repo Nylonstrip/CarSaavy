@@ -9,14 +9,10 @@
     "dependencies": {
         "@vercel/blob": "^2.0.0",
         "axios": "^1.13.2",
-        "cheerio": "^1.1.0",
         "micro": "^10.0.1",
-        "node-fetch": "^2.6.7",
-        "pdf-lib": "^1.17.1",
         "pdfkit": "^0.17.2",
         "pino": "^10.1.0",
         "pino-pretty": "^13.1.2",
-        "postmark": "^4.0.5",
         "resend": "^3.0.0",
         "stripe": "^14.0.0"
     },
