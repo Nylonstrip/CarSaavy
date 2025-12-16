@@ -125,21 +125,35 @@ module.exports = async function handler(req, res) {
   
     // Attempt refund if payment succeeded but report failed
     try {
-      await refundPayment(intent.id, "requested_by_customer");
+      await refundPaymentIfNeeded(intent.id, "requested_by_customer");
     } catch (_) {}
   
     return res.status(500).send("Webhook processing failed");
   }
 };
 
-async function refundPayment(paymentIntentId, reason = "requested_by_customer") {
+
+async function refundPaymentIfNeeded(paymentIntentId) {
   try {
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (intent.status === "canceled" || intent.amount_refunded > 0) {
+      console.log("💸 Refund already processed for:", paymentIntentId);
+      return;
+    }
+
     await stripe.refunds.create({
       payment_intent: paymentIntentId,
-      reason
+      reason: "requested_by_customer"
     });
+
     console.log("💸 Refund issued for:", paymentIntentId);
   } catch (err) {
-    console.error("❌ Refund failed:", err);
+    if (err.code === "charge_already_refunded") {
+      console.log("💸 Refund already processed (Stripe-safe):", paymentIntentId);
+      return;
+    }
+    console.error("❌ Refund attempt failed:", err);
   }
 }
+
