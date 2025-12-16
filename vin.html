@@ -196,20 +196,31 @@
     </div>
 
     <form id="vinForm">
-      <!-- Email (always shown) -->
-      <input type="email" id="email" placeholder="Enter your email" required />
-
-      <!-- VIN + URL (hidden for General Report) -->
-        <input type="text" id="year" placeholder="Year (e.g. 2019)" required />
-        <input type="text" id="make" placeholder="Make (e.g. Toyota)" required />
-        <input type="text" id="model" placeholder="Model (e.g. Camry)" required />
-        <input type="text" id="trim" placeholder="Trim (optional)" />
-        <input type="text" id="mileage" placeholder="Mileage (e.g. 45000)" required />
-        <input type="text" id="price" placeholder="Asking Price (e.g. 18999)" required />
-
+      <input
+        type="email"
+        id="email"
+        placeholder="Enter your email"
+        required
+      />
+    
+      <input
+        type="text"
+        id="vin"
+        placeholder="Enter your 17-character VIN"
+        maxlength="17"
+        required
+      />
+    
+      <input
+        type="text"
+        id="askingPrice"
+        placeholder="Asking Price (optional)"
+      />
+    
       <button type="submit" id="submitBtn">Generate Report</button>
       <div class="message" id="message"></div>
     </form>
+    
   </main>
 
   <footer class="site-footer">
@@ -218,107 +229,74 @@
   </footer>
 
   <script>
-    const form = document.getElementById('vinForm');
-    const messageEl = document.getElementById('message');
-    const steps = document.querySelector('.steps');
-    const stepEls = document.querySelectorAll('.step');
-    const submitBtn = document.getElementById('submitBtn');
-
-    document.getElementById("vinForm").addEventListener("submit", async (e) => {
-    e.preventDefault(); // 🔴 THIS IS THE KEY LINE
-
-    console.log("Generate Report clicked");
-
-    // collect inputs
-    const email = document.getElementById("email").value;
-    const year = document.getElementById("year").value;
-    const make = document.getElementById("make").value;
-    const model = document.getElementById("model").value;
-    const trim = document.getElementById("trim")?.value || "";
-    const mileage = document.getElementById("mileage").value;
-    const price = document.getElementById("price").value;
-
-    console.log({ email, year, make, model, trim, mileage, price });
-
-    // call your backend
-    const res = await fetch("/api/create-payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        year,
-        make,
-        model,
-        trim,
-        mileage,
-        price
-      })
-    });
-
-  const data = await res.json();
-
-  if (data.url) {
-    window.location.href = data.url;
-  } else {
-    alert("Failed to start checkout");
-  }
-});
-
-    function isValidVIN(vin) {
-      const regex = /^[A-HJ-NPR-Z0-9]{17}$/i;
-      return regex.test(vin.trim());
-    }
-
-    function isValidCarsUrl(url) {
-      if (!url) return false;
-      try {
-        const u = new URL(url.trim());
-        // Must be a Cars.com vehicle detail page
-        return (
-          u.hostname.includes("cars.com") &&
-          u.pathname.includes("/vehicledetail/")
-        );
-      } catch (e) {
-        return false;
-      }
-    }
-
+    const form = document.getElementById("vinForm");
+    const messageEl = document.getElementById("message");
+    const stepEls = document.querySelectorAll(".step");
+  
     function setStep(activeIndex) {
       stepEls.forEach((step, i) => {
-        step.classList.toggle('active', i === activeIndex);
-        if (i <= activeIndex) {
-          step.classList.add('glow');
-        } else {
-          step.classList.remove('glow');
-        }
+        step.classList.toggle("active", i === activeIndex);
+        if (i <= activeIndex) step.classList.add("glow");
+        else step.classList.remove("glow");
       });
     }
-
-    // Smooth entrance animations
-    window.addEventListener('load', () => {
-      steps.classList.add('visible');
+  
+    function isValidVIN(vin) {
+      return /^[A-HJ-NPR-Z0-9]{17}$/i.test(vin.trim());
+    }
+  
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+  
+      const email = document.getElementById("email").value.trim();
+      const vin = document.getElementById("vin").value.trim().toUpperCase();
+      const askingPrice = document.getElementById("askingPrice").value.trim();
+  
+      messageEl.style.display = "none";
+  
+      if (!isValidVIN(vin)) {
+        messageEl.textContent = "Please enter a valid 17-character VIN.";
+        messageEl.style.display = "block";
+        return;
+      }
+  
+      setStep(1); // Pay & Process
+  
+      try {
+        const res = await fetch("/api/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vin,
+            email,
+            askingPrice: askingPrice || null
+          })
+        });
+  
+        const data = await res.json();
+  
+        if (data.url) {
+          setStep(2); // Receive Report
+          window.location.href = data.url;
+        } else {
+          throw new Error("Checkout session failed");
+        }
+      } catch (err) {
+        messageEl.textContent = "Something went wrong. Please try again.";
+        messageEl.style.display = "block";
+        setStep(0);
+      }
+    });
+  
+    // Entrance animations
+    window.addEventListener("load", () => {
+      document.querySelector(".steps").classList.add("visible");
       setTimeout(() => {
-        document.querySelector('form').classList.add('visible');
+        document.querySelector("form").classList.add("visible");
       }, 400);
     });
-
-
-    // Default state
-    function updateVisibility() {
-      if (reportGeneral.checked) {
-        specifiedFields.style.display = "none";
-      } else {
-        specifiedFields.style.display = "block";
-      }
-    }
-
-    reportGeneral.addEventListener("change", updateVisibility);
-    reportSpecified.addEventListener("change", updateVisibility);
-    updateVisibility();
-
-
-    
   </script>
+  
 
 </body>
 </html>

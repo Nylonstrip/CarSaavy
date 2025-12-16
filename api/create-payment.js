@@ -1,40 +1,41 @@
 // api/create-payment.js
-
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+function normalizePrice(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim().replace(/[$,]/g, "");
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
 
 module.exports = async (req, res) => {
   try {
     console.log("📩 Incoming create-payment request:", req.body);
 
-    let { email, year, make, model, trim, mileage, price } = req.body;
+    const { vin, email, askingPrice } = req.body;
 
     // ----------------------------
-    // 1️⃣ Basic required checks
+    // 1️⃣ Required checks (PIC_v1)
     // ----------------------------
-    if (!email) {
+    if (!vin || typeof vin !== "string") {
+      return res.status(400).json({ error: "VIN is required." });
+    }
+
+    if (!email || typeof email !== "string") {
       return res.status(400).json({ error: "Email is required." });
     }
 
-    // ----------------------------
-    // 3️⃣ Dynamic Pricing
-    // ----------------------------
-    let priceInCents;
-    const reportType = "general";
-
-
-
-    if (reportType === "general") {
-      priceInCents = 1500; // $15.00
-    }else {
-      // Fallback safety (shouldn't normally hit)
-      priceInCents = 1500;
-    }
+    const normalizedAskingPrice = normalizePrice(askingPrice);
 
     // ----------------------------
-    // 4️⃣ Create Stripe Checkout Session
+    // 2️⃣ Single MVP price
     // ----------------------------
-    console.log("💳 Creating Stripe Checkout Session...");
+    const priceInCents = 1500; // $15.00 — one product, one price
 
+    // ----------------------------
+    // 3️⃣ Base URL
+    // ----------------------------
     const baseUrl =
       process.env.NODE_ENV === "production"
         ? "https://www.carsaavy.com"
@@ -42,11 +43,15 @@ module.exports = async (req, res) => {
         ? `https://${process.env.VERCEL_URL}`
         : "http://localhost:3000";
 
+    // ----------------------------
+    // 4️⃣ Create Stripe Checkout Session
+    // ----------------------------
+    console.log("💳 Creating Stripe Checkout Session...");
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       customer_email: email,
-
 
       line_items: [
         {
@@ -54,23 +59,36 @@ module.exports = async (req, res) => {
             currency: "usd",
             unit_amount: priceInCents,
             product_data: {
-              name: "CarSaavy Market Negotiation Report",
+              name: "CarSaavy Vehicle Market Report",
               description:
-                "Negotiation strategy and market insights based on your vehicle details",
+                "Market-based valuation and negotiation strategy for your vehicle",
             },
           },
           quantity: 1,
         },
       ],
-      
 
-      // ✅ CRITICAL — metadata MUST be on the payment intent
+      // 🔒 This metadata MUST match webhook expectations
       payment_intent_data: {
-        metadata: { email, year, make, model, trim, mileage, price },
+        metadata: {
+          vin: vin.trim().toUpperCase(),
+          email: email.trim().toLowerCase(),
+          price:
+            normalizedAskingPrice !== null
+              ? String(normalizedAskingPrice)
+              : "",
+        },
       },
 
-      // Also include on session (optional but helpful for debugging)
-      metadata: { email, year, make, model, trim, mileage, price  },
+      // Optional: mirrored on session for debugging
+      metadata: {
+        vin: vin.trim().toUpperCase(),
+        email: email.trim().toLowerCase(),
+        price:
+          normalizedAskingPrice !== null
+            ? String(normalizedAskingPrice)
+            : "",
+      },
 
       success_url: `${baseUrl}/success`,
       cancel_url: `${baseUrl}/cancel`,
@@ -83,7 +101,10 @@ module.exports = async (req, res) => {
     console.error("❌ create-payment error:", err);
     return res.status(500).json({
       error: "Internal server error",
-      details: err.message,
+      details:
+        process.env.NODE_ENV === "development"
+          ? err.message
+          : undefined,
     });
   }
 };

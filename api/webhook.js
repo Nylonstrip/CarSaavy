@@ -1,91 +1,50 @@
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { buffer } = require("micro");
 
+const { generateVehicleReport } = require("./reportGenerator");
+const { buildMvpAnalysis } = require("./mvpEngine");
+const { getAllVehicleData } = require("./services/vehicleData");
+
 const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-
-
-
-// Local imports (CommonJS, same folder)
-const { generateVehicleReport } = require("./reportGenerator");
-const { buildMvpAnalysis } = require("./mvpEngine");
-
-// Required for raw body (Stripe verification)
+// Required for Stripe raw body verification
 module.exports.config = {
   api: { bodyParser: false },
 };
 
 // -----------------------------
-// MOCK DATA ENGINE
+// Email helper (simple + safe)
 // -----------------------------
-function mockVehicle(vin) {
-  return {
-    title: "Mock 2018 Chevrolet Camaro 1LT",
-    year: 2018,
-    make: "Chevrolet",
-    model: "Camaro",
-    trim: "1LT",
-    price: 16797,
-    mileage: 93567,
-    vin: vin,
-    dealerName: "Mock Dealer",
-    dealerAddress: "123 Mock Street, Mock City, NY",
-    structured: {
-      basic: {
-        title: "Mock 2018 Chevrolet Camaro 1LT",
-        year: 2018,
-        make: "Chevrolet",
-        model: "Camaro",
-        trim: "1LT",
-        price: 16797,
-        mileage: 93567,
-        vin: vin
-      },
-      dealer: {
-        name: "Mock Dealer",
-        address: "123 Mock Street, Mock City, NY"
-      },
-      source: "mock",
-      url: "https://mock.cars.com/listing/123"
-    }
-  };
-}
-
 async function sendReportEmail(toEmail, reportUrl, vin) {
   try {
-    const subject = `Your CarSaavy Report for VIN ${vin}`;
-    const html = `
-      <div style="font-family: Arial; padding: 20px;">
-        <h2>🚗 Your CarSaavy Vehicle Report is Ready</h2>
-        <p>Thank you for using CarSaavy!</p>
-        <p>Your report for <b>VIN ${vin}</b> is ready to download:</p>
-        <p><a href="${reportUrl}" style="color:#007bff; font-size:16px;">Click here to download your report</a></p>
-        <br>
-        <p>If you have any questions, reply to this email.</p>
-        <p>— CarSaavy Team</p>
-      </div>
-    `;
-
     await resend.emails.send({
       from: "CarSaavy Reports <reports@carsaavy.com>",
       to: toEmail,
-      subject,
-      html,
+      subject: `Your CarSaavy Report for VIN ${vin}`,
+      html: `
+        <div style="font-family: Arial; padding: 20px;">
+          <h2>🚗 Your CarSaavy Vehicle Report is Ready</h2>
+          <p>Your report for <b>VIN ${vin}</b> is ready:</p>
+          <p>
+            <a href="${reportUrl}" style="font-size:16px; color:#007bff;">
+              Download your report
+            </a>
+          </p>
+          <p>Thanks for using CarSaavy.</p>
+        </div>
+      `,
     });
 
-    console.log("📧 Email successfully sent to:", toEmail);
-    return true;
-
+    console.log("📧 Email sent to:", toEmail);
   } catch (err) {
-    console.error("❌ Email sending failed:", err);
-    return false; // Do NOT break webhook
+    // Email failure must NOT break webhook
+    console.error("❌ Email send failed:", err);
   }
 }
 
-
 // -----------------------------
-// MAIN HANDLER
+// MAIN WEBHOOK HANDLER
 // -----------------------------
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -95,7 +54,6 @@ module.exports = async function handler(req, res) {
   let event;
   const sig = req.headers["stripe-signature"];
 
-  // 1. Verify Stripe signature
   try {
     const rawBody = await buffer(req);
     event = stripe.webhooks.constructEvent(
@@ -104,140 +62,66 @@ module.exports = async function handler(req, res) {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("❌ Webhook signature error:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    console.error("❌ Stripe signature verification failed:", err.message);
+    return res.status(400).send("Webhook signature error");
   }
 
-  console.log("🔥 Webhook event received:", event.type);
+  console.log("🔥 Stripe event received:", event.type);
 
-  // 2. Handle successful payment
-  if (event.type === "payment_intent.succeeded") {
-    const intent = event.data.object;
+  if (event.type !== "payment_intent.succeeded") {
+    return res.status(200).send("Event ignored");
+  }
 
-    const vin = intent.metadata.vin || null;
-    const email = intent.metadata.email || null;
-    const year = intent.metadata.year || null;
-    const make = intent.metadata.make || null;
-    const model = intent.metadata.model || null;
-    const trim = intent.metadata.trim || null;
-    const mileage = intent.metadata.mileage || null;
-    const price = intent.metadata.price || null;
-    
-    
+  // -----------------------------
+  // Extract metadata
+  // -----------------------------
+  const intent = event.data.object;
+  const vin = intent.metadata?.vin;
+  const email = intent.metadata?.email;
+  const askingPrice = intent.metadata?.price
+    ? Number(intent.metadata.price)
+    : null;
 
-    console.log("📌 Extracted metadata:", { vin, email, year, make, model, trim, mileage, price  });
+  if (!vin || !email) {
+    console.error("❌ Missing required metadata:", { vin, email });
+    return res.status(400).send("Missing required metadata");
+  }
 
-    if (!email) {
-      return res.status(400).send("Missing email metadata");
+  console.log("📌 Payment metadata:", { vin, email, askingPrice });
+
+  try {
+    // -----------------------------
+    // Resolve VIN → vehicleProfile
+    // -----------------------------
+    const vehicleData = await getAllVehicleData(vin);
+
+    if (!vehicleData || !vehicleData.vehicleProfile) {
+      console.error("❌ VIN resolution failed");
+      return res.status(500).send("VIN resolution failed");
     }
-    
 
     // -----------------------------
-    // 3. MOCK MODE OVERRIDE
+    // Build PIC_v1 analysis
     // -----------------------------
-    let vehicleData = {};
-
-
-// -----------------------------
-// GENERAL REPORT MODE
-// -----------------------------
-const reportType = "general";
-
-
-if (reportType === "general") {
-  console.log("🟦 GENERAL REPORT MODE — Skipping scraping.");
-  
-  vehicleData = {
-    title: "General Vehicle Market Report",
-    year: null,
-    make: null,
-    model: null,
-    trim: null,
-    price: null,
-    mileage: null,
-    vin: "GENERAL-REPORT",
-
-    // Template structure so reportGenerator doesn't break
-    structured: {
-      basic: {
-        title: "General Vehicle Market Report",
-        year: null,
-        make: null,
-        model: null,
-        trim: null,
-        price: null,
-        mileage: null,
-        vin: "GENERAL-REPORT"
-      },
-      dealer: {
-        name: null,
-        address: null
-      },
-      source: "general",
-      url: null
-    },
-
-    comparables: [],
-    highlights: []
-  };
-}
-
-// -----------------------------------------------------
-// STEP X — VIN MISMATCH CHECK
-// -----------------------------------------------------
-let vinMismatch = false;
-
-const userVin = (vin || "").trim().toUpperCase();
-
-// Add to vehicle data so PDF can show advisory
-
-vehicleData.userVin = userVin;
-
-
-    // -----------------------------
-    // 4. Apply static valuation engine (min/max + highlights)
-    // -----------------------------
-    const enrichedVehicleData = buildMvpAnalysis(vehicleData, { reportType });
-
-    console.log("🧩 Parsed data (summary):", {
-      title: enrichedVehicleData.title,
-      price: enrichedVehicleData.price,
-      mileage: enrichedVehicleData.mileage,
-      vin: enrichedVehicleData.vin,
-      dealerName: enrichedVehicleData.dealerName,
-      minPrice: enrichedVehicleData.minPrice,
-      maxPrice: enrichedVehicleData.maxPrice,
+    const analysis = buildMvpAnalysis({
+      vin,
+      vehicleProfile: vehicleData.vehicleProfile,
+      askingPrice,
     });
 
+    // -----------------------------
+    // Generate PDF
+    // -----------------------------
+    const reportUrl = await generateVehicleReport({ analysis }, vin);
 
     // -----------------------------
-    // 5. Generate PDF Report
+    // Email report
     // -----------------------------
+    await sendReportEmail(email, reportUrl, vin);
 
-    console.log("📄 Generating PDF report...");
-
-    let reportUrl;
-
-    try {
-      reportUrl = await generateVehicleReport(enrichedVehicleData, vin);
-
-    } catch (err) {
-      console.error("❌ PDF generation error:", err);
-      return res.status(500).send("PDF generation failed");
-    }
-
-    console.log("📤 Report ready at:", reportUrl);
-
-
-    console.log("📧 Sending email...");
-
-await sendReportEmail(email, reportUrl, vin);
-
-console.log("✅ Email step completed.");
-
-    return res.status(200).send("Webhook processed.");
+    return res.status(200).send("Webhook processed successfully");
+  } catch (err) {
+    console.error("❌ Webhook processing error:", err);
+    return res.status(500).send("Webhook processing failed");
   }
-
-  // Fallback for all other events
-  return res.status(200).send("Unhandled event type.");
 };

@@ -1,6 +1,18 @@
 // api/staticData.js
 
 /**
+ * NOTE (MVP v1):
+ * The following exports are intentionally inactive in MVP:
+ * - DefaultExpectedFeatures
+ * - BodyStyleNegotiationProfiles
+ * - DealerProfiles
+ *
+ * They are preserved for future versions and must not be referenced
+ * by PIC_v1 logic or report generation.
+ */
+
+
+/**
  * Static data tables for the MVP valuation engine.
  *
  * This is intentionally small and focused on popular models.
