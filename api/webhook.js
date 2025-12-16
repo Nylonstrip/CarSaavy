@@ -96,9 +96,9 @@ module.exports = async function handler(req, res) {
     const vehicleData = await getAllVehicleData(vin);
 
     if (!vehicleData || !vehicleData.vehicleProfile) {
-      console.error("❌ VIN resolution failed");
-      return res.status(500).send("VIN resolution failed");
+      throw new Error("VIN resolution failed");
     }
+    
 
     // -----------------------------
     // Build PIC_v1 analysis
@@ -122,6 +122,24 @@ module.exports = async function handler(req, res) {
     return res.status(200).send("Webhook processed successfully");
   } catch (err) {
     console.error("❌ Webhook processing error:", err);
+  
+    // Attempt refund if payment succeeded but report failed
+    try {
+      await refundPayment(intent.id, "requested_by_customer");
+    } catch (_) {}
+  
     return res.status(500).send("Webhook processing failed");
   }
 };
+
+async function refundPayment(paymentIntentId, reason = "requested_by_customer") {
+  try {
+    await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      reason
+    });
+    console.log("💸 Refund issued for:", paymentIntentId);
+  } catch (err) {
+    console.error("❌ Refund failed:", err);
+  }
+}

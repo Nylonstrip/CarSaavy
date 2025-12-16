@@ -181,19 +181,29 @@ Suggested Approach:
         const w = analysis.negotiationContext.walkAwayThreshold;
         const text = `
 If negotiations exceed approximately $${w.toLocaleString()}, this vehicle is likely overpriced relative to its estimated market value.
-Walking away at that point is generally the stronger financial decision unless additional value is introduced.
+Paying above this range means overpaying relative to comparable vehicles.
+In most cases, walking away preserves leverage and prevents unnecessary regret.
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
 
       // 9. Methodology & Limitations
+      
       drawSection("METHODOLOGY & LIMITATIONS", y0 => {
         const text = `
-CarSaavy valuation models are based on static pricing frameworks, depreciation curves, and ownership risk indicators.
-This report does not account for undisclosed damage, inspection findings, or dealer-specific incentives.
+      This report does not account for:
+      
+      • Undisclosed mechanical issues  
+      • Vehicle inspection findings  
+      • Dealer incentives or financing terms  
+      • Emotional or time-sensitive buying pressure  
+      
+      CarSaavy valuation models are based on static pricing frameworks, depreciation curves, and ownership risk indicators.  
+      As a result, final transaction outcomes may vary based on condition, inspection results, or dealer-specific factors.
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
+      
 
       doc.end();
 
