@@ -136,6 +136,15 @@ function deriveMarketContext({ modelKey, ageTier, mileageTier }) {
   // We keep this intentionally conservative.
   // If you later add true market data, this becomes PIC_v2, not v1.
 
+  if (vehicleClass === "performance" || vehicleClass === "exotic") {
+    return {
+      position: "specialty-market",
+      demandLevel: "niche",
+      confidenceLevel: "medium",
+      marketStrengthScore: 65,
+    };
+  }
+  
   const spec = modelKey ? BaseVehicleSpecs[modelKey] : null;
   const segment = spec?.segment || "default";
 
@@ -255,9 +264,24 @@ function estimateValueRange(vehicleProfile = {}) {
   const segment = getSegmentForModel(modelKey);
   const base = getBaseValueForModel(modelKey);
 
-  // Fallback base value by segment if you don’t have model coverage yet
-  const fallbackBase = segment === "luxury" ? 32000 : segment === "truck" ? 36000 : 24000;
-  const baseValue = base !== null ? base : fallbackBase;
+  // Vehicle class–aware fallback anchors (MVP-safe, conservative)
+  let fallbackBase;
+  switch (vehicleProfile.vehicleClass) {
+    case "exotic":
+      fallbackBase = 90000;
+      break;
+    case "performance":
+      fallbackBase = 65000;
+      break;
+    case "luxury":
+      fallbackBase = 42000;
+      break;
+    default:
+      fallbackBase = segment === "truck" ? 36000 : 24000;
+  }
+
+const baseValue = base !== null ? base : fallbackBase;
+
 
   const age = ageTier.age !== null ? ageTier.age : 8;
   const dep = depreciationFactor(segment, age);
@@ -265,6 +289,15 @@ function estimateValueRange(vehicleProfile = {}) {
 
   // Midpoint estimate
   let midpoint = Math.round(baseValue * dep * milMult);
+
+  // Guardrail: prevent absurd undervaluation when asking price is known
+if (vehicleProfile.vehicleClass && vehicleProfile.vehicleClass !== "standard") {
+  const ask = num(vehicleProfile.askingPrice);
+  if (ask && midpoint < ask * 0.5) {
+    midpoint = Math.round(ask * 0.7);
+  }
+}
+
 
   // Reliability nudge (small, conservative)
   const rel = typeof ModelReliabilityScores[modelKey] === "number" ? ModelReliabilityScores[modelKey] : null;
@@ -403,17 +436,32 @@ function buildMvpAnalysis(input = {}) {
     make: input.make,
     model: input.model,
     trimBucket: input.trimBucket || input.trim || null,
+    vehicleClass: input.vehicleClass || null,
     mileage: input.mileage,
   };
+  
 
   const askingPrice = input.askingPrice ?? input.price ?? null;
 
   const est = estimateValueRange(vehicleProfile);
   const ownership = deriveOwnershipOutlook(est.modelKey);
+  let ownershipOutlook = ownership;
+
+  if (
+    vehicleProfile.vehicleClass === "performance" ||
+    vehicleProfile.vehicleClass === "exotic"
+  ) {
+    ownershipOutlook = {
+      reliability: "variable",
+      maintenance: "high",
+    };
+  }
+
   const marketContext = deriveMarketContext({
     modelKey: est.modelKey,
-    ageTier: est.ageTier,
-    mileageTier: est.mileageTier,
+  ageTier: est.ageTier,
+  mileageTier: est.mileageTier,
+  vehicleClass: vehicleProfile.vehicleClass,
   });
 
   const negotiationContext = deriveNegotiationContext({
