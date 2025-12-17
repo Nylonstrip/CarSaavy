@@ -479,7 +479,7 @@ function buildMvpAnalysis(input = {}) {
   const highlights = [];
   if (est.mileageTier.label === "high") highlights.push("Higher mileage can increase negotiation leverage when verified by service records and inspection.");
   if (est.mileageTier.label === "low") highlights.push("Relatively low mileage may support stronger pricing, but verify history and condition.");
-  if (ownership.reliability === "strong") highlights.push("Model reputation suggests stronger long-term reliability relative to peers.");
+  if (ownershipOutlook.reliability === "strong") highlights.push("Model reputation suggests stronger long-term reliability relative to peers.");
   if (marketContext.demandLevel === "high") highlights.push("This vehicle segment tends to be in higher demand, which can reduce seller flexibility.");
   if (marketContext.demandLevel === "low") highlights.push("Lower demand conditions may increase seller flexibility and improve buyer leverage.");
 
@@ -508,8 +508,8 @@ function buildMvpAnalysis(input = {}) {
     },
 
     ownershipOutlook: {
-      reliability: ownership.reliability,
-      maintenance: ownership.maintenance,
+      reliability: ownershipOutlook.reliability,
+      maintenance: ownershipOutlook.maintenance,
     },
 
     negotiationContext: {
