@@ -132,7 +132,7 @@ function deriveOwnershipOutlook(modelKey) {
 // -------------------------------
 // Market context (static, model-first)
 // -------------------------------
-function deriveMarketContext({ modelKey, ageTier, mileageTier }) {
+function deriveMarketContext({ modelKey, ageTier, mileageTier, vehicleClass }) {
   // We keep this intentionally conservative.
   // If you later add true market data, this becomes PIC_v2, not v1.
 
