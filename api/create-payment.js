@@ -39,7 +39,11 @@ module.exports = async (req, res) => {
 
     // At minimum, we need vehicle identity (VIN OR Y/M/M)
     const hasVin = typeof vin === "string" && vin.trim().length >= 6;
-    const hasYMM = year && make && model;
+    const hasYMM =
+    typeof year === "string" && year.trim() &&
+    typeof make === "string" && make.trim() &&
+    typeof model === "string" && model.trim();
+
 
     if (!hasVin && !hasYMM) {
       return res.status(400).json({

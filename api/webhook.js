@@ -120,12 +120,16 @@ module.exports = async function handler(req, res) {
       console.warn("⚠️ VIN lookup failed, proceeding without VIN enrichment");
     }
 
-    // Hard fail only if we truly have nothing
-    if (!vehicleProfile || !vehicleProfile.year || !vehicleProfile.make || !vehicleProfile.model) {
+    const hasVin = typeof vin === "string" && vin.trim().length >= 6;
+    const hasYMM =
+      vehicleProfile &&
+      vehicleProfile.year &&
+      vehicleProfile.make &&
+      vehicleProfile.model;
+    
+    if (!hasVin && !hasYMM) {
       throw new Error("Insufficient vehicle data to generate report");
     }
-
-    
 
     // -----------------------------
     // Build PIC_v1 analysis
