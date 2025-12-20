@@ -111,25 +111,35 @@ module.exports = async function handler(req, res) {
     // -----------------------------
     // Resolve VIN → vehicleProfile
     // -----------------------------
-    let vehicleProfile = null;
+    let vehicleData = null;
 
     try {
-      const vehicleData = await getAllVehicleData(vin);
-      vehicleProfile = normalizeVehicleProfile(vehicleData?.vehicleProfile);
+      vehicleData = await getAllVehicleData({
+        vin,
+        year,
+        make,
+        model,
+        segment,
+        trimTier,
+        mileage,
+      });
     } catch (err) {
-      console.warn("⚠️ VIN lookup failed, proceeding without VIN enrichment");
+      console.warn("⚠️ Vehicle resolution failed:", err);
     }
+
 
     const hasVin = typeof vin === "string" && vin.trim().length >= 6;
     const hasYMM =
-      vehicleProfile &&
-      vehicleProfile.year &&
-      vehicleProfile.make &&
-      vehicleProfile.model;
-    
+      vehicleData &&
+      vehicleData.vehicleProfile &&
+      vehicleData.vehicleProfile.year &&
+      vehicleData.vehicleProfile.make &&
+      vehicleData.vehicleProfile.model;
+
     if (!hasVin && !hasYMM) {
       throw new Error("Insufficient vehicle data to generate report");
     }
+
 
     // -----------------------------
     // Build PIC_v1 analysis
