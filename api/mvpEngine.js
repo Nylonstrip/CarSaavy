@@ -1,26 +1,27 @@
 // api/mvpEngine.js
 /**
- * CarSaavy Pricing Intelligence Core (PIC_v1)
+ * CarSaavy Negotiation Intelligence Core (NIC_v2)
  * ------------------------------------------------------------
- * MVP Rules:
+ * Goals:
  * - No scraping
- * - No dealer profiling
  * - No comparables
- * - No exact "opening offer / target deal price" math
- * - Asking price (optional) is used only for positioning + leverage context
+ * - No dealer profiling
+ * - No "true value" or walk-away dollar math
+ * - Generate defensible, say-it-out-loud negotiation leverage
  *
- * This module returns deterministic, model-first outputs that map
- * cleanly into the locked report outline.
+ * Inputs (backward compatible):
+ * - New: { vehicleProfile: { year, make, model, segment, trimTier, mileage?, vin? }, askingPrice? }
+ * - Legacy: { year, make, model, trim, trimBucket, mileage, price, vin, vehicleClass }
  */
 
 const staticData = safeRequire("./staticData");
 
 // Optional static tables (safe defaults if missing)
-const BaseVehicleSpecs = staticData.BaseVehicleSpecs || {};
-const DepreciationCurves = staticData.DepreciationCurves || {};
-const MileageAdjustment = staticData.MileageAdjustment || {};
 const ModelReliabilityScores = staticData.ModelReliabilityScores || {};
 const KnownIssueFlags = staticData.KnownIssueFlags || {};
+const MakeNotes = staticData.MakeNotes || {}; // optional
+const SegmentProfiles = staticData.SegmentProfiles || {}; // optional
+const ModelSegmentMap = staticData.ModelSegmentMap || {}; // optional (e.g., {"FORD MUSTANG": "performance"})
 
 // -------------------------------
 // Utilities
@@ -49,6 +50,10 @@ function normalizeStr(v) {
   return (v || "").toString().trim();
 }
 
+function normalizeUpper(v) {
+  return normalizeStr(v).toUpperCase();
+}
+
 function maskVin(vin) {
   const s = normalizeStr(vin);
   if (s.length < 6) return s || "N/A";
@@ -72,27 +77,28 @@ function getAgeTier(year) {
   const currentYear = new Date().getFullYear();
   const age = Math.max(0, currentYear - y);
 
-  if (age <= 3) return { label: "newer", age };
-  if (age <= 7) return { label: "mid", age };
-  return { label: "older", age };
+  if (age <= 1) return { label: "current", age }; // 0–1 years old
+  if (age <= 3) return { label: "newer", age };   // 2–3
+  if (age <= 7) return { label: "mid", age };     // 4–7
+  return { label: "older", age };                 // 8+
 }
 
 function getMileageTier(mileage, year) {
   const m = num(mileage);
   if (m === null) return { label: "unknown", mileage: null };
 
-  // If year is known, use an age-based expected band
   const ageTier = getAgeTier(year);
   const age = ageTier.age;
 
+  // If year is unknown, classify purely by mileage
   if (!age && age !== 0) {
-    // fallback only by mileage
     if (m < 30000) return { label: "low", mileage: m };
     if (m < 90000) return { label: "average", mileage: m };
     return { label: "high", mileage: m };
   }
 
-  const expected = age * 12000; // rough national average
+  // Expected miles: ~12k/year national average (rough framing only)
+  const expected = age * 12000;
   const ratio = expected > 0 ? m / expected : 1;
 
   if (ratio <= 0.75) return { label: "low", mileage: m };
@@ -101,7 +107,7 @@ function getMileageTier(mileage, year) {
 }
 
 // -------------------------------
-// Ownership outlook mapping
+// Ownership outlook mapping (qualitative only)
 // -------------------------------
 function deriveOwnershipOutlook(modelKey) {
   const r = typeof ModelReliabilityScores[modelKey] === "number"
@@ -114,427 +120,495 @@ function deriveOwnershipOutlook(modelKey) {
       reliability: "average",
       maintenance: "moderate",
       reliabilityScore: null,
+      ownershipNotes: [
+        "Ownership expectations vary by maintenance history and driving conditions.",
+        "Use service records and an inspection to confirm condition and risk.",
+      ],
     };
   }
 
   if (r >= 8.5) {
-    return { reliability: "strong", maintenance: "low", reliabilityScore: r };
-  }
-  if (r >= 7.0) {
-    return { reliability: "strong", maintenance: "moderate", reliabilityScore: r };
-  }
-  if (r >= 5.5) {
-    return { reliability: "average", maintenance: "moderate", reliabilityScore: r };
-  }
-  return { reliability: "poor", maintenance: "high", reliabilityScore: r };
-}
-
-// -------------------------------
-// Market context (static, model-first)
-// -------------------------------
-function deriveMarketContext({ modelKey, ageTier, mileageTier, vehicleClass }) {
-  // We keep this intentionally conservative.
-  // If you later add true market data, this becomes PIC_v2, not v1.
-
-  if (vehicleClass === "performance" || vehicleClass === "exotic") {
     return {
-      position: "specialty-market",
-      demandLevel: "niche",
-      confidenceLevel: "medium",
-      marketStrengthScore: 65,
+      reliability: "strong",
+      maintenance: "low",
+      reliabilityScore: r,
+      ownershipNotes: [
+        "This model is generally viewed as more reliable than many peers.",
+        "Strong service history still matters—verify maintenance records.",
+      ],
     };
   }
-  
-  const spec = modelKey ? BaseVehicleSpecs[modelKey] : null;
-  const segment = spec?.segment || "default";
-
-  // Start from a simple baseline and nudge based on reliability + age + mileage.
-  let score = 60;
-
-  const r = typeof ModelReliabilityScores[modelKey] === "number"
-    ? ModelReliabilityScores[modelKey]
-    : null;
-
-  if (r !== null) {
-    // map ~5..10 to ~-5..+15
-    score += (r - 6.5) * 4;
+  if (r >= 7.0) {
+    return {
+      reliability: "strong",
+      maintenance: "moderate",
+      reliabilityScore: r,
+      ownershipNotes: [
+        "This model generally holds up well with normal maintenance.",
+        "Confirm service intervals and any common wear items during inspection.",
+      ],
+    };
   }
-
-  if (ageTier.label === "newer") score += 3;
-  else if (ageTier.label === "older") score -= 3;
-
-  if (mileageTier.label === "low") score += 3;
-  else if (mileageTier.label === "high") score -= 4;
-
-  // Segment nudges (very small in v1)
-  if (segment === "luxury") score -= 1;
-  if (segment === "truck") score += 1;
-
-  score = clamp(Math.round(score), 35, 85);
-
-  let demandLevel = "normal";
-  if (score >= 75) demandLevel = "high";
-  else if (score <= 50) demandLevel = "low";
-
-  // Confidence is about model coverage in our tables (NOT data completeness from listings)
-  let confidenceLevel = "medium";
-  if (!modelKey || !spec) confidenceLevel = "low";
-  if (spec && r !== null) confidenceLevel = "high";
-
-  // "position" here is not asking-price based (that’s handled separately)
-  // It’s the general market strength framing.
-  let position = "fair";
-  if (demandLevel === "high") position = "above-market";
-  if (demandLevel === "low") position = "below-market";
-
+  if (r >= 5.5) {
+    return {
+      reliability: "average",
+      maintenance: "moderate",
+      reliabilityScore: r,
+      ownershipNotes: [
+        "Ownership costs are typically manageable with consistent maintenance.",
+        "Inspection and service history are key negotiation levers.",
+      ],
+    };
+  }
   return {
-    position,          // general market framing
-    demandLevel,       // "low" | "normal" | "high"
-    confidenceLevel,   // "low" | "medium" | "high"
-    marketStrengthScore: score, // internal-friendly (optional to show)
+    reliability: "variable",
+    maintenance: "high",
+    reliabilityScore: r,
+    ownershipNotes: [
+      "This model can be more sensitive to maintenance and condition.",
+      "Use inspection findings and service gaps to negotiate price or concessions.",
+    ],
   };
 }
 
 // -------------------------------
-// Value estimation (static)
+// Segment profiles (static, negotiation-focused)
 // -------------------------------
-function getSegmentForModel(modelKey) {
-  const spec = modelKey ? BaseVehicleSpecs[modelKey] : null;
-  return spec?.segment || "default";
-}
+function deriveSegment(vehicleProfile = {}) {
+  // Priority: explicit segment -> map -> fallback by vehicleClass -> default
+  const explicit = normalizeStr(vehicleProfile.segment);
+  if (explicit) return explicit;
 
-function getBaseValueForModel(modelKey) {
-  const spec = modelKey ? BaseVehicleSpecs[modelKey] : null;
-  if (!spec) return null;
-
-  // Try common keys if you’ve been evolving this table
-  const candidates = [spec.baseValue, spec.basePrice, spec.msrp, spec.msrpBase, spec.typicalValue];
-  for (const c of candidates) {
-    const n = num(c);
-    if (n !== null) return n;
-  }
-  return null;
-}
-
-function depreciationFactor(segment, age) {
-  const curve = DepreciationCurves[segment] || DepreciationCurves.default;
-
-  // If curve is an array: index by age
-  if (Array.isArray(curve) && curve.length) {
-    const idx = clamp(age, 0, curve.length - 1);
-    const f = num(curve[idx]);
-    if (f !== null) return clamp(f, 0.08, 1.0);
-  }
-
-  // If curve is an object with numeric keys ("0","1","2"...)
-  if (curve && typeof curve === "object") {
-    const key = String(clamp(age, 0, 30));
-    const f = num(curve[key]);
-    if (f !== null) return clamp(f, 0.08, 1.0);
-  }
-
-  // Fallback: simple exponential-ish decay (conservative)
-  // Year 0: 1.00, Year 5: ~0.62, Year 10: ~0.42
-  const f = Math.pow(0.92, age);
-  return clamp(f, 0.12, 1.0);
-}
-
-function mileageMultiplier(mileageTierLabel) {
-  // If you have a table already, respect it—but treat it safely.
-  // Your old table was used to modify discounts; here we use a multiplier.
-  if (mileageTierLabel && MileageAdjustment[mileageTierLabel] !== undefined) {
-    const adj = num(MileageAdjustment[mileageTierLabel]);
-    // If adj is a small +/- (e.g., 0.05), interpret it as a ~5% impact.
-    if (adj !== null) return clamp(1 - adj, 0.90, 1.08);
-  }
-
-  if (mileageTierLabel === "low") return 1.03;
-  if (mileageTierLabel === "high") return 0.96;
-  return 1.0;
-}
-
-function estimateValueRange(vehicleProfile = {}) {
-  const year = num(vehicleProfile.year);
-  const mileage = num(vehicleProfile.mileage);
   const modelKey = getModelKey(vehicleProfile);
+  const mapped = modelKey ? ModelSegmentMap[normalizeUpper(modelKey)] : null;
+  if (mapped) return mapped;
 
-  const ageTier = getAgeTier(year);
-  const mileageTier = getMileageTier(mileage, year);
+  const vc = normalizeStr(vehicleProfile.vehicleClass);
+  if (vc) return vc;
 
-  const segment = getSegmentForModel(modelKey);
-  const base = getBaseValueForModel(modelKey);
+  return "default";
+}
 
-  // Vehicle class–aware fallback anchors (MVP-safe, conservative)
-  let fallbackBase;
-  switch (vehicleProfile.vehicleClass) {
-    case "exotic":
-      fallbackBase = 90000;
-      break;
+function getSegmentProfile(segment) {
+  const seg = normalizeStr(segment) || "default";
+
+  // Allow custom overrides from staticData if you add later
+  if (SegmentProfiles[seg] && typeof SegmentProfiles[seg] === "object") {
+    return SegmentProfiles[seg];
+  }
+
+  // Safe internal defaults (do not over-claim)
+  // These are negotiation behavior profiles, not market data assertions.
+  switch (seg) {
     case "performance":
-      fallbackBase = 65000;
-      break;
+      return {
+        category: "discretionary",
+        demandVolatility: "high",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "emotion + excitement pricing",
+        leverageAngles: ["timing", "inspection risk", "cross-shopping"],
+      };
     case "luxury":
-      fallbackBase = 42000;
-      break;
+      return {
+        category: "discretionary",
+        demandVolatility: "medium",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "condition-sensitive pricing",
+        leverageAngles: ["inspection risk", "ownership cost framing", "timing"],
+      };
+    case "truck":
+      return {
+        category: "utility",
+        demandVolatility: "medium",
+        sellerFlexibility: "lower",
+        dealerNarrative: "utility demand pricing",
+        leverageAngles: ["inspection risk", "usage wear", "timing"],
+      };
+    case "economy":
+      return {
+        category: "practical",
+        demandVolatility: "low",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "high-competition commodity pricing",
+        leverageAngles: ["cross-shopping", "timing", "fees/add-ons"],
+      };
+    case "suv":
+      return {
+        category: "practical",
+        demandVolatility: "medium",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "family utility pricing",
+        leverageAngles: ["cross-shopping", "inspection risk", "timing"],
+      };
+    case "ev":
+    case "hybrid":
+      return {
+        category: "technology",
+        demandVolatility: "medium",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "range/battery condition sensitivity",
+        leverageAngles: ["inspection risk", "warranty/battery questions", "timing"],
+      };
     default:
-      fallbackBase = segment === "truck" ? 36000 : 24000;
-  }
-
-const baseValue = base !== null ? base : fallbackBase;
-
-
-  const age = ageTier.age !== null ? ageTier.age : 8;
-  const dep = depreciationFactor(segment, age);
-  const milMult = mileageMultiplier(mileageTier.label);
-
-  // Midpoint estimate
-  let midpoint = Math.round(baseValue * dep * milMult);
-
-  // Guardrail: prevent absurd undervaluation when asking price is known
-if (vehicleProfile.vehicleClass && vehicleProfile.vehicleClass !== "standard") {
-  const ask = num(vehicleProfile.askingPrice);
-  if (ask && midpoint < ask * 0.5) {
-    midpoint = Math.round(ask * 0.7);
+      return {
+        category: "general",
+        demandVolatility: "medium",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "standard retail pricing",
+        leverageAngles: ["inspection risk", "cross-shopping", "timing"],
+      };
   }
 }
 
+function normalizeTrimTier(v) {
+  const s = normalizeStr(v).toLowerCase();
+  if (!s) return "mid"; // safe default for MVP
 
-  // Reliability nudge (small, conservative)
-  const rel = typeof ModelReliabilityScores[modelKey] === "number" ? ModelReliabilityScores[modelKey] : null;
-  if (rel !== null) {
-    // maps ~5..10 to ~-2%..+2%
-    const relPct = clamp((rel - 7.0) * 0.01, -0.02, 0.02);
-    midpoint = Math.round(midpoint * (1 + relPct));
+  if (s === "base" || s === "entry" || s === "standard") return "base";
+  if (s === "mid" || s === "middle") return "mid";
+  if (s === "premium" || s === "high" || s === "limited" || s === "lux") return "premium";
+  if (s === "performance" || s === "sport" || s === "special") return "performance";
+
+  // If callers pass OEM trim names, bucket them conservatively as "mid"
+  return "mid";
+}
+
+function deriveTrimLeverage(trimTier) {
+  // Negotiation framing only—no claims about exact market pricing.
+  switch (trimTier) {
+    case "base":
+      return {
+        trimTier: "base",
+        negotiability: "moderate",
+        notes: [
+          "Base trims are typically easier to cross-shop, which can improve buyer leverage.",
+          "Focus on fees, add-ons, and inspection findings to create movement.",
+        ],
+      };
+    case "premium":
+      return {
+        trimTier: "premium",
+        negotiability: "lower",
+        notes: [
+          "Premium trims can have fewer direct substitutes, which may reduce flexibility.",
+          "Leverage comes primarily from inspection risk and timing rather than aggressive anchoring.",
+        ],
+      };
+    case "performance":
+      return {
+        trimTier: "performance",
+        negotiability: "moderate",
+        notes: [
+          "Performance trims are often priced with emotion baked in.",
+          "Use inspection risk and timing to shift the conversation back to rational terms.",
+        ],
+      };
+    case "mid":
+    default:
+      return {
+        trimTier: "mid",
+        negotiability: "high",
+        notes: [
+          "Mid-tier trims are often the most negotiable: not rare enough to be firm, not basic enough to be commodity-only.",
+          "Cross-shopping and timing are your strongest leverage angles.",
+        ],
+      };
+  }
+}
+
+// -------------------------------
+// Depreciation & timing leverage (non-numeric, defensible)
+// -------------------------------
+function deriveDepreciationLeverage({ year, ageTier }) {
+  const y = num(year);
+  const age = ageTier?.age;
+
+  const points = [];
+  points.push("Vehicles face ongoing depreciation regardless of condition; timing affects seller flexibility.");
+
+  if (y) {
+    // Calendar-year framing: no numbers, no false precision.
+    points.push("As vehicles move further past their model year, pricing pressure typically increases, especially when buyers can cross-shop newer inventory.");
   }
 
-  // Build a band around midpoint
-  // Wider when confidence is low
-  const bandPct = base !== null ? 0.07 : 0.10; // 7% if model covered, else 10%
-  const low = Math.round(midpoint * (1 - bandPct));
-  const high = Math.round(midpoint * (1 + bandPct));
+  if (age === 0) {
+    points.push("Near-new vehicles can carry firmer pricing, but dealers still respond to inspection certainty and fee transparency.");
+  } else if (ageTier?.label === "current" || ageTier?.label === "newer") {
+    points.push("Newer vehicles are often priced optimistically early; negotiation improves when you shift the focus to inspection risk and total out-the-door cost.");
+  } else if (ageTier?.label === "mid") {
+    points.push("Mid-age vehicles are commonly negotiated based on condition, tires/brakes, and service history. Use inspection to create price movement.");
+  } else if (ageTier?.label === "older") {
+    points.push("Older vehicles benefit strongly from inspection leverage. Small findings can justify meaningful concessions or repairs.");
+  }
 
   return {
-    low: Math.max(1000, low),
-    midpoint: Math.max(1000, midpoint),
-    high: Math.max(1000, high),
-    ageTier,
-    mileageTier,
-    modelKey,
-    segment,
+    timingPressure: ageTier?.label || "unknown",
+    leveragePoints: points,
   };
 }
 
 // -------------------------------
-// Asking price positioning & negotiation context
+// Condition advisory (leveraged, say-it-out-loud capable)
 // -------------------------------
-function classifyAskingPosition(askingPrice, estimatedValue) {
-  const ask = num(askingPrice);
-  if (ask === null) return { hasAskingPrice: false, position: "unknown" };
-
-  const { low, midpoint, high } = estimatedValue || {};
-  if (![low, midpoint, high].every((n) => typeof n === "number")) {
-    return { hasAskingPrice: true, position: "unknown" };
-  }
-
-  if (ask <= low) return { hasAskingPrice: true, position: "below-market" };
-  if (ask <= midpoint) return { hasAskingPrice: true, position: "fair-buyer" };
-  if (ask <= high) return { hasAskingPrice: true, position: "fair-seller" };
-  return { hasAskingPrice: true, position: "above-market" };
-}
-
-function deriveNegotiationContext({ marketContext, estimatedValue, askingPrice }) {
-  const conf = marketContext?.confidenceLevel || "medium";
-  const askPos = classifyAskingPosition(askingPrice, estimatedValue);
-
-  // Base leverage from asking position if present; else conservative from market
-  let buyerLeverage = "neutral";
-
-  if (askPos.hasAskingPrice) {
-    if (askPos.position === "below-market") buyerLeverage = "strong";
-    else if (askPos.position === "fair-buyer") buyerLeverage = "moderate";
-    else if (askPos.position === "fair-seller") buyerLeverage = "neutral";
-    else if (askPos.position === "above-market") buyerLeverage = "weak";
-  } else {
-    // Without asking price, cap leverage at neutral (MVP-safe)
-    if (marketContext?.demandLevel === "low") buyerLeverage = "neutral";
-    else buyerLeverage = "neutral";
-  }
-
-  // Confidence cap
-  if (conf === "low" && buyerLeverage === "strong") buyerLeverage = "moderate";
-  if (conf === "low" && buyerLeverage === "moderate") buyerLeverage = "neutral";
-
-  // Tone follows leverage (still conservative)
-  let negotiationTone = "balanced";
-  if (buyerLeverage === "weak") negotiationTone = "conservative";
-  if (buyerLeverage === "strong") negotiationTone = "assertive";
-
-  return {
-    buyerLeverage,
-    negotiationTone,
-    askingPricePosition: askPos.position,
-    hasAskingPrice: askPos.hasAskingPrice,
-    walkAwayThreshold: estimatedValue?.high || null, // allowed (ties to PIC high)
-  };
-}
-
-// -------------------------------
-// Condition advisory (generic, safe)
-// -------------------------------
-function buildConditionAdvisory(vehicleProfile = {}) {
-  const out = [];
-
+function buildConditionLeverage(vehicleProfile = {}) {
   const year = num(vehicleProfile.year);
   const mileage = num(vehicleProfile.mileage);
   const ageTier = getAgeTier(year);
   const mileageTier = getMileageTier(mileage, year);
 
-  // Vehicle-specific factors (generic, non-quantified)
-  out.push(
-    "This report assumes the vehicle is in typical condition for its age and category. Prior accidents, visible damage, warning lights, or inconsistent maintenance history can increase buyer leverage."
-  );
-
-  if (ageTier.label === "older") {
-    out.push(
-      "Older vehicles often benefit from a pre-purchase inspection. Use any inspection findings to negotiate repairs, price, or concessions."
-    );
-  }
+  const points = [];
+  points.push("Dealer pricing assumes the vehicle is in strong condition until inspection introduces uncertainty.");
+  points.push("Use inspection timing to avoid committing to a number before risk is known.");
 
   if (mileageTier.label === "high") {
-    out.push(
-      "Higher mileage can justify a more conservative approach to pricing and increases the importance of service records and inspection results."
-    );
+    points.push("Higher mileage increases wear risk; service records and inspection findings become stronger negotiation levers.");
   } else if (mileageTier.label === "low") {
-    out.push(
-      "Relatively low mileage can support stronger pricing, but condition and maintenance history should still be verified."
-    );
+    points.push("Low mileage can support stronger pricing, but condition and maintenance history still matter—verify both.");
+  } else if (mileageTier.label === "unknown") {
+    points.push("If mileage is unknown or unverified, treat it as a risk factor until confirmed.");
+  }
+
+  if (ageTier.label === "older") {
+    points.push("For older vehicles, request an itemized condition review (tires, brakes, fluids, battery) and use any findings to negotiate.");
   }
 
   // Known issues (model-level, not condition-specific)
   const modelKey = getModelKey(vehicleProfile);
   const known = modelKey ? KnownIssueFlags[modelKey] : null;
+  const knownIssues = [];
+
   if (Array.isArray(known) && known.length) {
-    out.push("Common issues for this model can be used as targeted discussion points during negotiation:");
-    // keep it short in-engine; report generator can format bullets
-    for (const issue of known.slice(0, 5)) out.push(`• ${issue}`);
+    for (const issue of known.slice(0, 6)) knownIssues.push(issue);
   }
 
-  return out;
+  return {
+    ageTier,
+    mileageTier,
+    leveragePoints: points,
+    knownIssues,
+  };
 }
 
 // -------------------------------
-// MAIN: buildMvpAnalysis (backward compatible input)
+// Negotiation scripts (the product)
+// -------------------------------
+function buildNegotiationScripts({ segmentProfile, trimLeverage, ageTier, mileageTier, askingPrice }) {
+  const hasAskingPrice = num(askingPrice) !== null;
+
+  // Core lines: safe across all vehicles
+  const scripts = {
+    opener: "I’m not here to argue your price — I just want to make sure it reflects the actual risk and timing on this vehicle.",
+    inspectionDelay: "Your price assumes everything checks out perfectly. I’m comfortable moving forward once we confirm condition and history.",
+    feesPivot: "Before we talk numbers, can we confirm the full out-the-door breakdown (fees, add-ons, and any required packages)?",
+    softCounterSetup: "If we account for timing and inspection risk, I think there’s room to land somewhere more reasonable.",
+  };
+
+  // Segment-aware phrasing (still conservative)
+  if (segmentProfile?.category === "discretionary") {
+    scripts.categoryFrame = "This is a discretionary purchase for me, so I’m cross-shopping hard and I’m not in a rush if the numbers don’t make sense.";
+  } else if (segmentProfile?.category === "utility") {
+    scripts.categoryFrame = "I’m buying this for utility, so condition and total cost matter more to me than anything else.";
+  } else {
+    scripts.categoryFrame = "I’m comparing a few similar options, so I want the deal to reflect the real condition and total cost.";
+  }
+
+  // Age & mileage reinforcement lines
+  if (ageTier?.label === "older") {
+    scripts.ageFrame = "On an older vehicle, inspection findings are the difference between a fair deal and an expensive surprise.";
+  } else if (ageTier?.label === "mid") {
+    scripts.ageFrame = "For a vehicle in this age range, tires, brakes, and service history tend to drive the real cost — that’s what I’m pricing in.";
+  } else {
+    scripts.ageFrame = "Even on newer vehicles, I factor in timing and verify condition before paying top-of-market terms.";
+  }
+
+  if (mileageTier?.label === "high") {
+    scripts.mileageFrame = "With higher mileage, service records and inspection carry more weight. I price based on what we can verify.";
+  } else if (mileageTier?.label === "low") {
+    scripts.mileageFrame = "Low mileage helps, but I still want to verify maintenance and condition before agreeing to the final number.";
+  } else {
+    scripts.mileageFrame = "Mileage verification and condition checks will guide what I’m comfortable paying.";
+  }
+
+  // Trim-tier leaning (negotiation posture)
+  if (trimLeverage?.negotiability === "high") {
+    scripts.trimFrame = "I’m seeing plenty of similar options in this trim tier, so I’m looking for the cleanest total deal.";
+  } else if (trimLeverage?.negotiability === "lower") {
+    scripts.trimFrame = "I understand this trim can command more, but condition and total out-the-door cost still have to make sense.";
+  } else {
+    scripts.trimFrame = "I’m open to this trim at the right number, especially if the condition checks out cleanly.";
+  }
+
+  // Asking-price aware nudge (no math comparisons)
+  if (hasAskingPrice) {
+    scripts.askingPriceFrame = "I see your asking price — my goal is to understand what flexibility exists once we confirm condition and the full out-the-door number.";
+  } else {
+    scripts.askingPriceFrame = "Once we confirm condition and the out-the-door breakdown, I can make a clear and fair offer.";
+  }
+
+  return scripts;
+}
+
+// -------------------------------
+// Pricing posture / zones (non-numeric)
+// -------------------------------
+function deriveNegotiationZones({ hasAskingPrice }) {
+  // No numbers. These are conversation zones.
+  return {
+    zones: [
+      {
+        label: "Dealer-Optimistic",
+        meaning: "Initial asking terms before inspection risk, fees, and timing pressure are discussed.",
+      },
+      {
+        label: "Market-Adjusted",
+        meaning: "Pricing posture after inspection risk and out-the-door breakdown are acknowledged.",
+      },
+      {
+        label: "Buyer-Favorable",
+        meaning: "Applies when inspection findings, service gaps, or add-ons materially increase risk or cost.",
+      },
+    ],
+    note: hasAskingPrice
+      ? "Use inspection timing + out-the-door clarity to shift from Dealer-Optimistic to Market-Adjusted."
+      : "Start with inspection timing + out-the-door clarity before naming a number.",
+  };
+}
+
+// -------------------------------
+// MAIN: buildMvpAnalysis (backward compatible)
 // -------------------------------
 function buildMvpAnalysis(input = {}) {
   /**
    * Backward-compatible input handling:
-   * - New: { vehicleProfile: {year, make, model, trimBucket?, mileage?}, askingPrice? }
-   * - Legacy callers might pass: { year, make, model, trim, mileage, price }
+   * - New: { vehicleProfile: {year, make, model, segment, trimTier, mileage?, vin?}, askingPrice? }
+   * - Legacy callers: { year, make, model, trim, trimBucket, vehicleClass, mileage, price, vin }
    */
-  const vehicleProfile = input.vehicleProfile || {
+  const vp = input.vehicleProfile || {
     year: input.year,
     make: input.make,
     model: input.model,
+    segment: input.segment,
+    trimTier: input.trimTier,
     trimBucket: input.trimBucket || input.trim || null,
     vehicleClass: input.vehicleClass || null,
     mileage: input.mileage,
+    vin: input.vin,
   };
-  
+
+  const year = num(vp.year);
+  const make = normalizeStr(vp.make);
+  const model = normalizeStr(vp.model);
+  const mileage = num(vp.mileage);
+
+  const segment = deriveSegment(vp);
+  const segmentProfile = getSegmentProfile(segment);
+
+  const trimTier = normalizeTrimTier(vp.trimTier || vp.trimBucket || vp.trim);
+  const trimLeverage = deriveTrimLeverage(trimTier);
+
+  const modelKey = getModelKey({ make, model });
+  const ageTier = getAgeTier(year);
+  const mileageTier = getMileageTier(mileage, year);
 
   const askingPrice = input.askingPrice ?? input.price ?? null;
+  const hasAskingPrice = num(askingPrice) !== null;
 
-  const est = estimateValueRange(vehicleProfile);
-  const ownership = deriveOwnershipOutlook(est.modelKey);
-  let ownershipOutlook = ownership;
+  const ownership = deriveOwnershipOutlook(modelKey);
 
-  if (
-    vehicleProfile.vehicleClass === "performance" ||
-    vehicleProfile.vehicleClass === "exotic"
-  ) {
-    ownershipOutlook = {
-      reliability: "variable",
-      maintenance: "high",
-    };
-  }
-
-  const marketContext = deriveMarketContext({
-    modelKey: est.modelKey,
-  ageTier: est.ageTier,
-  mileageTier: est.mileageTier,
-  vehicleClass: vehicleProfile.vehicleClass,
+  const depreciationLeverage = deriveDepreciationLeverage({ year, ageTier });
+  const conditionLeverage = buildConditionLeverage({
+    year,
+    make,
+    model,
+    mileage,
+    segment,
+    vehicleClass: vp.vehicleClass,
   });
 
-  const negotiationContext = deriveNegotiationContext({
-    marketContext,
-    estimatedValue: est,
+  const negotiationScripts = buildNegotiationScripts({
+    segmentProfile,
+    trimLeverage,
+    ageTier,
+    mileageTier,
     askingPrice,
   });
 
-  const conditionAdvisory = buildConditionAdvisory({
-    ...vehicleProfile,
-    mileage: vehicleProfile.mileage,
-  });
+  const negotiationZones = deriveNegotiationZones({ hasAskingPrice });
 
-  // Helpful highlights (optional)
+  // Optional: small “highlights” list for the PDF
   const highlights = [];
-  if (est.mileageTier.label === "high") highlights.push("Higher mileage can increase negotiation leverage when verified by service records and inspection.");
-  if (est.mileageTier.label === "low") highlights.push("Relatively low mileage may support stronger pricing, but verify history and condition.");
-  if (ownershipOutlook.reliability === "strong") highlights.push("Model reputation suggests stronger long-term reliability relative to peers.");
-  if (marketContext.demandLevel === "high") highlights.push("This vehicle segment tends to be in higher demand, which can reduce seller flexibility.");
-  if (marketContext.demandLevel === "low") highlights.push("Lower demand conditions may increase seller flexibility and improve buyer leverage.");
+  highlights.push(`Segment profile: ${normalizeStr(segmentProfile.category) || "general"}`);
+  highlights.push(`Trim tier: ${trimTier}`);
+  if (ageTier.label) highlights.push(`Age tier: ${ageTier.label}`);
+  if (mileageTier.label) highlights.push(`Mileage tier: ${mileageTier.label}`);
+  if (ownership.reliability) highlights.push(`Ownership outlook: ${ownership.reliability} reliability, ${ownership.maintenance} maintenance`);
+
+  // Optional: make-level notes (if you ever add them)
+  const makeNote = MakeNotes[normalizeUpper(make)] || null;
 
   // Return: new contract + legacy-friendly fields
   return {
     // New contract (preferred)
     vehicleProfile: {
-      year: num(vehicleProfile.year),
-      make: normalizeStr(vehicleProfile.make),
-      model: normalizeStr(vehicleProfile.model),
-      trimBucket: vehicleProfile.trimBucket || null,
-      vinMasked: maskVin(input.vin || vehicleProfile.vin || ""),
+      year,
+      make,
+      model,
+      segment,
+      trimTier,
+      vinMasked: maskVin(input.vin || vp.vin || ""),
+      mileage: mileage === null ? null : mileage,
     },
 
-    estimatedValue: {
-      low: est.low,
-      midpoint: est.midpoint,
-      high: est.high,
+    negotiationProfile: {
+      segmentCategory: segmentProfile.category,
+      demandVolatility: segmentProfile.demandVolatility,
+      sellerFlexibility: segmentProfile.sellerFlexibility,
+      leverageAngles: Array.isArray(segmentProfile.leverageAngles) ? segmentProfile.leverageAngles : [],
+      trimNegotiability: trimLeverage.negotiability,
     },
 
-    marketContext: {
-      position: marketContext.position,
-      demandLevel: marketContext.demandLevel,
-      confidenceLevel: marketContext.confidenceLevel,
-      marketStrengthScore: marketContext.marketStrengthScore,
-    },
+    depreciationLeverage,
+
+    conditionLeverage,
 
     ownershipOutlook: {
-      reliability: ownershipOutlook.reliability,
-      maintenance: ownershipOutlook.maintenance,
+      reliability: ownership.reliability,
+      maintenance: ownership.maintenance,
+      notes: ownership.ownershipNotes || [],
     },
 
-    negotiationContext: {
-      buyerLeverage: negotiationContext.buyerLeverage,
-      negotiationTone: negotiationContext.negotiationTone,
-      hasAskingPrice: negotiationContext.hasAskingPrice,
-      askingPricePosition: negotiationContext.askingPricePosition,
-      walkAwayThreshold: negotiationContext.walkAwayThreshold,
-    },
+    negotiationScripts,
 
-    conditionAdvisory,
+    negotiationZones,
+
+    context: {
+      hasAskingPrice,
+      askingPrice: hasAskingPrice ? num(askingPrice) : null, // keep numeric if provided
+      makeNote,
+    },
 
     highlights,
 
-    modelVersion: "PIC_v1",
+    modelVersion: "NIC_v2",
 
-    // Legacy fields (so reportGenerator doesn’t explode while we refactor it next)
-    modelKey: est.modelKey,
-    reliabilityScore: ownership.reliabilityScore,
-    marketStrengthScore: marketContext.marketStrengthScore,
-    // Keep these null/absent in v1 (explicitly no listing-driven bands)
+    // ---------------------------
+    // Legacy fields (keep safe defaults while other files are refactored)
+    // ---------------------------
+    modelKey,
+    reliabilityScore: ownership.reliabilityScore || null,
+
+    // Pricing-related legacy fields (deprecated)
+    estimatedValue: null,
     minPrice: null,
     maxPrice: null,
     pricePositioning: null,
     pricingConfidenceScore: null,
+
+    // Old market fields (deprecated)
+    marketContext: null,
+    marketStrengthScore: null,
+
+    // Feature / listing / dealer fields (not in MVP)
     dealerProfile: null,
     featureAnalysis: null,
     negotiationPlan: null,
@@ -545,9 +619,12 @@ function buildMvpAnalysis(input = {}) {
 module.exports = {
   buildMvpAnalysis,
 
-  // Export helpers in case other files reference them
+  // Keep helpers exported in case other files reference them
   getModelKey,
   getAgeTier,
   getMileageTier,
-  estimateValueRange,
+
+  // Expose a couple useful internal helpers (optional)
+  normalizeTrimTier,
+  deriveSegment,
 };

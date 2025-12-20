@@ -1,12 +1,12 @@
 // api/services/vehicleData.js
 /**
- * MVP v1 Vehicle Data Resolver
+ * Vehicle Data Resolver (NIC_v2)
  * ---------------------------------------
  * Purpose:
- * - Resolve VIN → vehicleProfile
- * - No scraping
+ * - Resolve vehicleProfile from VIN OR dropdown metadata
+ * - VIN is optional enrichment, not required
  * - No pricing
- * - No dealer data
+ * - No scraping
  */
 
 const axios = require("axios");
@@ -35,28 +35,25 @@ async function decodeVin(vin) {
 // Vehicle class resolution
 // ----------------------------
 function resolveVehicleClass(make, model, trimRaw) {
-  const makeUpper = make.toUpperCase();
-  const modelUpper = model.toUpperCase();
+  const makeUpper = (make || "").toUpperCase();
+  const modelUpper = (model || "").toUpperCase();
   const trimUpper = (trimRaw || "").toUpperCase();
 
-  // Exotic / specialty brands
   const exoticBrands = [
     "FERRARI",
     "LAMBORGHINI",
     "MCLAREN",
     "ASTON MARTIN",
     "BENTLEY",
-    "ROLLS-ROYCE"
+    "ROLLS-ROYCE",
   ];
 
-  // Performance / enthusiast brands
   const performanceBrands = [
     "PORSCHE",
     "CORVETTE",
-    "LOTUS"
+    "LOTUS",
   ];
 
-  // Luxury brands
   const luxuryBrands = [
     "BMW",
     "MERCEDES-BENZ",
@@ -66,10 +63,9 @@ function resolveVehicleClass(make, model, trimRaw) {
     "INFINITI",
     "GENESIS",
     "JAGUAR",
-    "LAND ROVER"
+    "LAND ROVER",
   ];
 
-  // Trim / model escalation keywords
   const exoticKeywords = /(SPYDER|HYPERCAR)/i;
   const performanceKeywords = /(GT|RS|TURBO|Z06|ZR1|TYPE R|TRACK|PERFORMANCE)/i;
 
@@ -92,72 +88,114 @@ function resolveVehicleClass(make, model, trimRaw) {
 }
 
 // ----------------------------
-// Main resolver
+// Trim tier normalization
 // ----------------------------
-async function getAllVehicleData(vin) {
-  if (!isValidVinFormat(vin)) {
-    return {
-      error: "Invalid VIN format",
-      vehicleProfile: null
-    };
-  }
+function normalizeTrimTier(raw) {
+  if (!raw) return "mid";
+  const t = raw.toString().toLowerCase();
 
-  try {
-    console.log("🔍 Decoding VIN (NHTSA):", vin);
+  if (/(performance|sport|gt|type r|amg|m)/i.test(t)) return "performance";
+  if (/(limited|platinum|touring|luxury|signature|premier)/i.test(t)) return "premium";
+  if (/(base|standard|lx|le|s)/i.test(t)) return "base";
 
-    const decoded = await decodeVin(vin);
+  return "mid";
+}
 
-    if (!decoded || !decoded.Make || !decoded.Model || !decoded.ModelYear) {
+// ----------------------------
+// MAIN resolver (VIN OR metadata)
+// ----------------------------
+async function getAllVehicleData(input = {}) {
+  /**
+   * input can be:
+   * - string VIN
+   * - { vin, year, make, model, segment, trimTier, mileage }
+   */
+
+  // ----------------------------
+  // Case 1: input is VIN string
+  // ----------------------------
+  if (typeof input === "string") {
+    const vin = input.trim().toUpperCase();
+
+    if (!isValidVinFormat(vin)) {
       return {
-        error: "Unable to resolve vehicle from VIN",
-        vehicleProfile: null
+        error: "Invalid VIN format",
+        vehicleProfile: null,
       };
     }
 
-    // ----------------------------
-    // Trim bucketing (kept)
-    // ----------------------------
-    let trimBucket = null;
-    const trimRaw = decoded.Trim || "";
+    try {
+      console.log("🔍 Decoding VIN (NHTSA):", vin);
 
-    if (trimRaw) {
-      const t = trimRaw.toLowerCase();
-      if (/(sport|performance|gt|st|type r|amg|m)/i.test(t)) {
-        trimBucket = "performance";
-      } else if (/(limited|platinum|touring|luxury|signature|premier)/i.test(t)) {
-        trimBucket = "premium";
-      } else if (/(base|standard|lx|le|s)/i.test(t)) {
-        trimBucket = "base";
-      } else {
-        trimBucket = "mid";
+      const decoded = await decodeVin(vin);
+
+      if (!decoded || !decoded.Make || !decoded.Model || !decoded.ModelYear) {
+        return {
+          error: "Unable to resolve vehicle from VIN",
+          vehicleProfile: null,
+        };
       }
+
+      const trimTier = normalizeTrimTier(decoded.Trim);
+      const vehicleClass = resolveVehicleClass(
+        decoded.Make,
+        decoded.Model,
+        decoded.Trim
+      );
+
+      return {
+        vehicleProfile: {
+          year: Number(decoded.ModelYear),
+          make: decoded.Make,
+          model: decoded.Model,
+          segment: null, // can be filled later by dropdown logic
+          trimTier,
+          vehicleClass,
+          vin,
+        },
+      };
+    } catch (err) {
+      console.error("❌ VIN decode failed:", err);
+      return {
+        error: "VIN decoding service unavailable",
+        vehicleProfile: null,
+      };
     }
+  }
 
-    // ----------------------------
-    // NEW: vehicle class
-    // ----------------------------
-    const vehicleClass = resolveVehicleClass(
-      decoded.Make,
-      decoded.Model,
-      decoded.Trim
-    );
+  // ----------------------------
+  // Case 2: input is metadata object (dropdown flow)
+  // ----------------------------
+  const {
+    vin,
+    year,
+    make,
+    model,
+    segment,
+    trimTier,
+  } = input || {};
 
+  if (!year || !make || !model) {
     return {
-      vehicleProfile: {
-        year: Number(decoded.ModelYear),
-        make: decoded.Make,
-        model: decoded.Model,
-        trimBucket,
-        vehicleClass
-      }
-    };
-  } catch (err) {
-    console.error("❌ VIN decode failed:", err);
-    return {
-      error: "VIN decoding service unavailable",
-      vehicleProfile: null
+      error: "Insufficient vehicle data",
+      vehicleProfile: null,
     };
   }
+
+  const normalizedTrim = normalizeTrimTier(trimTier);
+  const vehicleClass = resolveVehicleClass(make, model, trimTier);
+
+  return {
+    vehicleProfile: {
+      year: Number(year),
+      make,
+      model,
+      segment: segment || null,
+      trimTier: normalizedTrim,
+      vehicleClass,
+      vin: typeof vin === "string" ? vin.trim().toUpperCase() : null,
+    },
+  };
 }
 
 module.exports = { getAllVehicleData };

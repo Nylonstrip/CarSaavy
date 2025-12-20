@@ -1,40 +1,74 @@
 // api/create-payment.js
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
+function normalizeStr(v) {
+  if (v === undefined || v === null) return "";
+  return String(v).trim();
+}
+
 function normalizePrice(v) {
-  if (v === undefined || v === null) return null;
+  if (v === undefined || v === null) return "";
   const s = String(v).trim().replace(/[$,]/g, "");
-  if (!s) return null;
+  if (!s) return "";
   const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) ? String(n) : "";
 }
 
 module.exports = async (req, res) => {
   try {
     console.log("📩 Incoming create-payment request:", req.body);
 
-    const { vin, email, askingPrice } = req.body;
+    const {
+      email,
+      vin,
+      year,
+      make,
+      model,
+      segment,
+      trimTier,
+      mileage,
+      askingPrice,
+    } = req.body;
 
     // ----------------------------
-    // 1️⃣ Required checks (PIC_v1)
+    // 1️⃣ Required checks (NIC_v2)
     // ----------------------------
-    if (!vin || typeof vin !== "string") {
-      return res.status(400).json({ error: "VIN is required." });
-    }
-
     if (!email || typeof email !== "string") {
       return res.status(400).json({ error: "Email is required." });
     }
 
-    const normalizedAskingPrice = normalizePrice(askingPrice);
+    // At minimum, we need vehicle identity (VIN OR Y/M/M)
+    const hasVin = typeof vin === "string" && vin.trim().length >= 6;
+    const hasYMM = year && make && model;
+
+    if (!hasVin && !hasYMM) {
+      return res.status(400).json({
+        error: "Vehicle information is required (VIN or Year/Make/Model).",
+      });
+    }
 
     // ----------------------------
-    // 2️⃣ Single MVP price
+    // 2️⃣ Normalize metadata
     // ----------------------------
-    const priceInCents = 1500; // $15.00 — one product, one price
+    const metadata = {
+      email: normalizeStr(email).toLowerCase(),
+      vin: normalizeStr(vin).toUpperCase(),
+      year: normalizeStr(year),
+      make: normalizeStr(make),
+      model: normalizeStr(model),
+      segment: normalizeStr(segment),
+      trimTier: normalizeStr(trimTier),
+      mileage: normalizeStr(mileage),
+      askingPrice: normalizePrice(askingPrice),
+    };
 
     // ----------------------------
-    // 3️⃣ Base URL
+    // 3️⃣ Single MVP price
+    // ----------------------------
+    const priceInCents = 1500; // $15.00
+
+    // ----------------------------
+    // 4️⃣ Base URL
     // ----------------------------
     const baseUrl =
       process.env.NODE_ENV === "production"
@@ -44,14 +78,14 @@ module.exports = async (req, res) => {
         : "http://localhost:3000";
 
     // ----------------------------
-    // 4️⃣ Create Stripe Checkout Session
+    // 5️⃣ Create Stripe Checkout Session
     // ----------------------------
     console.log("💳 Creating Stripe Checkout Session...");
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      customer_email: email,
+      customer_email: metadata.email,
 
       line_items: [
         {
@@ -59,36 +93,22 @@ module.exports = async (req, res) => {
             currency: "usd",
             unit_amount: priceInCents,
             product_data: {
-              name: "CarSaavy Vehicle Market Report",
+              name: "CarSaavy Negotiation Readiness Report",
               description:
-                "Market-based valuation and negotiation strategy for your vehicle",
+                "A negotiation-focused report to help you reduce overpricing and avoid costly mistakes",
             },
           },
           quantity: 1,
         },
       ],
 
-      // 🔒 This metadata MUST match webhook expectations
+      // 🔒 Canonical metadata (used by webhook)
       payment_intent_data: {
-        metadata: {
-          vin: vin.trim().toUpperCase(),
-          email: email.trim().toLowerCase(),
-          price:
-            normalizedAskingPrice !== null
-              ? String(normalizedAskingPrice)
-              : "",
-        },
+        metadata,
       },
 
-      // Optional: mirrored on session for debugging
-      metadata: {
-        vin: vin.trim().toUpperCase(),
-        email: email.trim().toLowerCase(),
-        price:
-          normalizedAskingPrice !== null
-            ? String(normalizedAskingPrice)
-            : "",
-      },
+      // Optional mirror for debugging
+      metadata,
 
       success_url: `${baseUrl}/success`,
       cancel_url: `${baseUrl}/cancel`,

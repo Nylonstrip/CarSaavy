@@ -13,6 +13,24 @@ module.exports.config = {
   api: { bodyParser: false },
 };
 
+function normalizeVehicleProfile(raw = {}) {
+  if (!raw) return null;
+
+  return {
+    year: raw.year || null,
+    make: raw.make || null,
+    model: raw.model || null,
+
+    // New negotiation-first fields
+    segment: raw.segment || raw.vehicleClass || null,
+    trimTier: raw.trimTier || raw.trimBucket || raw.trim || null,
+
+    mileage: raw.mileage ?? null,
+    vin: raw.vin || null,
+  };
+}
+
+
 // -----------------------------
 // Email helper (simple + safe)
 // -----------------------------
@@ -21,7 +39,7 @@ async function sendReportEmail(toEmail, reportUrl, vin) {
     await resend.emails.send({
       from: "CarSaavy Reports <reports@carsaavy.com>",
       to: toEmail,
-      subject: `Your CarSaavy Report for VIN ${vin}`,
+      subject: "Your CarSaavy Negotiation Report is Ready",
       html: `
         <div style="font-family: Arial; padding: 20px;">
           <h2>🚗 Your CarSaavy Vehicle Report is Ready</h2>
@@ -93,11 +111,20 @@ module.exports = async function handler(req, res) {
     // -----------------------------
     // Resolve VIN → vehicleProfile
     // -----------------------------
-    const vehicleData = await getAllVehicleData(vin);
+    let vehicleProfile = null;
 
-    if (!vehicleData || !vehicleData.vehicleProfile) {
-      throw new Error("VIN resolution failed");
+    try {
+      const vehicleData = await getAllVehicleData(vin);
+      vehicleProfile = normalizeVehicleProfile(vehicleData?.vehicleProfile);
+    } catch (err) {
+      console.warn("⚠️ VIN lookup failed, proceeding without VIN enrichment");
     }
+
+    // Hard fail only if we truly have nothing
+    if (!vehicleProfile || !vehicleProfile.year || !vehicleProfile.make || !vehicleProfile.model) {
+      throw new Error("Insufficient vehicle data to generate report");
+    }
+
     
 
     // -----------------------------

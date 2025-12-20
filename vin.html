@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CarSaavy — VIN Report Tool</title>
+  <title>CarSaavy — Negotiation Report Tool</title>
   <link rel="icon" type="image/png" href="/favicon.ico" />
   <style>
+    /* ===== EXISTING STYLES — UNCHANGED ===== */
     :root{
       --bg:#0b0f13;
       --card:#121417;
@@ -117,7 +118,8 @@
     }
 
     input[type="text"],
-    input[type="email"] {
+    input[type="email"],
+    select {
       width: 100%;
       padding: 0.75rem;
       border: 1px solid #444;
@@ -140,26 +142,13 @@
       cursor: pointer;
       transition: background 0.2s ease-in-out, transform 0.2s ease;
     }
-    button:hover {
-      background-color: #1a9dce;
-    }
-    button.pulse {
-      animation: pulse 0.6s ease;
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 183, 240, 0.6); }
-      50% { transform: scale(1.05); box-shadow: 0 0 15px rgba(34, 183, 240, 0.9); }
-      100% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 183, 240, 0.6); }
-    }
+    button:hover { background-color: #1a9dce; }
 
     .message {
       margin-top: 1rem;
       font-size: 0.95rem;
       color: #f87171;
       display: none;
-    }
-    .message.success {
-      color: #7bf58a;
     }
 
     footer {
@@ -171,132 +160,142 @@
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="brand">
-      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
+
+<header class="site-header">
+  <div class="brand">
+    <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
+  </div>
+  <nav class="site-nav">
+    <a href="/index">Home</a>
+    <a href="/vin">VIN Tool</a>
+    <a href="/about">About</a>
+    <a href="/contact">Contact</a>
+    <a href="/privacy">Privacy</a>
+  </nav>
+</header>
+
+<main>
+  <h1>Get Your Negotiation-Ready Report</h1>
+  <p>Enter your VIN, or provide vehicle details if a VIN isn’t available.</p>
+
+  <div class="steps" id="steps">
+    <div class="step active">1️⃣ Vehicle Info</div>
+    <div class="step">2️⃣ Pay & Process</div>
+    <div class="step">3️⃣ Receive Report</div>
+  </div>
+
+  <form id="vinForm">
+    <input type="email" id="email" placeholder="Enter your email" required />
+    <input type="text" id="vin" placeholder="Enter your 17-character VIN (optional)" maxlength="17" />
+    <input type="text" id="askingPrice" placeholder="Asking Price (optional)" />
+
+    <p style="margin:10px 0;color:#9aa6b2;font-size:0.9rem;">
+      Don’t have a VIN?
+      <a href="#" id="toggleDetails" style="color:#22b7f0;text-decoration:underline;">
+        Enter vehicle details instead
+      </a>
+    </p>
+
+    <div id="vehicleDetails" style="display:none;">
+      <input type="text" id="year" placeholder="Year (e.g. 2020)" />
+      <input type="text" id="make" placeholder="Make (e.g. Toyota)" />
+      <input type="text" id="model" placeholder="Model (e.g. Camry)" />
+
+      <select id="segment">
+        <option value="">Select vehicle segment</option>
+        <option value="economy">Economy / Compact</option>
+        <option value="sedan">Sedan</option>
+        <option value="suv">SUV / Crossover</option>
+        <option value="truck">Pickup Truck</option>
+        <option value="performance">Performance / Sports</option>
+        <option value="luxury">Luxury</option>
+        <option value="hybrid">Hybrid / EV</option>
+      </select>
+
+      <select id="trimTier">
+        <option value="">Select trim tier</option>
+        <option value="base">Base</option>
+        <option value="mid">Mid</option>
+        <option value="premium">Premium</option>
+        <option value="performance">Performance</option>
+      </select>
     </div>
 
-    <nav class="site-nav" aria-label="Main nav">
-      <a href="/index">Home</a>
-      <a href="/vin">VIN Tool</a>
-      <a href="/about">About</a>
-      <a href="/contact">Contact</a>
-      <a href="/privacy">Privacy</a>
-    </nav>
-  </header>
+    <button type="submit">Generate Report</button>
+    <div class="message" id="message"></div>
+  </form>
+</main>
 
-  <main>
-    <h1>Get Your Negotiation-Ready Report</h1>
-    <p>Simply enter your vehicle's VIN below and follow the steps to receive your report.</p>
+<footer>© 2025 CarSaavy — Negotiate Smarter</footer>
 
-    <div class="steps" id="steps">
-      <div class="step active" id="step1">1️⃣ Enter VIN</div>
-      <div class="step" id="step2">2️⃣ Pay &amp; Process</div>
-      <div class="step" id="step3">3️⃣ Receive Report</div>
-    </div>
+<script>
+  const form = document.getElementById("vinForm");
+  const messageEl = document.getElementById("message");
+  const toggle = document.getElementById("toggleDetails");
+  const details = document.getElementById("vehicleDetails");
 
-    <form id="vinForm">
-      <input
-        type="email"
-        id="email"
-        placeholder="Enter your email"
-        required
-      />
-    
-      <input
-        type="text"
-        id="vin"
-        placeholder="Enter your 17-character VIN"
-        maxlength="17"
-        required
-      />
-    
-      <input
-        type="text"
-        id="askingPrice"
-        placeholder="Asking Price (optional)"
-      />
-    
-      <button type="submit" id="submitBtn">Generate Report</button>
-      <div class="message" id="message"></div>
-    </form>
-    
-  </main>
+  toggle.addEventListener("click", e => {
+    e.preventDefault();
+    details.style.display = details.style.display === "none" ? "block" : "none";
+  });
 
-  <footer class="site-footer">
-    © 2025 CarSaavy — Negotiate Smarter •
-    <a href="/privacy" style="color:var(--muted);text-decoration:underline">Privacy</a>
-  </footer>
+  function isValidVIN(v) {
+    return /^[A-HJ-NPR-Z0-9]{17}$/i.test(v);
+  }
 
-  <script>
-    const form = document.getElementById("vinForm");
-    const messageEl = document.getElementById("message");
-    const stepEls = document.querySelectorAll(".step");
-  
-    function setStep(activeIndex) {
-      stepEls.forEach((step, i) => {
-        step.classList.toggle("active", i === activeIndex);
-        if (i <= activeIndex) step.classList.add("glow");
-        else step.classList.remove("glow");
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const email = emailEl = document.getElementById("email").value.trim();
+    const vin = document.getElementById("vin").value.trim().toUpperCase();
+    const askingPrice = document.getElementById("askingPrice").value.trim();
+
+    const year = document.getElementById("year").value.trim();
+    const make = document.getElementById("make").value.trim();
+    const model = document.getElementById("model").value.trim();
+    const segment = document.getElementById("segment").value;
+    const trimTier = document.getElementById("trimTier").value;
+
+    const hasVin = vin && isValidVIN(vin);
+    const hasDetails = year && make && model;
+
+    if (!hasVin && !hasDetails) {
+      messageEl.textContent =
+        "Please enter a valid VIN or provide your vehicle details.";
+      messageEl.style.display = "block";
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          vin: hasVin ? vin : null,
+          year: hasDetails ? year : null,
+          make: hasDetails ? make : null,
+          model: hasDetails ? model : null,
+          segment,
+          trimTier,
+          askingPrice: askingPrice || null
+        })
       });
+
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else throw new Error("Checkout failed");
+    } catch {
+      messageEl.textContent = "Something went wrong. Please try again.";
+      messageEl.style.display = "block";
     }
-  
-    function isValidVIN(vin) {
-      return /^[A-HJ-NPR-Z0-9]{17}$/i.test(vin.trim());
-    }
-  
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-  
-      const email = document.getElementById("email").value.trim();
-      const vin = document.getElementById("vin").value.trim().toUpperCase();
-      const askingPrice = document.getElementById("askingPrice").value.trim();
-  
-      messageEl.style.display = "none";
-  
-      if (!isValidVIN(vin)) {
-        messageEl.textContent = "Please enter a valid 17-character VIN.";
-        messageEl.style.display = "block";
-        return;
-      }
-  
-      setStep(1); // Pay & Process
-  
-      try {
-        const res = await fetch("/api/create-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            vin,
-            email,
-            askingPrice: askingPrice || null
-          })
-        });
-  
-        const data = await res.json();
-  
-        if (data.url) {
-          setStep(2); // Receive Report
-          window.location.href = data.url;
-        } else {
-          throw new Error("Checkout session failed");
-        }
-      } catch (err) {
-        messageEl.textContent = "Something went wrong. Please try again.";
-        messageEl.style.display = "block";
-        setStep(0);
-      }
-    });
-  
-    // Entrance animations
-    window.addEventListener("load", () => {
-      document.querySelector(".steps").classList.add("visible");
-      setTimeout(() => {
-        document.querySelector("form").classList.add("visible");
-      }, 400);
-    });
-  </script>
-  
+  });
+
+  window.addEventListener("load", () => {
+    document.querySelector(".steps").classList.add("visible");
+    document.querySelector("form").classList.add("visible");
+  });
+</script>
 
 </body>
 </html>

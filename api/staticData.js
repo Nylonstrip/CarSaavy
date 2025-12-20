@@ -13,7 +13,9 @@
 
 
 /**
- * Static data tables for the MVP valuation engine.
+ * Static reference data for CarSaavy (NIC_v2).
+    Numeric valuation tables are legacy and not used in MVP.
+
  *
  * This is intentionally small and focused on popular models.
  * You can expand this file over time without changing any logic.

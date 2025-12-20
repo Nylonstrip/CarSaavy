@@ -32,12 +32,19 @@ module.exports = async (req, res) => {
 
     console.log("[GenerateReport] Incoming request", { vin, email, askingPrice, method });
 
-    if (!vin) {
+    const hasVin = typeof vin === "string" && vin.trim().length >= 6;
+    const hasYMM =
+      vehicleData?.vehicleProfile?.year &&
+      vehicleData?.vehicleProfile?.make &&
+      vehicleData?.vehicleProfile?.model;
+
+    if (!hasVin && !hasYMM) {
       return res.status(400).json({
         success: false,
-        error: "VIN is required",
+        error: "Vehicle information is required (VIN or Year/Make/Model).",
       });
     }
+
 
     // 1) Resolve vehicle profile / data (no scraping)
     // Keep this call for now so we don’t break your existing pipeline.
@@ -45,19 +52,16 @@ module.exports = async (req, res) => {
     console.log("[GenerateReport] Resolving vehicle data...");
     const vehicleData = await getAllVehicleData(vin);
 
-    // 2) Build PIC_v1 analysis (model-first)
+    // 2) Build NIC_v2 negotiation analysis
+
     // We try to read a vehicleProfile from vehicleData if you have it.
     // Otherwise, fall back to whatever year/make/model fields exist.
-    const vehicleProfile =
-      vehicleData && vehicleData.vehicleProfile
-        ? vehicleData.vehicleProfile
-        : {
-            year: vehicleData?.year,
-            make: vehicleData?.make,
-            model: vehicleData?.model,
-            trimBucket: vehicleData?.trimBucket || vehicleData?.trim || null,
-            mileage: vehicleData?.mileage || null,
-          };
+    if (!vehicleData || !vehicleData.vehicleProfile) {
+      throw new Error("Vehicle profile could not be resolved");
+    }
+    
+    const vehicleProfile = vehicleData.vehicleProfile;
+    
 
     const analysis = buildMvpAnalysis({
       vin,
@@ -89,15 +93,13 @@ module.exports = async (req, res) => {
     // 5) Return JSON (keep it dev-friendly, but don’t leak too much in prod)
     return res.status(200).json({
       success: true,
-      vin,
+      vin: vin || null,
       email: email || null,
       askingPrice,
       reportUrl,
-      // Expose analysis because it’s what you’ll want to debug while building
       analysis,
-      // Keep vehicleData for now since your existing tooling might expect it
-      vehicleData,
     });
+    
   } catch (err) {
     console.error("[GenerateReport] Error:", err);
     return res.status(500).json({

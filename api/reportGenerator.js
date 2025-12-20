@@ -25,10 +25,10 @@ function drawHybridParagraph(doc, text, opts = {}) {
   text = applyProtectiveSpacing(text);
 
   doc.fontSize(fontSize);
-  const paragraphs = text.split("\n").map(p => p.trim()).filter(Boolean);
+  const paragraphs = text.split("\n").map((p) => p.trim()).filter(Boolean);
 
   let cursorY = y;
-  paragraphs.forEach(p => {
+  paragraphs.forEach((p) => {
     doc.text(p, x, cursorY, { width });
     cursorY += lineHeight + paragraphGap;
   });
@@ -43,7 +43,8 @@ function drawSectionHeader(doc, title, y) {
 
   y += 14;
   doc.rect(barX, y, barWidth, barHeight).fill("#000000");
-  doc.fillColor("#FFFFFF")
+  doc
+    .fillColor("#FFFFFF")
     .font("Helvetica-Bold")
     .fontSize(13)
     .text(title, barX + 10, y + 5);
@@ -62,21 +63,34 @@ function ensureSpace(doc, y, needed = 120) {
 
 function drawHeader(doc, vinMasked) {
   doc.rect(0, 0, doc.page.width, 70).fill("#000000");
-  doc.fillColor("#FFFFFF")
+  doc
+    .fillColor("#FFFFFF")
     .font("Helvetica-Bold")
     .fontSize(18)
-    .text("CARSAAVY VEHICLE MARKET REPORT", 50, 20);
+    .text("CARSAAVY NEGOTIATION READINESS REPORT", 50, 20);
 
-  doc.font("Helvetica").fontSize(10)
-    .text(`VIN: ${vinMasked}`, 400, 24, { align: "right" })
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .text(`VIN: ${vinMasked || "N/A"}`, 400, 24, { align: "right" })
     .text(`Generated: ${new Date().toLocaleDateString()}`, 400, 40, { align: "right" });
 
   doc.fillColor("#000000");
   return 110;
 }
 
+function safeStr(v, fallback = "N/A") {
+  const s = (v || "").toString().trim();
+  return s ? s : fallback;
+}
+
+function safeJoinBullets(lines) {
+  if (!Array.isArray(lines) || !lines.length) return "N/A";
+  return lines.map((l) => `• ${l}`).join("\n");
+}
+
 // ===============================
-// MAIN REPORT GENERATOR (MVP)
+// MAIN REPORT GENERATOR (NIC_v2)
 // ===============================
 async function generateVehicleReport({ analysis }, vin) {
   return new Promise(async (resolve, reject) => {
@@ -88,7 +102,8 @@ async function generateVehicleReport({ analysis }, vin) {
       const stream = fs.createWriteStream(tempFile);
       doc.pipe(stream);
 
-      let y = drawHeader(doc, analysis.vehicleProfile.vinMasked);
+      const vp = analysis?.vehicleProfile || {};
+      let y = drawHeader(doc, vp.vinMasked);
 
       // Helper wrapper
       const drawSection = (title, renderer) => {
@@ -99,111 +114,162 @@ async function generateVehicleReport({ analysis }, vin) {
       };
 
       // 1. Executive Snapshot
-      drawSection("EXECUTIVE SNAPSHOT", y0 => {
-        const t = analysis;
+      drawSection("EXECUTIVE SNAPSHOT", (y0) => {
         const text = `
-This report provides a market-based value estimate and a practical negotiation strategy for the selected vehicle. 
-The analysis is derived from static valuation models, ownership risk factors, and market context — not dealer listings or advertisements.
+This report is designed to help you negotiate more effectively by focusing on defensible leverage: timing pressure, inspection risk, and category behavior.
+It is not based on live dealer listings, advertisements, or exact “true value” pricing—its purpose is to help you speak confidently and avoid overpaying through uncertainty.
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
 
       // 2. Vehicle Summary
-      drawSection("VEHICLE SUMMARY", y0 => {
-        const v = analysis.vehicleProfile;
+      drawSection("VEHICLE SUMMARY", (y0) => {
         const text = `
-Year: ${v.year || "N/A"}
-Make: ${v.make || "N/A"}
-Model: ${v.model || "N/A"}
-Trim Category: ${v.trimBucket || "N/A"}
+Year: ${vp.year || "N/A"}
+Make: ${safeStr(vp.make)}
+Model: ${safeStr(vp.model)}
+Segment: ${safeStr(vp.segment)}
+Trim Tier: ${safeStr(vp.trimTier)}
+Mileage: ${vp.mileage === null || vp.mileage === undefined ? "N/A" : vp.mileage.toLocaleString()}
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
 
-      // 3. Estimated Vehicle Value
-      drawSection("ESTIMATED VEHICLE VALUE", y0 => {
-        const v = analysis.estimatedValue;
+      // 3. Negotiation Profile
+      drawSection("NEGOTIATION PROFILE", (y0) => {
+        const np = analysis?.negotiationProfile || {};
         const text = `
-Estimated Market Range:
-• Low: $${v.low.toLocaleString()}
-• Typical: $${v.midpoint.toLocaleString()}
-• High: $${v.high.toLocaleString()}
+Category Type: ${safeStr(np.segmentCategory)}
+Demand Volatility: ${safeStr(np.demandVolatility)}
+Expected Seller Flexibility: ${safeStr(np.sellerFlexibility)}
+Trim Negotiability: ${safeStr(np.trimNegotiability)}
+
+Primary Leverage Angles:
+${safeJoinBullets(np.leverageAngles)}
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
 
-      // 4. Market Position & Demand
-      drawSection("MARKET POSITION & DEMAND", y0 => {
-        const m = analysis.marketContext;
+      // 4. Depreciation & Timing Leverage
+      drawSection("DEPRECIATION & TIMING LEVERAGE", (y0) => {
+        const dl = analysis?.depreciationLeverage || {};
+        const points = Array.isArray(dl.leveragePoints) ? dl.leveragePoints : [];
         const text = `
-Market Position: ${m.position}
-Demand Level: ${m.demandLevel}
-Confidence Level: ${m.confidenceLevel}
+Timing Pressure Tier: ${safeStr(dl.timingPressure)}
+
+Key Leverage Points:
+${safeJoinBullets(points)}
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
 
-      // 5. Ownership Outlook
-      drawSection("OWNERSHIP OUTLOOK", y0 => {
-        const o = analysis.ownershipOutlook;
+      // 5. Condition & Mileage Leverage
+      drawSection("CONDITION & MILEAGE LEVERAGE", (y0) => {
+        const cl = analysis?.conditionLeverage || {};
+        const points = Array.isArray(cl.leveragePoints) ? cl.leveragePoints : [];
+        const known = Array.isArray(cl.knownIssues) ? cl.knownIssues : [];
+
+        const ageTier = cl.ageTier?.label ? cl.ageTier.label : "N/A";
+        const mileageTier = cl.mileageTier?.label ? cl.mileageTier.label : "N/A";
+
         const text = `
-Reliability Assessment: ${o.reliability}
-Maintenance Expectation: ${o.maintenance}
+Age Tier: ${ageTier}
+Mileage Tier: ${mileageTier}
+
+How to use this:
+${safeJoinBullets(points)}
+
+Common model discussion points (use selectively):
+${known.length ? safeJoinBullets(known) : "• N/A"}
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
 
-      // 6. Negotiation Strategy & Buyer Leverage
-      drawSection("NEGOTIATION STRATEGY & BUYER LEVERAGE", y0 => {
-        const n = analysis.negotiationContext;
+      // 6. Ownership Outlook
+      drawSection("OWNERSHIP OUTLOOK", (y0) => {
+        const o = analysis?.ownershipOutlook || {};
+        const notes = Array.isArray(o.notes) ? o.notes : [];
         const text = `
-Buyer Leverage: ${n.buyerLeverage}
-Recommended Tone: ${n.negotiationTone}
+Reliability Outlook: ${safeStr(o.reliability)}
+Maintenance Expectation: ${safeStr(o.maintenance)}
 
-Suggested Approach:
-1. Anchor the discussion around typical market value, not the asking price.
-2. Test seller flexibility before committing to a number.
-3. Introduce condition or history concerns prior to counteroffers.
-4. Maintain your walk-away boundary if pricing exceeds fair value expectations.
+Notes:
+${notes.length ? safeJoinBullets(notes) : "• N/A"}
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
 
-      // 7. Vehicle-Specific Factors
-      drawSection("VEHICLE-SPECIFIC FACTORS TO CONSIDER", y0 => {
-        const lines = analysis.conditionAdvisory || [];
-        const text = lines.map(l => `• ${l}`).join("\n");
-        return drawHybridParagraph(doc, text, { y: y0 });
-      });
-
-      // 8. When to Walk Away
-      drawSection("WHEN TO WALK AWAY", y0 => {
-        const w = analysis.negotiationContext.walkAwayThreshold;
+      // 7. What to Say in the Room
+      drawSection("WHAT TO SAY IN THE ROOM", (y0) => {
+        const s = analysis?.negotiationScripts || {};
         const text = `
-If negotiations exceed approximately $${w.toLocaleString()}, this vehicle is likely overpriced relative to its estimated market value.
-Paying above this range means overpaying relative to comparable vehicles.
-In most cases, walking away preserves leverage and prevents unnecessary regret.
+Use these lines to stay calm, professional, and in control of the conversation:
+
+Opening:
+• ${safeStr(s.opener)}
+
+Frame the category:
+• ${safeStr(s.categoryFrame)}
+
+Delay numbers until condition is confirmed:
+• ${safeStr(s.inspectionDelay)}
+
+Depreciation / timing framing:
+• ${safeStr(s.ageFrame)}
+
+Mileage framing:
+• ${safeStr(s.mileageFrame)}
+
+Trim-tier framing:
+• ${safeStr(s.trimFrame)}
+
+Asking price acknowledgement (if provided):
+• ${safeStr(s.askingPriceFrame)}
+
+Fees / add-ons pivot:
+• ${safeStr(s.feesPivot)}
+
+Transition into your counter:
+• ${safeStr(s.softCounterSetup)}
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
 
-      // 9. Methodology & Limitations
-      
-      drawSection("METHODOLOGY & LIMITATIONS", y0 => {
+      // 8. Negotiation Zones
+      drawSection("NEGOTIATION ZONES", (y0) => {
+        const nz = analysis?.negotiationZones || {};
+        const zones = Array.isArray(nz.zones) ? nz.zones : [];
+        const bullets = zones.length
+          ? zones.map((z) => `• ${safeStr(z.label)} — ${safeStr(z.meaning)}`).join("\n")
+          : "• N/A";
+
         const text = `
-      This report does not account for:
-      
-      • Undisclosed mechanical issues  
-      • Vehicle inspection findings  
-      • Dealer incentives or financing terms  
-      • Emotional or time-sensitive buying pressure  
-      
-      CarSaavy valuation models are based on static pricing frameworks, depreciation curves, and ownership risk indicators.  
-      As a result, final transaction outcomes may vary based on condition, inspection results, or dealer-specific factors.
+These zones describe how negotiation typically progresses:
+
+${bullets}
+
+Note:
+${safeStr(nz.note)}
         `;
         return drawHybridParagraph(doc, text, { y: y0 });
       });
-      
+
+      // 9. Methodology & Limitations (tight + honest)
+      drawSection("METHODOLOGY & LIMITATIONS", (y0) => {
+        const text = `
+This report focuses on negotiation leverage derived from vehicle category behavior, depreciation timing, and inspection risk.
+It does not use live dealer listings, regional comparables, or proprietary market feeds.
+
+Final negotiated outcomes depend heavily on:
+• Condition and inspection results
+• Service history and ownership records
+• Dealer fees, add-ons, and financing terms
+• Local inventory and buyer urgency
+
+Best practice: confirm condition and the full out-the-door price before committing to a final number.
+        `;
+        return drawHybridParagraph(doc, text, { y: y0 });
+      });
 
       doc.end();
 
