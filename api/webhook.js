@@ -8,31 +8,12 @@ const { getAllVehicleData } = require("./services/vehicleData");
 const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Required for Stripe raw body verification
 module.exports.config = {
   api: { bodyParser: false },
 };
 
-function normalizeVehicleProfile(raw = {}) {
-  if (!raw) return null;
-
-  return {
-    year: raw.year || null,
-    make: raw.make || null,
-    model: raw.model || null,
-
-    // New negotiation-first fields
-    segment: raw.segment || raw.vehicleClass || null,
-    trimTier: raw.trimTier || raw.trimBucket || raw.trim || null,
-
-    mileage: raw.mileage ?? null,
-    vin: raw.vin || null,
-  };
-}
-
-
 // -----------------------------
-// Email helper (simple + safe)
+// Email helper
 // -----------------------------
 async function sendReportEmail(toEmail, reportUrl, vin) {
   try {
@@ -43,7 +24,7 @@ async function sendReportEmail(toEmail, reportUrl, vin) {
       html: `
         <div style="font-family: Arial; padding: 20px;">
           <h2>🚗 Your CarSaavy Vehicle Report is Ready</h2>
-          <p>Your report for <b>VIN ${vin}</b> is ready:</p>
+          ${vin ? `<p><b>VIN:</b> ${vin}</p>` : ""}
           <p>
             <a href="${reportUrl}" style="font-size:16px; color:#007bff;">
               Download your report
@@ -56,7 +37,6 @@ async function sendReportEmail(toEmail, reportUrl, vin) {
 
     console.log("📧 Email sent to:", toEmail);
   } catch (err) {
-    // Email failure must NOT break webhook
     console.error("❌ Email send failed:", err);
   }
 }
@@ -90,26 +70,46 @@ module.exports = async function handler(req, res) {
     return res.status(200).send("Event ignored");
   }
 
-  // -----------------------------
-  // Extract metadata
-  // -----------------------------
   const intent = event.data.object;
-  const vin = intent.metadata?.vin;
-  const email = intent.metadata?.email;
-  const askingPrice = intent.metadata?.price
-    ? Number(intent.metadata.price)
+  const metadata = intent.metadata || {};
+
+  // -----------------------------
+  // Extract metadata (THIS WAS MISSING)
+  // -----------------------------
+  const vin = metadata.vin || null;
+  const email = metadata.email || null;
+
+  const year = metadata.year || null;
+  const make = metadata.make || null;
+  const model = metadata.model || null;
+  const segment = metadata.segment || null;
+  const trimTier = metadata.trimTier || null;
+  const mileage = metadata.mileage || null;
+
+  const askingPrice = metadata.askingPrice
+    ? Number(metadata.askingPrice)
     : null;
 
-  if (!vin || !email) {
-    console.error("❌ Missing required metadata:", { vin, email });
+  if (!email) {
+    console.error("❌ Missing required email metadata");
     return res.status(400).send("Missing required metadata");
   }
 
-  console.log("📌 Payment metadata:", { vin, email, askingPrice });
+  console.log("📌 Payment metadata:", {
+    vin,
+    email,
+    year,
+    make,
+    model,
+    segment,
+    trimTier,
+    mileage,
+    askingPrice,
+  });
 
   try {
     // -----------------------------
-    // Resolve VIN → vehicleProfile
+    // Resolve vehicle data (VIN or dropdown)
     // -----------------------------
     let vehicleData = null;
 
@@ -127,7 +127,6 @@ module.exports = async function handler(req, res) {
       console.warn("⚠️ Vehicle resolution failed:", err);
     }
 
-
     const hasVin = typeof vin === "string" && vin.trim().length >= 6;
     const hasYMM =
       vehicleData &&
@@ -140,9 +139,8 @@ module.exports = async function handler(req, res) {
       throw new Error("Insufficient vehicle data to generate report");
     }
 
-
     // -----------------------------
-    // Build PIC_v1 analysis
+    // Build NIC_v2 analysis
     // -----------------------------
     const analysis = buildMvpAnalysis({
       vin,
@@ -163,17 +161,18 @@ module.exports = async function handler(req, res) {
     return res.status(200).send("Webhook processed successfully");
   } catch (err) {
     console.error("❌ Webhook processing error:", err);
-  
-    // Attempt refund if payment succeeded but report failed
+
     try {
-      await refundPaymentIfNeeded(intent.id, "requested_by_customer");
+      await refundPaymentIfNeeded(intent.id);
     } catch (_) {}
-  
+
     return res.status(500).send("Webhook processing failed");
   }
 };
 
-
+// -----------------------------
+// Refund helper
+// -----------------------------
 async function refundPaymentIfNeeded(paymentIntentId) {
   try {
     const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -185,7 +184,7 @@ async function refundPaymentIfNeeded(paymentIntentId) {
 
     await stripe.refunds.create({
       payment_intent: paymentIntentId,
-      reason: "requested_by_customer"
+      reason: "requested_by_customer",
     });
 
     console.log("💸 Refund issued for:", paymentIntentId);
@@ -197,4 +196,3 @@ async function refundPaymentIfNeeded(paymentIntentId) {
     console.error("❌ Refund attempt failed:", err);
   }
 }
-
