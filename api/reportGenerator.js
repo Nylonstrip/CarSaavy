@@ -157,17 +157,6 @@ const negotiationProfile = {
     const negotiationScripts = analysis?.negotiationScripts || {};
     const negotiationZones = analysis?.negotiationZones || {};
 
-    // Build a legacy-style negotiation profile for the PDF
-    const negotiationProfile = {
-      categoryType: `Segment: ${vp.segment || "general"}`,
-      demandVolatility: analysis?.segmentProfile?.demandVolatility || "medium",
-      sellerFlexibility: analysis?.segmentProfile?.sellerFlexibility || "moderate",
-      trimNegotiability: analysis?.trimLeverage?.negotiability || "moderate",
-      leverageAngles:
-        analysis?.segmentProfile?.leverageAngles && analysis.segmentProfile.leverageAngles.length
-          ? analysis.segmentProfile.leverageAngles
-          : [],
-    };
 
 
       let y = drawHeader(doc, vp.vinMasked);
