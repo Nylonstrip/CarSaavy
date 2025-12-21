@@ -142,9 +142,18 @@ module.exports = async function handler(req, res) {
     // -----------------------------
     // Build NIC_v2 analysis
     // -----------------------------
-    const analysis = buildMvpAnalysis({
+    const resolvedProfile = {
+      year: vehicleData?.vehicleProfile?.year ?? year,
+      make: vehicleData?.vehicleProfile?.make ?? make,
+      model: vehicleData?.vehicleProfile?.model ?? model,
+      segment: vehicleData?.vehicleProfile?.segment ?? segment,
+      trimTier: vehicleData?.vehicleProfile?.trimTier ?? trimTier,
+      mileage: vehicleData?.vehicleProfile?.mileage ?? mileage,
       vin,
-      vehicleProfile: vehicleData.vehicleProfile,
+    };
+    
+    const analysis = buildMvpAnalysis({
+      vehicleProfile: resolvedProfile,
       askingPrice,
     });
 
