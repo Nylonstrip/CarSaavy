@@ -183,27 +183,37 @@ function buildMvpAnalysis(input = {}) {
       mileage: mileage ?? "N/A",
       vinMasked: maskVin(vp.vin),
     },
-
-    // 🔹 Negotiation framing
+  
+    // 🔹 Core tiers
     ageTier,
     mileageTier,
-    ownershipOutlook: ownership,
+  
+    // 🔹 Negotiation intelligence (MUST be returned)
+    segmentProfile,
+    trimLeverage,
+    ownership,                 // keep raw ownership object
+    depreciationLeverage,
+    conditionLeverage,
+    negotiationScripts,
+    negotiationZones,
+  
+    // 🔹 Presentation helpers
     highlights: [
       `Segment: ${segment}`,
       `Trim tier: ${trimTier}`,
       ageTier.label ? `Age tier: ${ageTier.label}` : null,
       mileageTier.label ? `Mileage tier: ${mileageTier.label}` : null,
     ].filter(Boolean),
-
-    // 🔹 Context
+  
     context: {
       hasAskingPrice: num(askingPrice) !== null,
       askingPrice: num(askingPrice),
       makeNote: MakeNotes[normalizeUpper(make)] || null,
     },
-
+  
     modelVersion: "NIC_v2",
   };
+  
 }
 
 module.exports = {
