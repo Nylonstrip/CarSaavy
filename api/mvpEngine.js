@@ -189,7 +189,7 @@ function getSegmentProfile(segment) {
 // -------------------------------
 // MAIN ENGINE
 // -------------------------------
-ffunction buildMvpAnalysis(input = {}) {
+function buildMvpAnalysis(input = {}) {
   // Canonical vehicle profile (identity-bound)
   const vp =
     input.vehicleProfile && typeof input.vehicleProfile === "object"
