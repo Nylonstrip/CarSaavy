@@ -347,6 +347,26 @@ function buildNegotiationScripts({
   return scripts;
 }
 
+function deriveNegotiationZones({ hasAskingPrice }) {
+  if (!hasAskingPrice) {
+    return {
+      strategy: "discovery",
+      notes: [
+        "Without a listed asking price, focus on information gathering before anchoring.",
+        "Let the seller reveal expectations first to avoid overcommitting.",
+      ],
+    };
+  }
+
+  return {
+    strategy: "anchored",
+    notes: [
+      "With an asking price established, negotiation should focus on justification and leverage.",
+      "Use condition, age, and cross-shopping to create downward pressure.",
+    ],
+  };
+}
+
 
 // -------------------------------
 // MAIN ENGINE
