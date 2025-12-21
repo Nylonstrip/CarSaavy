@@ -263,6 +263,55 @@ function deriveDepreciationLeverage({ year, ageTier }) {
   };
 }
 
+function buildConditionLeverage({
+  year,
+  make,
+  model,
+  mileage,
+  segment,
+  vehicleClass,
+}) {
+  const points = [];
+
+  points.push(
+    "Vehicle condition remains one of the strongest negotiation levers regardless of market conditions."
+  );
+
+  if (mileage !== null) {
+    points.push(
+      "Mileage relative to age can influence inspection risk and future maintenance expectations."
+    );
+  }
+
+  if (year !== null) {
+    points.push(
+      "Wear items such as tires, brakes, and suspension components should be evaluated during inspection."
+    );
+  }
+
+  if (segment === "performance" || segment === "luxury") {
+    points.push(
+      "Higher-performance or premium vehicles can carry elevated repair costs, increasing inspection-based leverage."
+    );
+  }
+
+  if (vehicleClass) {
+    points.push(
+      "Vehicle usage patterns and prior ownership context may affect condition-related negotiation leverage."
+    );
+  }
+
+  return {
+    leverageType: "condition",
+    notes: points,
+    inspectionFocus: [
+      "Tires and brakes",
+      "Suspension and alignment",
+      "Service records",
+      "Warning lights or codes",
+    ],
+  };
+}
 
 
 // -------------------------------
