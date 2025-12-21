@@ -102,7 +102,31 @@ async function generateVehicleReport({ analysis }, vin) {
       const stream = fs.createWriteStream(tempFile);
       doc.pipe(stream);
 
-      const vp = analysis?.vehicleProfile || {};
+      // -------------------------------
+// Compatibility adapter (NIC_v2)
+// -------------------------------
+    const vehicle = analysis?.vehicleSummary || {};
+    const vp = {
+      year: vehicle.year,
+      make: vehicle.make,
+      model: vehicle.model,
+      segment: vehicle.segment,
+      trimTier: vehicle.trimTier,
+      mileage: vehicle.mileage,
+      vinMasked: analysis?.vinMasked || null,
+    };
+
+    // Normalize missing legacy structures
+    const negotiationProfile = analysis?.negotiationProfile || {
+      segmentCategory: analysis?.highlights?.[0]?.replace("Segment profile: ", "") || "general",
+      demandVolatility: analysis?.segmentProfile?.demandVolatility || "medium",
+      sellerFlexibility: analysis?.segmentProfile?.sellerFlexibility || "moderate",
+      trimNegotiability: analysis?.trimLeverage?.negotiability || "moderate",
+      leverageAngles: analysis?.segmentProfile?.leverageAngles || [],
+    };
+
+    const ownershipOutlook = analysis?.ownership || {};
+
       let y = drawHeader(doc, vp.vinMasked);
 
       // Helper wrapper
@@ -137,7 +161,7 @@ Mileage: ${vp.mileage === null || vp.mileage === undefined ? "N/A" : vp.mileage.
 
       // 3. Negotiation Profile
       drawSection("NEGOTIATION PROFILE", (y0) => {
-        const np = analysis?.negotiationProfile || {};
+        const np = negotiationProfile || {};
         const text = `
 Category Type: ${safeStr(np.segmentCategory)}
 Demand Volatility: ${safeStr(np.demandVolatility)}
@@ -187,7 +211,7 @@ ${known.length ? safeJoinBullets(known) : "• N/A"}
 
       // 6. Ownership Outlook
       drawSection("OWNERSHIP OUTLOOK", (y0) => {
-        const o = analysis?.ownershipOutlook || {};
+        const o = ownershipOutlook || {};
         const notes = Array.isArray(o.notes) ? o.notes : [];
         const text = `
 Reliability Outlook: ${safeStr(o.reliability)}
