@@ -164,6 +164,7 @@ function buildMvpAnalysis(input = {}) {
   const mileage = num(vp.mileage);
   const trimTier = normalizeTrimTier(vp.trimTier);
   const segment = deriveSegment(vp);
+  const segmentProfile = getSegmentProfile(segment);
 
   const modelKey = getModelKey({ make, model });
   const ageTier = getAgeTier(year);
