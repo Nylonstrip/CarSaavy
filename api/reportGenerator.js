@@ -4,57 +4,86 @@ const path = require("path");
 const { put } = require("@vercel/blob");
 
 // ===============================
-// PDF Utilities (kept from your original)
+// Fallback Copy (MVP-Safe)
+// ===============================
+const FALLBACK_OPENING_SCRIPTS = [
+  "I’m interested in the vehicle, but I want to make sure the price reflects its condition, age, and the alternatives I’m currently reviewing.",
+  "Before committing, I’d like to understand how this price accounts for inspection risk and total ownership cost.",
+];
+
+const FALLBACK_CATEGORY_FRAMING = [
+  "Vehicles in this category are often priced optimistically at first, with flexibility emerging once condition and alternatives are discussed.",
+  "I’m comparing this vehicle against similar options to understand where pricing movement may exist.",
+];
+
+const FALLBACK_TIMING_LEVERAGE = [
+  "Vehicles naturally face depreciation over time, regardless of condition.",
+  "As listings remain on the market, sellers often become more flexible when buyers demonstrate readiness and alternatives.",
+];
+
+const FALLBACK_CONDITION_LEVERAGE = [
+  "Final pricing should reflect inspection findings, wear items, and near-term maintenance considerations.",
+  "Items like tires, brakes, and suspension components materially affect ownership cost and should be accounted for.",
+];
+
+const FALLBACK_OWNERSHIP_OUTLOOK = [
+  "Ownership costs can vary significantly based on maintenance history and prior use.",
+  "Service records and inspection results play a major role in determining fair final pricing.",
+];
+
+const FALLBACK_NEGOTIATION_ZONES = {
+  discovery: [
+    "Focus on gathering information before committing to a number.",
+    "Let the seller explain pricing justification and included value.",
+    "Avoid anchoring too early.",
+  ],
+  anchored: [
+    "Shift discussion toward inspection risk, alternatives, and total out-the-door cost.",
+    "Use condition findings and market comparisons to justify adjustments.",
+    "Be prepared to pause or walk if terms don’t align.",
+  ],
+};
+
+// ===============================
+// PDF Utilities (unchanged styling)
 // ===============================
 function applyProtectiveSpacing(text) {
   if (!text || typeof text !== "string") return text;
   return text.replace(/([,.;!?])(\S)/g, "$1\u00A0$2");
 }
 
-function drawHybridParagraph(doc, text, opts = {}) {
-  const {
-    x = 60,
-    y,
-    width = 475,
-    fontSize = 11,
-    lineHeight = 14.5,
-    paragraphGap = 10,
-  } = opts;
+function safeJoinBullets(lines) {
+  return lines.map((l) => `• ${l}`).join("\n");
+}
 
+function ensureBullets(lines, fallback) {
+  return Array.isArray(lines) && lines.length ? lines : fallback;
+}
+
+function drawHybridParagraph(doc, text, opts = {}) {
+  const { x = 60, y, width = 475, fontSize = 11, lineHeight = 14.5, paragraphGap = 10 } = opts;
   if (!text) return y;
   text = applyProtectiveSpacing(text);
-
   doc.fontSize(fontSize);
   const paragraphs = text.split("\n").map((p) => p.trim()).filter(Boolean);
-
   let cursorY = y;
   paragraphs.forEach((p) => {
     doc.text(p, x, cursorY, { width });
     cursorY += lineHeight + paragraphGap;
   });
-
   return cursorY;
 }
 
 function drawSectionHeader(doc, title, y) {
-  const barX = 60;
-  const barWidth = 475;
-  const barHeight = 22;
-
   y += 14;
-  doc.rect(barX, y, barWidth, barHeight).fill("#000000");
-  doc
-    .fillColor("#FFFFFF")
-    .font("Helvetica-Bold")
-    .fontSize(13)
-    .text(title, barX + 10, y + 5);
+  doc.rect(60, y, 475, 22).fill("#000000");
+  doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(13).text(title, 70, y + 5);
   doc.fillColor("#000000");
-
-  return y + barHeight + 20;
+  return y + 42;
 }
 
-function ensureSpace(doc, y, needed = 120) {
-  if (y + needed > doc.page.height - 70) {
+function ensureSpace(doc, y) {
+  if (y > doc.page.height - 120) {
     doc.addPage();
     return 120;
   }
@@ -63,105 +92,29 @@ function ensureSpace(doc, y, needed = 120) {
 
 function drawHeader(doc, vinMasked) {
   doc.rect(0, 0, doc.page.width, 70).fill("#000000");
-  doc
-    .fillColor("#FFFFFF")
-    .font("Helvetica-Bold")
-    .fontSize(18)
+  doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(18)
     .text("CARSAAVY NEGOTIATION READINESS REPORT", 50, 20);
-
-  doc
-    .font("Helvetica")
-    .fontSize(10)
+  doc.font("Helvetica").fontSize(10)
     .text(`VIN: ${vinMasked || "N/A"}`, 400, 24, { align: "right" })
     .text(`Generated: ${new Date().toLocaleDateString()}`, 400, 40, { align: "right" });
-
   doc.fillColor("#000000");
   return 110;
 }
 
-function safeStr(v, fallback = "N/A") {
-  const s = (v || "").toString().trim();
-  return s ? s : fallback;
-}
-
-function safeJoinBullets(lines) {
-  if (!Array.isArray(lines) || !lines.length) return "N/A";
-  return lines.map((l) => `• ${l}`).join("\n");
-}
-
 // ===============================
-// MAIN REPORT GENERATOR (NIC_v2)
+// MAIN REPORT GENERATOR
 // ===============================
-async function generateVehicleReport({ analysis }, vin) {
+async function generateVehicleReport({ analysis }) {
   return new Promise(async (resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: "LETTER", margin: 50 });
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const tempFile = `/tmp/report-${timestamp}.pdf`;
-
+      const tempFile = `/tmp/report-${Date.now()}.pdf`;
       const stream = fs.createWriteStream(tempFile);
       doc.pipe(stream);
 
-      // -------------------------------
-// Compatibility adapter (NIC_v2)
-// -------------------------------
-    const vehicle = analysis?.vehicleSummary || {};
-    const vp = {
-      year: vehicle.year,
-      make: vehicle.make,
-      model: vehicle.model,
-      segment: vehicle.segment,
-      trimTier: vehicle.trimTier,
-      mileage: vehicle.mileage,
-      vinMasked: analysis?.vinMasked || null,
-    };
-
-   // -------------------------------
-// Normalized Negotiation Profile (NIC_v2 → PDF)
-// -------------------------------
-const negotiationProfile = {
-  categoryType: `Segment: ${vp.segment || "general"}`,
-
-  demandVolatility:
-    analysis?.segmentProfile?.demandVolatility || "medium",
-
-  sellerFlexibility:
-    analysis?.segmentProfile?.sellerFlexibility || "moderate",
-
-  trimNegotiability:
-    analysis?.trimLeverage?.negotiability || "moderate",
-
-  leverageAngles:
-    Array.isArray(analysis?.segmentProfile?.leverageAngles) &&
-    analysis.segmentProfile.leverageAngles.length
-      ? analysis.segmentProfile.leverageAngles
-      : [],
-};
-
-
-    const ownershipOutlook = analysis?.ownership || {};
-
-    // ---- Legacy key adapters (fill expected PDF fields) ----
-    const depreciationLeverage = analysis?.depreciationLeverage || {
-      timingPressure: "unknown",
-      leveragePoints: [],
-    };
-
-    const conditionLeverage = analysis?.conditionLeverage || {
-      ageTier: null,
-      mileageTier: null,
-      usageNotes: [],
-      inspectionNotes: [],
-    };
-
-    const negotiationScripts = analysis?.negotiationScripts || {};
-    const negotiationZones = analysis?.negotiationZones || {};
-
-
-
+      const vp = analysis?.vehicleSummary || {};
       let y = drawHeader(doc, vp.vinMasked);
 
-      // Helper wrapper
       const drawSection = (title, renderer) => {
         y = drawSectionHeader(doc, title, y);
         y = ensureSpace(doc, y);
@@ -169,163 +122,79 @@ const negotiationProfile = {
         y += 24;
       };
 
-      // 1. Executive Snapshot
-      drawSection("EXECUTIVE SNAPSHOT", (y0) => {
-        const text = `
-This report is designed to help you negotiate more effectively by focusing on defensible leverage: timing pressure, inspection risk, and category behavior.
-It is not based on live dealer listings, advertisements, or exact “true value” pricing—its purpose is to help you speak confidently and avoid overpaying through uncertainty.
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
-      });
+      // EXECUTIVE SNAPSHOT
+      drawSection("EXECUTIVE SNAPSHOT", (y0) =>
+        drawHybridParagraph(doc,
+          "This report helps you negotiate effectively using defensible leverage such as timing pressure, inspection risk, and category behavior. It is designed to support confident, professional negotiation—not to provide exact market pricing.",
+          { y: y0 }
+        )
+      );
 
-      // 2. Vehicle Summary
-      drawSection("VEHICLE SUMMARY", (y0) => {
-        const text = `
-Year: ${vp.year || "N/A"}
-Make: ${safeStr(vp.make)}
-Model: ${safeStr(vp.model)}
-Segment: ${safeStr(vp.segment)}
-Trim Tier: ${safeStr(vp.trimTier)}
-Mileage: ${vp.mileage === null || vp.mileage === undefined ? "N/A" : vp.mileage.toLocaleString()}
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
-      });
+      // VEHICLE SUMMARY
+      drawSection("VEHICLE SUMMARY", (y0) =>
+        drawHybridParagraph(doc,
+          `Year: ${vp.year}\nMake: ${vp.make}\nModel: ${vp.model}\nSegment: ${vp.segment}\nTrim Tier: ${vp.trimTier}\nMileage: ${vp.mileage}`,
+          { y: y0 }
+        )
+      );
 
-      // 3. Negotiation Profile
-      drawSection("NEGOTIATION PROFILE", (y0) => {
-        const np = negotiationProfile || {};
-        const text = `
-Category Type: ${safeStr(np.segmentCategory)}
-Demand Volatility: ${safeStr(np.demandVolatility)}
-Expected Seller Flexibility: ${safeStr(np.sellerFlexibility)}
-Trim Negotiability: ${safeStr(np.trimNegotiability)}
-
-Primary Leverage Angles:
-${safeJoinBullets(np.leverageAngles)}
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
-      });
-
-      // 4. Depreciation & Timing Leverage
-      drawSection("DEPRECIATION & TIMING LEVERAGE", (y0) => {
-        const dl = analysis?.depreciationLeverage || {};
-        const points = Array.isArray(dl.leveragePoints) ? dl.leveragePoints : [];
-        const text = `
-Timing Pressure Tier: ${safeStr(dl.timingPressure)}
-
-Key Leverage Points:
-${safeJoinBullets(points)}
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
-      });
-
-      // 5. Condition & Mileage Leverage
-      drawSection("CONDITION & MILEAGE LEVERAGE", (y0) => {
-        const cl = analysis?.conditionLeverage || {};
-        const points = Array.isArray(cl.leveragePoints) ? cl.leveragePoints : [];
-        const known = Array.isArray(cl.knownIssues) ? cl.knownIssues : [];
-
-        const ageTier = cl.ageTier?.label ? cl.ageTier.label : "N/A";
-        const mileageTier = cl.mileageTier?.label ? cl.mileageTier.label : "N/A";
-
-        const text = `
-Age Tier: ${ageTier}
-Mileage Tier: ${mileageTier}
-
-How to use this:
-${safeJoinBullets(points)}
-
-Common model discussion points (use selectively):
-${known.length ? safeJoinBullets(known) : "• N/A"}
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
-      });
-
-      // 6. Ownership Outlook
-      drawSection("OWNERSHIP OUTLOOK", (y0) => {
-        const o = ownershipOutlook || {};
-        const notes = Array.isArray(o.notes) ? o.notes : [];
-        const text = `
-Reliability Outlook: ${safeStr(o.reliability)}
-Maintenance Expectation: ${safeStr(o.maintenance)}
-
-Notes:
-${notes.length ? safeJoinBullets(notes) : "• N/A"}
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
-      });
-
-      // 7. What to Say in the Room
+      // NEGOTIATION SCRIPTS
       drawSection("WHAT TO SAY IN THE ROOM", (y0) => {
-        const s = analysis?.negotiationScripts || {};
-        const text = `
-Use these lines to stay calm, professional, and in control of the conversation:
-
-Opening:
-• ${safeStr(s.opener)}
-
-Frame the category:
-• ${safeStr(s.categoryFrame)}
-
-Delay numbers until condition is confirmed:
-• ${safeStr(s.inspectionDelay)}
-
-Depreciation / timing framing:
-• ${safeStr(s.ageFrame)}
-
-Mileage framing:
-• ${safeStr(s.mileageFrame)}
-
-Trim-tier framing:
-• ${safeStr(s.trimFrame)}
-
-Asking price acknowledgement (if provided):
-• ${safeStr(s.askingPriceFrame)}
-
-Fees / add-ons pivot:
-• ${safeStr(s.feesPivot)}
-
-Transition into your counter:
-• ${safeStr(s.softCounterSetup)}
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
+        const scripts = ensureBullets(analysis?.negotiationScripts, FALLBACK_OPENING_SCRIPTS);
+        return drawHybridParagraph(doc, safeJoinBullets(scripts), { y: y0 });
       });
 
-      // 8. Negotiation Zones
+      // CATEGORY & TIMING
+      drawSection("DEPRECIATION & TIMING LEVERAGE", (y0) => {
+        const timing = ensureBullets(
+          analysis?.depreciationLeverage?.leveragePoints,
+          FALLBACK_TIMING_LEVERAGE
+        );
+        return drawHybridParagraph(doc, safeJoinBullets(timing), { y: y0 });
+      });
+
+      // CONDITION
+      drawSection("CONDITION & OWNERSHIP CONSIDERATIONS", (y0) => {
+        const condition = ensureBullets(
+          analysis?.conditionLeverage?.points,
+          FALLBACK_CONDITION_LEVERAGE
+        );
+        const ownership = ensureBullets(
+          analysis?.ownership?.ownershipNotes,
+          FALLBACK_OWNERSHIP_OUTLOOK
+        );
+        return drawHybridParagraph(
+          doc,
+          safeJoinBullets([...condition, ...ownership]),
+          { y: y0 }
+        );
+      });
+
+      // NEGOTIATION ZONES
       drawSection("NEGOTIATION ZONES", (y0) => {
-        const nz = analysis?.negotiationZones || {};
-        const zones = Array.isArray(nz.zones) ? nz.zones : [];
-        const bullets = zones.length
-          ? zones.map((z) => `• ${safeStr(z.label)} — ${safeStr(z.meaning)}`).join("\n")
-          : "• N/A";
-
-        const text = `
-These zones describe how negotiation typically progresses:
-
-${bullets}
-
-Note:
-${safeStr(nz.note)}
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
+        const zones = analysis?.negotiationZones || {};
+        const discovery = ensureBullets(
+          zones.strategy === "discovery" ? zones.notes : null,
+          FALLBACK_NEGOTIATION_ZONES.discovery
+        );
+        const anchored = ensureBullets(
+          zones.strategy === "anchored" ? zones.notes : null,
+          FALLBACK_NEGOTIATION_ZONES.anchored
+        );
+        return drawHybridParagraph(
+          doc,
+          `Discovery Phase:\n${safeJoinBullets(discovery)}\n\nAnchored Phase:\n${safeJoinBullets(anchored)}`,
+          { y: y0 }
+        );
       });
 
-      // 9. Methodology & Limitations (tight + honest)
-      drawSection("METHODOLOGY & LIMITATIONS", (y0) => {
-        const text = `
-This report focuses on negotiation leverage derived from vehicle category behavior, depreciation timing, and inspection risk.
-It does not use live dealer listings, regional comparables, or proprietary market feeds.
-
-Final negotiated outcomes depend heavily on:
-• Condition and inspection results
-• Service history and ownership records
-• Dealer fees, add-ons, and financing terms
-• Local inventory and buyer urgency
-
-Best practice: confirm condition and the full out-the-door price before committing to a final number.
-        `;
-        return drawHybridParagraph(doc, text, { y: y0 });
-      });
+      // METHODOLOGY
+      drawSection("METHODOLOGY & LIMITATIONS", (y0) =>
+        drawHybridParagraph(doc,
+          "This report does not use live listings or pricing APIs. It focuses on negotiation leverage derived from vehicle characteristics, timing pressure, and inspection risk. Final outcomes depend on dealer behavior, condition, and buyer discipline.",
+          { y: y0 }
+        )
+      );
 
       doc.end();
 
