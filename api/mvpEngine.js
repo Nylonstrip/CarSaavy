@@ -483,18 +483,22 @@ function buildMvpAnalysis(input = {}) {
    * - New: { vehicleProfile: {year, make, model, segment, trimTier, mileage?, vin?}, askingPrice? }
    * - Legacy callers: { year, make, model, trim, trimBucket, vehicleClass, mileage, price, vin }
    */
-  const vp = input.vehicleProfile || {
-    year: input.year,
-    make: input.make,
-    model: input.model,
-    segment: input.segment,
-    trimTier: input.trimTier,
-    trimBucket: input.trimBucket || input.trim || null,
-    vehicleClass: input.vehicleClass || null,
-    mileage: input.mileage,
-    vin: input.vin,
-  };
 
+  const vp =
+    input.vehicleProfile && typeof input.vehicleProfile === "object"
+      ? input.vehicleProfile
+      : {
+          year: input.year ?? null,
+          make: input.make ?? null,
+          model: input.model ?? null,
+          segment: input.segment ?? null,
+          trimTier: input.trimTier ?? input.trimBucket ?? input.trim ?? null,
+          mileage: input.mileage ?? null,
+          vin: input.vin ?? null,
+          vehicleClass: input.vehicleClass ?? null,
+        };
+
+  // Normalize primitives
   const year = num(vp.year);
   const make = normalizeStr(vp.make);
   const model = normalizeStr(vp.model);
@@ -503,7 +507,7 @@ function buildMvpAnalysis(input = {}) {
   const segment = deriveSegment(vp);
   const segmentProfile = getSegmentProfile(segment);
 
-  const trimTier = normalizeTrimTier(vp.trimTier || vp.trimBucket || vp.trim);
+  const trimTier = normalizeTrimTier(vp.trimTier);
   const trimLeverage = deriveTrimLeverage(trimTier);
 
   const modelKey = getModelKey({ make, model });
@@ -535,16 +539,22 @@ function buildMvpAnalysis(input = {}) {
 
   const negotiationZones = deriveNegotiationZones({ hasAskingPrice });
 
-  // Optional: small “highlights” list for the PDF
+  // Optional highlights for the PDF
   const highlights = [];
   highlights.push(`Segment profile: ${normalizeStr(segmentProfile.category) || "general"}`);
   highlights.push(`Trim tier: ${trimTier}`);
   if (ageTier.label) highlights.push(`Age tier: ${ageTier.label}`);
   if (mileageTier.label) highlights.push(`Mileage tier: ${mileageTier.label}`);
-  if (ownership.reliability) highlights.push(`Ownership outlook: ${ownership.reliability} reliability, ${ownership.maintenance} maintenance`);
+  if (ownership.reliability)
+    highlights.push(
+      `Ownership outlook: ${ownership.reliability} reliability, ${ownership.maintenance} maintenance`
+    );
 
-  // Optional: make-level notes (if you ever add them)
   const makeNote = MakeNotes[normalizeUpper(make)] || null;
+
+  // …rest of function continues unchanged
+}
+
 
   // Return: new contract + legacy-friendly fields
   return {
