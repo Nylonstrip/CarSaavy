@@ -230,6 +230,40 @@ function deriveTrimLeverage(trimTier) {
   }
 }
 
+function deriveDepreciationLeverage({ year, ageTier }) {
+  const points = [];
+
+  points.push(
+    "Vehicles depreciate over time regardless of condition; timing influences seller flexibility."
+  );
+
+  if (year) {
+    points.push(
+      "As vehicles move further past their model year, pricing pressure typically increases, especially when buyers can cross-shop newer inventory."
+    );
+  }
+
+  if (ageTier?.label === "current" || ageTier?.label === "newer") {
+    points.push(
+      "Newer vehicles are often priced optimistically; negotiation improves when focusing on inspection certainty and total out-the-door cost."
+    );
+  } else if (ageTier?.label === "mid") {
+    points.push(
+      "Mid-age vehicles are commonly negotiated based on condition, service history, and wear items such as tires and brakes."
+    );
+  } else if (ageTier?.label === "older") {
+    points.push(
+      "Older vehicles benefit strongly from inspection leverage, where minor findings can justify meaningful concessions."
+    );
+  }
+
+  return {
+    timingPressure: ageTier?.label || "unknown",
+    leveragePoints: points,
+  };
+}
+
+
 
 // -------------------------------
 // MAIN ENGINE
