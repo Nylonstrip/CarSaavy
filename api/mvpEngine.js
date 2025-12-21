@@ -139,6 +139,53 @@ function deriveOwnershipOutlook(modelKey) {
   };
 }
 
+function getSegmentProfile(segment) {
+  const seg = normalizeStr(segment) || "general";
+
+  if (SegmentProfiles[seg] && typeof SegmentProfiles[seg] === "object") {
+    return SegmentProfiles[seg];
+  }
+
+  switch (seg) {
+    case "performance":
+      return {
+        category: "discretionary",
+        demandVolatility: "high",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "emotion-driven pricing",
+        leverageAngles: ["timing", "inspection risk", "cross-shopping"],
+      };
+
+    case "luxury":
+      return {
+        category: "discretionary",
+        demandVolatility: "medium",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "condition-sensitive pricing",
+        leverageAngles: ["inspection risk", "ownership cost framing", "timing"],
+      };
+
+    case "economy":
+      return {
+        category: "practical",
+        demandVolatility: "low",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "high-competition pricing",
+        leverageAngles: ["cross-shopping", "timing", "fees"],
+      };
+
+    default:
+      return {
+        category: "general",
+        demandVolatility: "medium",
+        sellerFlexibility: "moderate",
+        dealerNarrative: "standard retail pricing",
+        leverageAngles: ["inspection risk", "cross-shopping", "timing"],
+      };
+  }
+}
+
+
 // -------------------------------
 // MAIN ENGINE
 // -------------------------------
