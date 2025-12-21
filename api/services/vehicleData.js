@@ -146,14 +146,29 @@ async function getAllVehicleData(input = {}) {
       return {
         vehicleProfile: {
           year: Number(decoded.ModelYear),
-          make: decoded.Make,
-          model: decoded.Model,
-          segment: null, // can be filled later by dropdown logic
+      
+          // Presentation-safe casing
+          make: decoded.Make
+            ? decoded.Make.charAt(0).toUpperCase() + decoded.Make.slice(1).toLowerCase()
+            : null,
+      
+          model: decoded.Model
+            ? decoded.Model.charAt(0).toUpperCase() + decoded.Model.slice(1).toLowerCase()
+            : null,
+      
+          // Temporary segment inference (lightweight, safe)
+          segment: vehicleClass === "performance"
+            ? "performance"
+            : vehicleClass === "luxury"
+            ? "luxury"
+            : "general",
+      
           trimTier,
           vehicleClass,
           vin,
         },
       };
+      
     } catch (err) {
       console.error("❌ VIN decode failed:", err);
       return {
