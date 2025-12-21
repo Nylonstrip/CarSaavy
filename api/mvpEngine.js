@@ -313,39 +313,46 @@ function buildConditionLeverage({
   };
 }
 
-function buildNegotiationScripts({
-  segmentProfile,
-  trimLeverage,
-  ageTier,
-  mileageTier,
-  askingPrice,
-}) {
+function buildNegotiationScripts({ ageTier, mileageTier, segmentProfile, trimLeverage, askingPrice }) {
   const scripts = [];
 
   scripts.push(
-    "I’m interested in the vehicle, but I want to make sure the price reflects its condition, age, and current market alternatives."
+    "I’m prepared to move forward, but I want to make sure the price reflects condition, ownership risk, and available alternatives."
   );
+
+  if (segmentProfile?.dealerNarrative) {
+    scripts.push(
+      `Vehicles in this category are often priced around ${segmentProfile.dealerNarrative}, which is why I want to ground the discussion in inspection results and total cost.`
+    );
+  }
 
   if (ageTier?.label === "older") {
     scripts.push(
-      "Given the vehicle’s age, I’ll need to factor in future maintenance and inspection findings."
+      "On older vehicles, inspection findings tend to matter more than list price when evaluating fairness."
+    );
+  }
+
+  if (mileageTier?.label === "high") {
+    scripts.push(
+      "Mileage is a consideration for me, especially when comparing long-term ownership cost across options."
     );
   }
 
   if (trimLeverage?.negotiability === "high") {
     scripts.push(
-      "This trim level is widely available, so I’m comparing several similar options."
+      "This trim level is widely available, so I’m cross-shopping multiple similar vehicles."
     );
   }
 
   if (askingPrice !== null) {
     scripts.push(
-      "Before moving forward, I’d like to understand how this price compares to similar listings I’m considering."
+      "Before discussing numbers, I want to understand how this price accounts for condition and current alternatives."
     );
   }
 
   return scripts;
 }
+
 
 function deriveNegotiationZones({ hasAskingPrice }) {
   if (!hasAskingPrice) {

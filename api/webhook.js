@@ -143,14 +143,19 @@ module.exports = async function handler(req, res) {
     // Build NIC_v2 analysis
     // -----------------------------
     const resolvedProfile = {
-      year: vehicleData?.vehicleProfile?.year ?? year,
-      make: vehicleData?.vehicleProfile?.make ?? make,
-      model: vehicleData?.vehicleProfile?.model ?? model,
-      segment: vehicleData?.vehicleProfile?.segment ?? segment,
-      trimTier: vehicleData?.vehicleProfile?.trimTier ?? trimTier,
-      mileage: vehicleData?.vehicleProfile?.mileage ?? mileage,
+      year: vehicleData?.vehicleProfile?.year || decodedVin?.year,
+      make: vehicleData?.vehicleProfile?.make || decodedVin?.make,
+      model: vehicleData?.vehicleProfile?.model || decodedVin?.model,
+      segment: vehicleData?.vehicleProfile?.segment || segment || "general",
+      trimTier: vehicleData?.vehicleProfile?.trimTier || trimTier || "mid",
+      mileage: vehicleData?.vehicleProfile?.mileage || mileage || null,
       vin,
     };
+    
+    if (!resolvedProfile.year || !resolvedProfile.make || !resolvedProfile.model) {
+      throw new Error("Critical vehicle identity missing after VIN resolution");
+    }
+    
     
     const analysis = buildMvpAnalysis({
       vehicleProfile: resolvedProfile,
