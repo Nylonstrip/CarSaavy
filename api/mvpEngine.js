@@ -189,7 +189,7 @@ function getSegmentProfile(segment) {
 // -------------------------------
 // MAIN ENGINE
 // -------------------------------
-function buildMvpAnalysis(input = {}) {
+ffunction buildMvpAnalysis(input = {}) {
   // Canonical vehicle profile (identity-bound)
   const vp =
     input.vehicleProfile && typeof input.vehicleProfile === "object"
@@ -205,21 +205,52 @@ function buildMvpAnalysis(input = {}) {
           vehicleClass: input.vehicleClass ?? null,
         };
 
+  // Normalize primitives
   const year = num(vp.year);
   const make = normalizeStr(vp.make);
   const model = normalizeStr(vp.model);
   const mileage = num(vp.mileage);
+
+  // Segment + trim
   const trimTier = normalizeTrimTier(vp.trimTier);
   const segment = deriveSegment(vp);
   const segmentProfile = getSegmentProfile(segment);
+  const trimLeverage = deriveTrimLeverage(trimTier);
 
+  // Core tiers
   const modelKey = getModelKey({ make, model });
   const ageTier = getAgeTier(year);
   const mileageTier = getMileageTier(mileage, year);
 
+  // Ownership & pricing context
   const ownership = deriveOwnershipOutlook(modelKey);
   const askingPrice = input.askingPrice ?? input.price ?? null;
+  const hasAskingPrice = num(askingPrice) !== null;
 
+  // Depreciation & condition leverage
+  const depreciationLeverage = deriveDepreciationLeverage({ year, ageTier });
+
+  const conditionLeverage = buildConditionLeverage({
+    year,
+    make,
+    model,
+    mileage,
+    segment,
+    vehicleClass: vp.vehicleClass,
+  });
+
+  // Negotiation mechanics
+  const negotiationScripts = buildNegotiationScripts({
+    segmentProfile,
+    trimLeverage,
+    ageTier,
+    mileageTier,
+    askingPrice,
+  });
+
+  const negotiationZones = deriveNegotiationZones({ hasAskingPrice });
+
+  // Final payload
   return {
     // 🔹 Core identity (used by PDF)
     vehicleSummary: {
@@ -231,20 +262,20 @@ function buildMvpAnalysis(input = {}) {
       mileage: mileage ?? "N/A",
       vinMasked: maskVin(vp.vin),
     },
-  
+
     // 🔹 Core tiers
     ageTier,
     mileageTier,
-  
-    // 🔹 Negotiation intelligence (MUST be returned)
+
+    // 🔹 Negotiation intelligence
     segmentProfile,
     trimLeverage,
-    ownership,                 // keep raw ownership object
+    ownership,
     depreciationLeverage,
     conditionLeverage,
     negotiationScripts,
     negotiationZones,
-  
+
     // 🔹 Presentation helpers
     highlights: [
       `Segment: ${segment}`,
@@ -252,17 +283,17 @@ function buildMvpAnalysis(input = {}) {
       ageTier.label ? `Age tier: ${ageTier.label}` : null,
       mileageTier.label ? `Mileage tier: ${mileageTier.label}` : null,
     ].filter(Boolean),
-  
+
     context: {
-      hasAskingPrice: num(askingPrice) !== null,
+      hasAskingPrice,
       askingPrice: num(askingPrice),
       makeNote: MakeNotes[normalizeUpper(make)] || null,
     },
-  
+
     modelVersion: "NIC_v2",
   };
-  
 }
+
 
 module.exports = {
   buildMvpAnalysis,
