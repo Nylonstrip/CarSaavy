@@ -116,16 +116,59 @@ async function generateVehicleReport({ analysis }, vin) {
       vinMasked: analysis?.vinMasked || null,
     };
 
-    // Normalize missing legacy structures
-    const negotiationProfile = analysis?.negotiationProfile || {
-      segmentCategory: analysis?.highlights?.[0]?.replace("Segment profile: ", "") || "general",
+   // -------------------------------
+// Normalized Negotiation Profile (NIC_v2 → PDF)
+// -------------------------------
+const negotiationProfile = {
+  categoryType: `Segment: ${vp.segment || "general"}`,
+
+  demandVolatility:
+    analysis?.segmentProfile?.demandVolatility || "medium",
+
+  sellerFlexibility:
+    analysis?.segmentProfile?.sellerFlexibility || "moderate",
+
+  trimNegotiability:
+    analysis?.trimLeverage?.negotiability || "moderate",
+
+  leverageAngles:
+    Array.isArray(analysis?.segmentProfile?.leverageAngles) &&
+    analysis.segmentProfile.leverageAngles.length
+      ? analysis.segmentProfile.leverageAngles
+      : [],
+};
+
+
+    const ownershipOutlook = analysis?.ownership || {};
+
+    // ---- Legacy key adapters (fill expected PDF fields) ----
+    const depreciationLeverage = analysis?.depreciationLeverage || {
+      timingPressure: "unknown",
+      leveragePoints: [],
+    };
+
+    const conditionLeverage = analysis?.conditionLeverage || {
+      ageTier: null,
+      mileageTier: null,
+      usageNotes: [],
+      inspectionNotes: [],
+    };
+
+    const negotiationScripts = analysis?.negotiationScripts || {};
+    const negotiationZones = analysis?.negotiationZones || {};
+
+    // Build a legacy-style negotiation profile for the PDF
+    const negotiationProfile = {
+      categoryType: `Segment: ${vp.segment || "general"}`,
       demandVolatility: analysis?.segmentProfile?.demandVolatility || "medium",
       sellerFlexibility: analysis?.segmentProfile?.sellerFlexibility || "moderate",
       trimNegotiability: analysis?.trimLeverage?.negotiability || "moderate",
-      leverageAngles: analysis?.segmentProfile?.leverageAngles || [],
+      leverageAngles:
+        analysis?.segmentProfile?.leverageAngles && analysis.segmentProfile.leverageAngles.length
+          ? analysis.segmentProfile.leverageAngles
+          : [],
     };
 
-    const ownershipOutlook = analysis?.ownership || {};
 
       let y = drawHeader(doc, vp.vinMasked);
 
