@@ -186,7 +186,7 @@ function deriveSegment(vehicleProfile = {}) {
   const vc = normalizeStr(vehicleProfile.vehicleClass);
   if (vc) return vc;
 
-  return "default";
+  return "general";
 }
 
 function getSegmentProfile(segment) {
