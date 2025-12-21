@@ -164,6 +164,7 @@ async function getAllVehicleData(input = {}) {
       if (!decoded || !decoded.Make || !decoded.Model || !decoded.ModelYear) {
         return { error: "Unable to resolve vehicle from VIN", vehicleProfile: null };
       }
+      
 
       return { vehicleProfile: profileFromDecoded(decoded, vin) };
     } catch (err) {
