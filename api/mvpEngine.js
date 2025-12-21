@@ -313,6 +313,40 @@ function buildConditionLeverage({
   };
 }
 
+function buildNegotiationScripts({
+  segmentProfile,
+  trimLeverage,
+  ageTier,
+  mileageTier,
+  askingPrice,
+}) {
+  const scripts = [];
+
+  scripts.push(
+    "I’m interested in the vehicle, but I want to make sure the price reflects its condition, age, and current market alternatives."
+  );
+
+  if (ageTier?.label === "older") {
+    scripts.push(
+      "Given the vehicle’s age, I’ll need to factor in future maintenance and inspection findings."
+    );
+  }
+
+  if (trimLeverage?.negotiability === "high") {
+    scripts.push(
+      "This trim level is widely available, so I’m comparing several similar options."
+    );
+  }
+
+  if (askingPrice !== null) {
+    scripts.push(
+      "Before moving forward, I’d like to understand how this price compares to similar listings I’m considering."
+    );
+  }
+
+  return scripts;
+}
+
 
 // -------------------------------
 // MAIN ENGINE
