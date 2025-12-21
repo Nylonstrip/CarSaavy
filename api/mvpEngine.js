@@ -185,6 +185,51 @@ function getSegmentProfile(segment) {
   }
 }
 
+function deriveTrimLeverage(trimTier) {
+  switch (trimTier) {
+    case "base":
+      return {
+        trimTier: "base",
+        negotiability: "moderate",
+        notes: [
+          "Base trims are typically easier to cross-shop, increasing buyer leverage.",
+          "Focus on fees, add-ons, and inspection findings to create movement.",
+        ],
+      };
+
+    case "premium":
+      return {
+        trimTier: "premium",
+        negotiability: "lower",
+        notes: [
+          "Premium trims often have fewer direct substitutes.",
+          "Leverage comes primarily from inspection findings and timing.",
+        ],
+      };
+
+    case "performance":
+      return {
+        trimTier: "performance",
+        negotiability: "moderate",
+        notes: [
+          "Performance trims are often priced with emotion baked in.",
+          "Inspection risk and timing are key leverage points.",
+        ],
+      };
+
+    case "mid":
+    default:
+      return {
+        trimTier: "mid",
+        negotiability: "high",
+        notes: [
+          "Mid-tier trims are typically the most negotiable.",
+          "Cross-shopping and timing are strong leverage angles.",
+        ],
+      };
+  }
+}
+
 
 // -------------------------------
 // MAIN ENGINE
