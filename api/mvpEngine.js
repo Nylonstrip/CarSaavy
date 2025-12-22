@@ -320,6 +320,17 @@ function buildNegotiationScripts({ ageTier, mileageTier, segmentProfile, trimLev
     "I’m prepared to move forward, but I want to make sure the price reflects condition, ownership risk, and available alternatives."
   );
 
+  if (segmentProfile?.dealerNarrative === "emotion + excitement pricing") {
+    scripts.push(
+      "Performance-oriented vehicles are often priced with emotional demand factored in, which is why I prefer to ground the discussion in inspection results, ownership risk, and realistic alternatives."
+    );
+  
+    scripts.push(
+      "I’m not opposed to paying a fair price — I just want to make sure the number reflects objective factors, not excitement."
+    );
+  }
+  
+
   if (segmentProfile?.dealerNarrative) {
     scripts.push(
       `Vehicles in this category are often priced around ${segmentProfile.dealerNarrative}, which is why I want to ground the discussion in inspection results and total cost.`
