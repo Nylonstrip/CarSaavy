@@ -182,6 +182,17 @@ const BaseVehicleSpecs = {
     },
   };
   
+  const ModelSegmentMap = {
+    "PORSCHE 718 BOXSTER": "performance",
+    "PORSCHE 911": "performance",
+    "FORD MUSTANG": "performance",
+    "CHEVROLET CORVETTE": "performance",
+    "BMW M3": "performance",
+    "BMW M4": "performance",
+    "AUDI RS": "performance",
+  };
+  
+
   // ----------------------------------------
   // 2) DepreciationCurves
   //    - Multipliers per year of age, by segment
