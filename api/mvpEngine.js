@@ -230,7 +230,8 @@ function deriveTrimLeverage(trimTier) {
   }
 }
 
-function deriveDepreciationLeverage({ year, ageTier }) {
+function deriveDepreciationLeverage({ year, ageTier, segment }) {
+
   const points = [];
 
   points.push(
@@ -438,7 +439,12 @@ function buildMvpAnalysis(input = {}) {
   const hasAskingPrice = num(askingPrice) !== null;
 
   // Depreciation & condition leverage
-  const depreciationLeverage = deriveDepreciationLeverage({ year, ageTier });
+  const depreciationLeverage = deriveDepreciationLeverage({
+    year,
+    ageTier,
+    segment,
+  });
+  
 
   const conditionLeverage = buildConditionLeverage({
     year,
