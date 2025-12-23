@@ -242,7 +242,11 @@ function deriveDepreciationLeverage({ year, ageTier }) {
       "As vehicles move further past their model year, pricing pressure typically increases, especially when buyers can cross-shop newer inventory."
     );
   }
-
+  if (segment === "performance") {
+    points.push(
+      "Demand for discretionary performance vehicles can fluctuate more than necessity-based vehicles, making timing and buyer alternatives especially relevant."
+    );
+  }  
   if (ageTier?.label === "current" || ageTier?.label === "newer") {
     points.push(
       "Newer vehicles are often priced optimistically; negotiation improves when focusing on inspection certainty and total out-the-door cost."
@@ -289,6 +293,12 @@ function buildConditionLeverage({
     );
   }
 
+  if (segment === "performance") {
+    points.push(
+      "On performance-oriented vehicles, condition carries more weight because repair and maintenance costs tend to scale faster than on standard models."
+    );
+  }
+  
   if (segment === "performance" || segment === "luxury") {
     points.push(
       "Higher-performance or premium vehicles can carry elevated repair costs, increasing inspection-based leverage."
