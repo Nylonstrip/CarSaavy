@@ -243,11 +243,41 @@ function deriveDepreciationLeverage({ year, ageTier, segment }) {
       "As vehicles move further past their model year, pricing pressure typically increases, especially when buyers can cross-shop newer inventory."
     );
   }
-  if (segment === "performance") {
+
+
+  switch (segment) {
+    case "economy":
+      points.push(
+        "High competition and widespread availability often give buyers leverage through cross-shopping and timing."
+      );
+      break;
+  
+    case "suv":
+      points.push(
+        "Demand for practical family vehicles is relatively stable, making condition and mileage important negotiation factors."
+      );
+      break;
+  
+    case "truck":
+      points.push(
+        "Truck pricing is often influenced by usage history, making wear, maintenance, and inspection findings key leverage points."
+      );
+      break;
+  
+    case "luxury":
+      points.push(
+        "Luxury vehicles tend to experience sharper depreciation outside warranty coverage, increasing sensitivity to timing and ownership costs."
+      );
+      break;
+      case "performance":
     points.push(
       "Demand for discretionary performance vehicles can fluctuate more than necessity-based vehicles, making timing and buyer alternatives especially relevant."
     );
+    break;
   }  
+
+
+
   if (ageTier?.label === "current" || ageTier?.label === "newer") {
     points.push(
       "Newer vehicles are often priced optimistically; negotiation improves when focusing on inspection certainty and total out-the-door cost."

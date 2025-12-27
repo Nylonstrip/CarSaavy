@@ -183,6 +183,7 @@ const BaseVehicleSpecs = {
   };
   
   const ModelSegmentMap = {
+    // PERFORMANCE
     "PORSCHE 718 BOXSTER": "performance",
     "PORSCHE 911": "performance",
     "FORD MUSTANG": "performance",
@@ -190,6 +191,28 @@ const BaseVehicleSpecs = {
     "BMW M3": "performance",
     "BMW M4": "performance",
     "AUDI RS": "performance",
+    "DODGE CHALLENGER": "performance",
+    // ECONOMY
+    "TOYOTA CAMRY": "economy",
+    "TOYOTA COROLLA": "economy",
+    "HONDA CIVIC": "economy",
+    "HONDA ACCORD": "economy",
+    "NISSAN SENTRA": "economy",
+    // SUV
+    "HONDA CR-V": "suv",
+    "TOYOTA RAV4": "suv",
+    "NISSAN ROGUE": "suv",
+    "FORD EXPLORER": "suv",
+    // TRUCK
+    "FORD F-150": "truck",
+    "CHEVROLET SILVERADO": "truck",
+    "RAM 1500": "truck",
+
+    // LUXURY
+    "BMW 3 SERIES": "luxury",
+    "BMW X5": "luxury",
+    "MERCEDES-BENZ C-CLASS": "luxury",
+    "AUDI A4": "luxury",
   };
   
 
@@ -353,10 +376,8 @@ const BaseVehicleSpecs = {
     DepreciationCurves,
     MileageAdjustment,
     ModelReliabilityScores,
-    KnownIssueFlags,
-    BodyStyleNegotiationProfiles,
-    DefaultExpectedFeatures,
-    DealerProfiles
+    KnownIssueFlags
   };
+  
   
   
