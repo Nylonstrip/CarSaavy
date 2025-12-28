@@ -130,19 +130,47 @@ async function generateVehicleReport({ analysis }) {
         )
       );
 
+      drawSection("YOUR NEGOTIATION POSTURE", (y0) =>
+        drawHybridParagraph(
+          doc,
+          `Recommended stance: ${analysis?.negotiationStance || "balanced"}
+      
+      This stance defines how assertive you should be during discussions. Avoid emotional commitment early and let condition, inspection risk, and alternatives control the pace.`,
+          { y: y0 }
+        )
+      );
+      
+
       // VEHICLE SUMMARY
       drawSection("VEHICLE SUMMARY", (y0) =>
         drawHybridParagraph(doc,
-          `Year: ${vp.year}\nMake: ${vp.make}\nModel: ${vp.model}\nSegment: ${vp.segment}\nTrim Tier: ${vp.trimTier}\nMileage: ${vp.mileage}`,
+          `Year: ${vp.year}\nMake: ${vp.make}\nModel: ${vp.model}\nSegment: ${vp.segment}\nTrim Tier: ${vp.trimTier}\nMileage: ${vp.mileage}
+          
+          Why this matters:
+          • Vehicles in the ${vp.segment} segment tend to negotiate differently than necessity-based inventory
+          • ${vp.trimTier} trims influence cross-shopping leverage and dealer flexibility`,
           { y: y0 }
         )
       );
 
       // NEGOTIATION SCRIPTS
-      drawSection("WHAT TO SAY IN THE ROOM", (y0) => {
-        const scripts = ensureBullets(analysis?.negotiationScripts, FALLBACK_OPENING_SCRIPTS);
-        return drawHybridParagraph(doc, safeJoinBullets(scripts), { y: y0 });
-      });
+        drawSection("NEGOTIATION MOVES", (y0) => {
+          const moves = analysis?.negotiationMoves || {};
+        
+          const content = `
+        OPENING MOVE
+        • ${moves.openingMove || FALLBACK_OPENING_SCRIPTS[0]}
+        
+        PRESSURE RESPONSE
+        • ${moves.pressureResponse || FALLBACK_CATEGORY_FRAMING[0]}
+        
+        WALK-AWAY LINE
+        • ${moves.walkAwayLine || "I’m comfortable stepping back if the terms don’t align."}
+        `;
+        
+          return drawHybridParagraph(doc, content, { y: y0 });
+        });
+    
 
       // CATEGORY & TIMING
       drawSection("DEPRECIATION & TIMING LEVERAGE", (y0) => {
@@ -156,11 +184,11 @@ async function generateVehicleReport({ analysis }) {
       // CONDITION
       drawSection("CONDITION & OWNERSHIP CONSIDERATIONS", (y0) => {
         const condition = ensureBullets(
-          analysis?.conditionLeverage?.points,
+          analysis?.conditionLeverage?.notes,
           FALLBACK_CONDITION_LEVERAGE
         );
         const ownership = ensureBullets(
-          analysis?.ownership?.ownershipNotes,
+          analysis?.ownership?.notes,
           FALLBACK_OWNERSHIP_OUTLOOK
         );
         return drawHybridParagraph(
@@ -169,6 +197,20 @@ async function generateVehicleReport({ analysis }) {
           { y: y0 }
         );
       });
+
+      // TRIM & CONFIGURATION LEVERAGE
+      drawSection("TRIM & CONFIGURATION LEVERAGE", (y0) => {
+        const trimNotes = ensureBullets(
+          analysis?.trimLeverage?.notes,
+          [
+            "Trim level influences availability and cross-shopping leverage.",
+            "Negotiation strength varies depending on configuration demand."
+          ]
+        );
+        return drawHybridParagraph(doc, safeJoinBullets(trimNotes), { y: y0 });
+      });
+
+
 
       // NEGOTIATION ZONES
       drawSection("NEGOTIATION ZONES", (y0) => {
@@ -183,7 +225,15 @@ async function generateVehicleReport({ analysis }) {
         );
         return drawHybridParagraph(
           doc,
-          `Discovery Phase:\n${safeJoinBullets(discovery)}\n\nAnchored Phase:\n${safeJoinBullets(anchored)}`,
+          `Discovery Phase:
+        • Do NOT make an offer in this phase.
+        • Focus on extracting pricing justification, condition details, and seller urgency.
+        • Let the dealer explain value before you reveal intent.
+
+        Anchored Phase:
+        • Only engage after inspection or clear justification.
+        • Apply pressure using condition, age, and cross-shopping.
+        • Be prepared to pause or walk if movement stalls.`,
           { y: y0 }
         );
       });

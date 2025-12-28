@@ -230,6 +230,25 @@ function deriveTrimLeverage(trimTier) {
   }
 }
 
+function deriveNegotiationStance({ segment, ageTier, mileageTier, hasAskingPrice }) {
+  if (!hasAskingPrice) return "discovery-first";
+
+  if (segment === "performance") {
+    return ageTier?.label === "older"
+      ? "firm-and-patient"
+      : "measured-but-firm";
+  }
+
+  if (segment === "economy") {
+    return mileageTier?.label === "high"
+      ? "pressure-ready"
+      : "patient-and-comparative";
+  }
+
+  return "balanced";
+}
+
+
 function deriveDepreciationLeverage({ year, ageTier, segment }) {
 
   const points = [];
@@ -405,6 +424,31 @@ function buildNegotiationScripts({ ageTier, mileageTier, segmentProfile, trimLev
   return scripts;
 }
 
+function deriveNegotiationMoves({ stance, segmentProfile }) {
+  const moves = {
+    openingMove:
+      "I’m interested, but before we talk numbers I want to make sure I understand condition, inspection results, and how this compares to similar options.",
+
+    pressureResponse:
+      "I understand your position — I just need the price to reflect condition, risk, and realistic alternatives before moving forward.",
+
+    walkAwayLine:
+      "I’m comfortable waiting or exploring other options if this doesn’t align — feel free to reach out if flexibility opens up.",
+  };
+
+  if (stance === "pressure-ready") {
+    moves.pressureResponse =
+      "Given mileage and ownership considerations, the price needs to reflect the real cost of ownership, not just the listing.";
+  }
+
+  if (segmentProfile?.category === "discretionary") {
+    moves.walkAwayLine =
+      "This isn’t a necessity purchase for me — I’m happy to revisit if the numbers make more sense later.";
+  }
+
+  return moves;
+}
+
 
 function deriveNegotiationZones({ hasAskingPrice }) {
   if (!hasAskingPrice) {
@@ -496,6 +540,19 @@ function buildMvpAnalysis(input = {}) {
 
   const negotiationZones = deriveNegotiationZones({ hasAskingPrice });
 
+  const negotiationStance = deriveNegotiationStance({
+    segment,
+    ageTier,
+    mileageTier,
+    hasAskingPrice,
+  });
+  
+  const negotiationMoves = deriveNegotiationMoves({
+    stance: negotiationStance,
+    segmentProfile,
+  });
+  
+
   // Final payload
   return {
     // 🔹 Core identity (used by PDF)
@@ -521,6 +578,8 @@ function buildMvpAnalysis(input = {}) {
     conditionLeverage,
     negotiationScripts,
     negotiationZones,
+    negotiationStance,
+    negotiationMoves,
 
     // 🔹 Presentation helpers
     highlights: [
