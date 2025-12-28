@@ -470,6 +470,43 @@ function deriveNegotiationZones({ hasAskingPrice }) {
   };
 }
 
+function deriveDealerPushbackResponses({ segment, negotiationStance }) {
+  const responses = [];
+
+  // Universal pushbacks
+  responses.push({
+    dealerSays: "This car is priced fairly for the market.",
+    buyerResponse:
+      "I understand — market pricing doesn’t fully account for inspection risk or ownership cost, which is what I need to align on before moving forward.",
+  });
+
+  responses.push({
+    dealerSays: "We don’t have much room on this one.",
+    buyerResponse:
+      "That’s fair — flexibility usually shows up once condition, alternatives, and timing are factored in.",
+  });
+
+  // Segment-specific pressure
+  if (segment === "performance" || segment === "luxury") {
+    responses.push({
+      dealerSays: "These don’t last long.",
+      buyerResponse:
+        "I don’t buy under urgency — if the numbers align after inspection, I’m ready to proceed.",
+    });
+  }
+
+  // Stance escalation
+  if (negotiationStance === "pressure-ready" || negotiationStance === "firm-and-patient") {
+    responses.push({
+      dealerSays: "This is our best price.",
+      buyerResponse:
+        "Understood — I’m comfortable exploring other options unless flexibility opens up.",
+    });
+  }
+
+  return responses;
+}
+
 
 // -------------------------------
 // MAIN ENGINE
@@ -547,6 +584,11 @@ function buildMvpAnalysis(input = {}) {
     hasAskingPrice,
   });
   
+  const dealerPushbackResponses = deriveDealerPushbackResponses({
+    segment,
+    negotiationStance,
+  });  
+
   const negotiationMoves = deriveNegotiationMoves({
     stance: negotiationStance,
     segmentProfile,
@@ -580,6 +622,7 @@ function buildMvpAnalysis(input = {}) {
     negotiationZones,
     negotiationStance,
     negotiationMoves,
+    dealerPushbackResponses,
 
     // 🔹 Presentation helpers
     highlights: [

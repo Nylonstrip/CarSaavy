@@ -172,6 +172,28 @@ async function generateVehicleReport({ analysis }) {
         });
     
 
+        drawSection("IF THE DEALER PUSHES BACK", (y0) => {
+          const responses = analysis?.dealerPushbackResponses || [];
+        
+          if (!responses.length) {
+            return drawHybridParagraph(
+              doc,
+              "Stay calm, avoid reacting emotionally, and anchor discussions around condition, inspection results, and alternatives.",
+              { y: y0 }
+            );
+          }
+        
+          const formatted = responses
+            .map(
+              (r) =>
+                `If they say:\n• "${r.dealerSays}"\nYou respond:\n• ${r.buyerResponse}`
+            )
+            .join("\n\n");
+        
+          return drawHybridParagraph(doc, formatted, { y: y0 });
+        });
+        
+
       // CATEGORY & TIMING
       drawSection("DEPRECIATION & TIMING LEVERAGE", (y0) => {
         const timing = ensureBullets(
