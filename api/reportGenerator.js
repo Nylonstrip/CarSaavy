@@ -171,7 +171,7 @@ async function generateVehicleReport({ analysis }) {
           return drawHybridParagraph(doc, content, { y: y0 });
         });
     
-
+        //IF THE DEALER PUSHES BACK
         drawSection("IF THE DEALER PUSHES BACK", (y0) => {
           const responses = analysis?.dealerPushbackResponses || [];
         
@@ -191,6 +191,28 @@ async function generateVehicleReport({ analysis }) {
             .join("\n\n");
         
           return drawHybridParagraph(doc, formatted, { y: y0 });
+        });
+        //WHEN TO ESCALATE OR EXIT
+        drawSection("WHEN TO ESCALATE OR EXIT", (y0) => {
+          const guidance = analysis?.escalationGuidance;
+        
+          if (!guidance) {
+            return drawHybridParagraph(
+              doc,
+              "Escalate when discussions stall or become repetitive. Exit when leverage is exhausted and alternatives remain.",
+              { y: y0 }
+            );
+          }
+        
+          const content = `
+        ESCALATE WHEN:
+        ${safeJoinBullets(guidance.escalateWhen)}
+        
+        EXIT WHEN:
+        ${safeJoinBullets(guidance.exitWhen)}
+        `;
+        
+          return drawHybridParagraph(doc, content, { y: y0 });
         });
         
 

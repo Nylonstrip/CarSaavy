@@ -507,6 +507,33 @@ function deriveDealerPushbackResponses({ segment, negotiationStance }) {
   return responses;
 }
 
+function deriveEscalationGuidance({ segment, negotiationStance }) {
+  const escalateWhen = [
+    "The price is defended repeatedly without new justification.",
+    "Inspection or condition discussion is avoided or minimized.",
+    "Urgency is used more than once to push commitment.",
+  ];
+
+  const exitWhen = [
+    "No movement occurs after inspection or condition leverage.",
+    "Alternatives are dismissed without engagement.",
+  ];
+
+  if (segment === "performance" || segment === "luxury") {
+    exitWhen.push(
+      "Emotional or scarcity-based pressure replaces factual discussion."
+    );
+  }
+
+  if (negotiationStance === "discovery-first") {
+    escalateWhen.unshift(
+      "The dealer attempts to anchor price before justification is provided."
+    );
+  }
+
+  return { escalateWhen, exitWhen };
+}
+
 
 // -------------------------------
 // MAIN ENGINE
@@ -594,7 +621,11 @@ function buildMvpAnalysis(input = {}) {
     segmentProfile,
   });
   
-
+  const escalationGuidance = deriveEscalationGuidance({
+    segment,
+    negotiationStance,
+  });
+  
   // Final payload
   return {
     // 🔹 Core identity (used by PDF)
@@ -623,6 +654,7 @@ function buildMvpAnalysis(input = {}) {
     negotiationStance,
     negotiationMoves,
     dealerPushbackResponses,
+    escalationGuidance,
 
     // 🔹 Presentation helpers
     highlights: [
