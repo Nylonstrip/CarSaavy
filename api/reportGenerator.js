@@ -152,7 +152,7 @@ async function generateVehicleReport({ analysis }) {
       // VEHICLE SUMMARY
       drawSection("VEHICLE SUMMARY", (y0) =>
         drawHybridParagraph(doc,
-          `Year: ${vp.year}\nMake: ${vp.make}\nModel: ${vp.model}\nSegment: ${vp.segment}\nTrim Tier: ${vp.trimTier}\nMileage: ${vp.mileage}
+          `Year: ${vp.year}\nMake: ${vp.make}\nModel: ${vp.model}\nSegment: ${vp.segment}\nTrim Tier: ${vp.trimTier}\nMileage: ${vp.mileage}\nAsking Price (Seller): ${vs.askingPrice}
           
           Why this matters:
           • Vehicles in the ${vp.segment} segment tend to negotiate differently than necessity-based inventory
