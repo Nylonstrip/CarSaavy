@@ -574,7 +574,9 @@ function buildMvpAnalysis(input = {}) {
   // Ownership & pricing context
   const ownership = deriveOwnershipOutlook(modelKey);
   const askingPrice = input.askingPrice ?? input.price ?? null;
-  const hasAskingPrice = num(askingPrice) !== null;
+  const hasAskingPrice =
+  typeof askingPrice === "string" && askingPrice.trim().length > 0;
+
 
   // Depreciation & condition leverage
   const depreciationLeverage = deriveDepreciationLeverage({
@@ -655,6 +657,7 @@ function buildMvpAnalysis(input = {}) {
     negotiationMoves,
     dealerPushbackResponses,
     escalationGuidance,
+    hasAskingPrice,
 
     // 🔹 Presentation helpers
     highlights: [

@@ -13,8 +13,8 @@ module.exports.config = {
   api: { bodyParser: false },
 };
 
-const hasVin = !!input.vin;
-const hasYMM = !!(input.year && input.make && input.model);
+const hasVin = !!metadata.vin;
+const hasYMM = !!(metadata.year && metadata.make && metadata.model);
 
 if (hasVin && hasYMM) {
   return {
@@ -89,7 +89,7 @@ module.exports = async function handler(req, res) {
   // -----------------------------
   const vin = metadata.vin || null;
   const email = metadata.email || null;
-
+  
   const year = metadata.year || null;
   const make = metadata.make || null;
   const model = metadata.model || null;
