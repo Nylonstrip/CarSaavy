@@ -140,10 +140,7 @@ module.exports = async function handler(req, res) {
       console.warn("⚠️ Vehicle resolution failed:", err);
     }
 
-    const hasResolvedYMM =
-  resolvedProfile.year &&
-  resolvedProfile.make &&
-  resolvedProfile.model;
+    
 
 
     if (!hasVin && !hasYMM) {
@@ -185,7 +182,11 @@ module.exports = async function handler(req, res) {
 
 
     
-    
+    const hasResolvedYMM =
+    resolvedProfile.year &&
+    resolvedProfile.make &&
+    resolvedProfile.model;
+
     const analysis = buildMvpAnalysis({
       vehicleProfile: resolvedProfile,
       askingPrice,
