@@ -234,27 +234,72 @@
   const toggle = document.getElementById("toggleDetails");
   const details = document.getElementById("vehicleDetails");
 
-  toggle.addEventListener("click", e => {
-    e.preventDefault();
-    details.style.display = details.style.display === "none" ? "block" : "none";
-  });
+  // Cache inputs ONCE (top-level)
+  const vinInput = document.getElementById("vin");
+  const yearInput = document.getElementById("year");
+  const makeInput = document.getElementById("make");
+  const modelInput = document.getElementById("model");
+  const segmentSelect = document.getElementById("segment");
+  const trimSelect = document.getElementById("trimTier");
 
   function isValidVIN(v) {
     return /^[A-HJ-NPR-Z0-9]{17}$/i.test(v);
   }
 
+  function activateVinMode() {
+    [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
+      el.value = "";
+      el.disabled = true;
+    });
+    details.style.display = "none";
+    vinInput.disabled = false;
+  }
+
+  function activateManualMode() {
+    vinInput.value = "";
+    vinInput.disabled = true;
+
+    [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
+      el.disabled = false;
+    });
+
+    details.style.display = "block";
+  }
+
+  function resetIdentityMode() {
+    vinInput.disabled = false;
+    [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
+      el.disabled = false;
+    });
+    details.style.display = "none";
+  }
+
+  toggle.addEventListener("click", e => {
+    e.preventDefault();
+    activateManualMode();
+  });
+
+  vinInput.addEventListener("input", () => {
+    const vinVal = vinInput.value.trim();
+    if (vinVal.length > 0) {
+      activateVinMode();
+    } else {
+      resetIdentityMode();
+    }
+  });
+
   form.addEventListener("submit", async e => {
     e.preventDefault();
 
-    const email = emailEl = document.getElementById("email").value.trim();
-    const vin = document.getElementById("vin").value.trim().toUpperCase();
+    const email = document.getElementById("email").value.trim();
+    const vin = vinInput.value.trim().toUpperCase();
     const askingPrice = document.getElementById("askingPrice").value.trim();
 
-    const year = document.getElementById("year").value.trim();
-    const make = document.getElementById("make").value.trim();
-    const model = document.getElementById("model").value.trim();
-    const segment = document.getElementById("segment").value;
-    const trimTier = document.getElementById("trimTier").value;
+    const year = yearInput.value.trim();
+    const make = makeInput.value.trim();
+    const model = modelInput.value.trim();
+    const segment = segmentSelect.value;
+    const trimTier = trimSelect.value;
 
     const hasVin = vin && isValidVIN(vin);
     const hasDetails = year && make && model;
