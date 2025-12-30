@@ -8,9 +8,20 @@ const { getAllVehicleData } = require("./services/vehicleData");
 const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+
 module.exports.config = {
   api: { bodyParser: false },
 };
+
+const hasVin = !!input.vin;
+const hasYMM = !!(input.year && input.make && input.model);
+
+if (hasVin && hasYMM) {
+  return {
+    error: "Conflicting vehicle identifiers. Please provide either VIN or Year/Make/Model, not both."
+  };
+}
+
 
 // -----------------------------
 // Email helper

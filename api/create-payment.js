@@ -38,7 +38,8 @@ module.exports = async (req, res) => {
     }
 
     // At minimum, we need vehicle identity (VIN OR Y/M/M)
-    const hasVin = typeof vin === "string" && vin.trim().length >= 6;
+    const VIN_REGEX = /^[A-HJ-NPR-Z0-9]{17}$/i;
+    const hasVin = typeof vin === "string" && VIN_REGEX.test(vin.trim());
     const hasYMM =
     typeof year === "string" && year.trim() &&
     typeof make === "string" && make.trim() &&
@@ -51,20 +52,27 @@ module.exports = async (req, res) => {
       });
     }
 
+    if (hasVin && hasYMM) {
+      return res.status(400).json({
+        error: "Please provide either a VIN or vehicle details, not both.",
+      });
+    }
+    
     // ----------------------------
     // 2️⃣ Normalize metadata
     // ----------------------------
     const metadata = {
       email: normalizeStr(email).toLowerCase(),
-      vin: normalizeStr(vin).toUpperCase(),
-      year: normalizeStr(year),
-      make: normalizeStr(make),
-      model: normalizeStr(model),
+      vin: hasVin ? normalizeStr(vin).toUpperCase() : "",
+      year: hasYMM ? normalizeStr(year) : "",
+      make: hasYMM ? normalizeStr(make) : "",
+      model: hasYMM ? normalizeStr(model) : "",
       segment: normalizeStr(segment),
       trimTier: normalizeStr(trimTier),
       mileage: normalizeStr(mileage),
       askingPrice: normalizePrice(askingPrice),
     };
+    
 
     // ----------------------------
     // 3️⃣ Single MVP price

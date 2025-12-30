@@ -140,6 +140,14 @@ async function generateVehicleReport({ analysis }) {
         )
       );
       
+      if (!analysis?.hasAskingPrice) {
+        drawHybridParagraph(
+          doc,
+          "Note: Adding the seller’s asking price allows for more precise negotiation posture, escalation timing, and pressure responses. Without it, the report defaults to a discovery-first strategy to avoid overcommitting.",
+          { y: doc.y + 8 }
+        );
+      }
+      
 
       // VEHICLE SUMMARY
       drawSection("VEHICLE SUMMARY", (y0) =>
