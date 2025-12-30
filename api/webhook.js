@@ -140,13 +140,11 @@ module.exports = async function handler(req, res) {
       console.warn("⚠️ Vehicle resolution failed:", err);
     }
 
-    const hasVin = typeof vin === "string" && vin.trim().length >= 6;
-    const hasYMM =
-      vehicleData &&
-      vehicleData.vehicleProfile &&
-      vehicleData.vehicleProfile.year &&
-      vehicleData.vehicleProfile.make &&
-      vehicleData.vehicleProfile.model;
+    const hasResolvedYMM =
+  resolvedProfile.year &&
+  resolvedProfile.make &&
+  resolvedProfile.model;
+
 
     if (!hasVin && !hasYMM) {
       throw new Error("Insufficient vehicle data to generate report");
@@ -166,13 +164,25 @@ module.exports = async function handler(req, res) {
     };
     
     
-    const hasCoreIdentity =
-  resolvedProfile.vin &&
-  (resolvedProfile.year || resolvedProfile.make || resolvedProfile.model);
+    // ------------------------------------
+// Identity validation (VIN vs Y/M/M)
+// ------------------------------------
+    if (hasVin) {
+      const hasVinIdentity =
+        vin &&
+        (
+          resolvedProfile.year ||
+          resolvedProfile.make ||
+          resolvedProfile.model
+        );
 
-    if (!hasCoreIdentity) {
-      throw new Error("Critical vehicle identity missing after VIN resolution");
+      if (!hasVinIdentity) {
+        throw new Error("Critical vehicle identity missing after VIN resolution");
+      }
     }
+
+// ⚠️ If no VIN, we are in Y/M/M mode — do NOT apply VIN guards
+
 
     
     
