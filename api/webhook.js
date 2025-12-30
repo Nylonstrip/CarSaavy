@@ -166,9 +166,14 @@ module.exports = async function handler(req, res) {
     };
     
     
-    if (!resolvedProfile.year || !resolvedProfile.make || !resolvedProfile.model) {
+    const hasCoreIdentity =
+  resolvedProfile.vin &&
+  (resolvedProfile.year || resolvedProfile.make || resolvedProfile.model);
+
+    if (!hasCoreIdentity) {
       throw new Error("Critical vehicle identity missing after VIN resolution");
     }
+
     
     
     const analysis = buildMvpAnalysis({
