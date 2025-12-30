@@ -575,7 +575,11 @@ function buildMvpAnalysis(input = {}) {
   const ownership = deriveOwnershipOutlook(modelKey);
   const askingPrice = input.askingPrice ?? input.price ?? null;
   const hasAskingPrice =
-  typeof askingPrice === "string" && askingPrice.trim().length > 0;
+  askingPrice !== null &&
+  askingPrice !== undefined &&
+  String(askingPrice).trim().length > 0 &&
+  !Number.isNaN(Number(askingPrice));
+
 
 
   // Depreciation & condition leverage
@@ -639,6 +643,9 @@ function buildMvpAnalysis(input = {}) {
       trimTier,
       mileage: mileage ?? "N/A",
       vinMasked: maskVin(vp.vin),
+      askingPrice: hasAskingPrice
+  ? `$${num(askingPrice).toLocaleString()}`
+  : "Not provided",
     },
 
     // 🔹 Core tiers
