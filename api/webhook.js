@@ -164,20 +164,6 @@ module.exports = async function handler(req, res) {
     // ------------------------------------
 // Identity validation (VIN vs Y/M/M)
 // ------------------------------------
-    if (hasVin) {
-      const hasVinIdentity =
-        vin &&
-        (
-          resolvedProfile.year ||
-          resolvedProfile.make ||
-          resolvedProfile.model
-        );
-
-      if (!hasVinIdentity) {
-        throw new Error("Critical vehicle identity missing after VIN resolution");
-      }
-    }
-
 // ⚠️ If no VIN, we are in Y/M/M mode — do NOT apply VIN guards
 
 
