@@ -13,14 +13,7 @@ module.exports.config = {
   api: { bodyParser: false },
 };
 
-const hasVin = !!metadata.vin;
-const hasYMM = !!(metadata.year && metadata.make && metadata.model);
 
-if (hasVin && hasYMM) {
-  return {
-    error: "Conflicting vehicle identifiers. Please provide either VIN or Year/Make/Model, not both."
-  };
-}
 
 
 // -----------------------------
@@ -83,6 +76,15 @@ module.exports = async function handler(req, res) {
 
   const intent = event.data.object;
   const metadata = intent.metadata || {};
+
+  const hasVin = !!metadata.vin;
+  const hasYMM = !!(metadata.year && metadata.make && metadata.model);
+  
+  if (hasVin && hasYMM) {
+    return {
+      error: "Conflicting vehicle identifiers. Please provide either VIN or Year/Make/Model, not both."
+    };
+  }
 
   // -----------------------------
   // Extract metadata (THIS WAS MISSING)
