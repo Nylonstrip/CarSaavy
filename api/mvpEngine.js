@@ -535,13 +535,16 @@ function deriveEscalationGuidance({ segment, negotiationStance }) {
 }
 
 function deriveInspectionPriority({ ageTier }) {
-  if (!ageTier || !ageTier.years) return "standard";
+  if (!ageTier || typeof ageTier.years !== "number") {
+    return "standard";
+  }
 
   if (ageTier.years >= 12) return "critical";
   if (ageTier.years >= 7) return "elevated";
 
   return "standard";
 }
+
 
 
 // -------------------------------
@@ -673,6 +676,7 @@ function buildMvpAnalysis(input = {}) {
     negotiationZones,
     negotiationStance,
     negotiationMoves,
+    inspectionPriority,
     dealerPushbackResponses,
     escalationGuidance,
     hasAskingPrice,
