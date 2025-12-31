@@ -534,13 +534,16 @@ function deriveEscalationGuidance({ segment, negotiationStance }) {
   return { escalateWhen, exitWhen };
 }
 
-function deriveInspectionPriority({ ageTier }) {
-  if (!ageTier || typeof ageTier.years !== "number") {
+function deriveInspectionPriority({ year }) {
+  if (!year || typeof year !== "number") {
     return "standard";
   }
 
-  if (ageTier.years >= 12) return "critical";
-  if (ageTier.years >= 7) return "elevated";
+  const currentYear = new Date().getFullYear();
+  const vehicleAge = currentYear - year;
+
+  if (vehicleAge >= 15) return "critical";
+  if (vehicleAge >= 8) return "elevated";
 
   return "standard";
 }
@@ -620,7 +623,7 @@ function buildMvpAnalysis(input = {}) {
     askingPrice,
   });
 
-  const inspectionPriority = deriveInspectionPriority({ ageTier });
+  const inspectionPriority = deriveInspectionPriority({ year });
 
   const negotiationZones = deriveNegotiationZones({ hasAskingPrice });
 
