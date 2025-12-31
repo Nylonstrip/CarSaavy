@@ -534,6 +534,15 @@ function deriveEscalationGuidance({ segment, negotiationStance }) {
   return { escalateWhen, exitWhen };
 }
 
+function deriveInspectionPriority({ ageTier }) {
+  if (!ageTier || !ageTier.years) return "standard";
+
+  if (ageTier.years >= 12) return "critical";
+  if (ageTier.years >= 7) return "elevated";
+
+  return "standard";
+}
+
 
 // -------------------------------
 // MAIN ENGINE
@@ -607,6 +616,8 @@ function buildMvpAnalysis(input = {}) {
     mileageTier,
     askingPrice,
   });
+
+  const inspectionPriority = deriveInspectionPriority({ ageTier });
 
   const negotiationZones = deriveNegotiationZones({ hasAskingPrice });
 

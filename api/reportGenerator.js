@@ -101,6 +101,33 @@ function drawHeader(doc, vinMasked) {
   return 110;
 }
 
+function getInspectionGuidance(priority) {
+  switch (priority) {
+    case "critical":
+      return {
+        label: "Critical Inspection Priority",
+        body: `This vehicle’s age places it in a high-risk inspection category.
+A professional pre-purchase inspection should be completed before any price discussions or commitments.
+Use inspection findings as primary leverage, and be prepared to pause or walk away if material issues surface.`,
+      };
+
+    case "elevated":
+      return {
+        label: "Elevated Inspection Priority",
+        body: `Given the vehicle’s age, a pre-purchase inspection is strongly recommended.
+Inspection findings should be used strategically during negotiation to justify price adjustments or concessions.`,
+      };
+
+    default:
+      return {
+        label: "Standard Inspection Priority",
+        body: `A pre-purchase inspection is recommended to confirm overall condition.
+While not urgent, inspection results can still be used to support negotiation if discrepancies are found.`,
+      };
+  }
+}
+
+
 // ===============================
 // MAIN REPORT GENERATOR
 // ===============================
@@ -262,7 +289,21 @@ async function generateVehicleReport({ analysis }) {
         return drawHybridParagraph(doc, safeJoinBullets(trimNotes), { y: y0 });
       });
 
+      //Inspection Guidance
+      const inspection = getInspectionGuidance(analysis.inspectionPriority);
 
+      drawSection("INSPECTION GUIDANCE", (y0) =>
+        drawHybridParagraph(
+          doc,
+          `
+      ${inspection.label}
+      
+      ${inspection.body}
+      `,
+          { y: y0 }
+        )
+      );
+      
 
       // NEGOTIATION ZONES
       drawSection("NEGOTIATION ZONES", (y0) => {
