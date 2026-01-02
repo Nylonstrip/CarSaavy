@@ -2,6 +2,9 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 const { put } = require("@vercel/blob");
+const SECTION_GAP = 6;
+const SUBSECTION_GAP = 4;
+
 
 // ===============================
 // Fallback Copy (MVP-Safe)
@@ -43,6 +46,7 @@ const FALLBACK_NEGOTIATION_ZONES = {
     "Be prepared to pause or walk if terms don’t align.",
   ],
 };
+
 
 // ===============================
 // PDF Utilities (unchanged styling)
@@ -157,6 +161,9 @@ async function generateVehicleReport({ analysis }) {
         )
       );
 
+      doc.y += SECTION_GAP;
+
+
       drawSection("YOUR NEGOTIATION POSTURE", (y0) =>
         drawHybridParagraph(
           doc,
@@ -167,6 +174,8 @@ async function generateVehicleReport({ analysis }) {
         )
       );
       
+      doc.y += SUBSECTION_GAP;
+
       if (!analysis?.hasAskingPrice) {
         drawHybridParagraph(
           doc,
