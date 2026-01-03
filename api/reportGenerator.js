@@ -147,11 +147,19 @@ async function generateVehicleReport({ analysis }) {
       let y = drawHeader(doc, vp.vinMasked);
 
       const drawSection = (title, renderer) => {
-        y = drawSectionHeader(doc, title, y);
-        y = ensureSpace(doc, y);
-        y = renderer(y);
-        y += 24;
+        // Ensure space BEFORE the header
+        ensureSpace(doc);
+      
+        // Draw header
+        drawSectionHeader(doc, title);
+      
+        // Let renderer draw content starting at current doc.y
+        renderer(doc.y);
+      
+        // Add consistent spacing after section
+        doc.y += SECTION_GAP;
       };
+      
 
       // EXECUTIVE SNAPSHOT
       drawSection("EXECUTIVE SNAPSHOT", (y0) =>
@@ -262,12 +270,16 @@ async function generateVehicleReport({ analysis }) {
 
       // CATEGORY & TIMING
       drawSection("DEPRECIATION & TIMING LEVERAGE", (y0) => {
-        const timing = ensureBullets(
-          analysis?.depreciationLeverage?.leveragePoints,
-          FALLBACK_TIMING_LEVERAGE
+        drawHybridParagraph(
+          doc,
+          `• Vehicles depreciate over time regardless of condition.
+      • Timing, inventory age, and dealer pressure influence flexibility.
+      • Older or slower-moving inventory creates leverage without confrontation.`,
+          { y: y0 }
         );
-        return drawHybridParagraph(doc, safeJoinBullets(timing), { y: y0 });
       });
+      doc.y += SECTION_GAP;
+      
 
       // CONDITION
       drawSection("CONDITION & OWNERSHIP CONSIDERATIONS", (y0) => {
@@ -316,29 +328,26 @@ async function generateVehicleReport({ analysis }) {
 
       // NEGOTIATION ZONES
       drawSection("NEGOTIATION ZONES", (y0) => {
-        const zones = analysis?.negotiationZones || {};
-        const discovery = ensureBullets(
-          zones.strategy === "discovery" ? zones.notes : null,
-          FALLBACK_NEGOTIATION_ZONES.discovery
-        );
-        const anchored = ensureBullets(
-          zones.strategy === "anchored" ? zones.notes : null,
-          FALLBACK_NEGOTIATION_ZONES.anchored
-        );
-        return drawHybridParagraph(
+        drawHybridParagraph(
           doc,
-          `Discovery Phase:
-        • Do NOT make an offer in this phase.
-        • Focus on extracting pricing justification, condition details, and seller urgency.
-        • Let the dealer explain value before you reveal intent.
-
-        Anchored Phase:
-        • Only engage after inspection or clear justification.
-        • Apply pressure using condition, age, and cross-shopping.
-        • Be prepared to pause or walk if movement stalls.`,
+          `
+      Discovery Phase:
+      • Do NOT make an offer in this phase.
+      • Focus on extracting pricing justification, condition details, and urgency.
+      
+      Anchored Phase:
+      • Engage only after inspection or clear justification.
+      • Apply pressure using condition, age, and alternatives.
+      
+      Pressure Phase:
+      • Push for movement once leverage is established.
+      • Be prepared to pause or exit if progress stalls.
+      `,
           { y: y0 }
         );
       });
+      doc.y += SECTION_GAP;
+      
 
       // METHODOLOGY
       drawSection("METHODOLOGY & LIMITATIONS", (y0) =>
