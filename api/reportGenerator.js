@@ -65,18 +65,34 @@ function ensureBullets(lines, fallback) {
 }
 
 function drawHybridParagraph(doc, text, opts = {}) {
-  const { x = 60, y, width = 475, fontSize = 11, lineHeight = 14.5, paragraphGap = 10 } = opts;
-  if (!text) return y;
-  text = applyProtectiveSpacing(text);
+  const {
+    x = 60,
+    y,
+    width = 475,
+    fontSize = 11,
+    lineGap = 2,       // tighter lines
+    paragraphGap = 8,  // small gap after block
+  } = opts;
+
+  if (!text) return doc.y;
+
+  text = applyProtectiveSpacing(String(text)).trim();
+  if (!text) return doc.y;
+
+  // Use doc.y as the single source of truth
+  if (typeof y === "number") doc.y = y;
+
   doc.fontSize(fontSize);
-  const paragraphs = text.split("\n").map((p) => p.trim()).filter(Boolean);
-  let cursorY = y;
-  paragraphs.forEach((p) => {
-    doc.text(p, x, cursorY, { width });
-    cursorY += lineHeight + paragraphGap;
-  });
-  return cursorY;
+
+  // IMPORTANT: render the entire block at once (handles \n internally)
+  doc.text(text, x, doc.y, { width, lineGap });
+
+  // Add a small gap after the block
+  doc.y += paragraphGap;
+
+  return doc.y;
 }
+
 
 function drawSectionHeader(doc, title) {
   const y = doc.y;
@@ -94,13 +110,13 @@ function drawSectionHeader(doc, title) {
 }
 
 
-function ensureSpace(doc, y) {
-  if (y > doc.page.height - 120) {
+function ensureSpace(doc, bottomPadding = 120, topY = 110) {
+  if (doc.y > doc.page.height - bottomPadding) {
     doc.addPage();
-    return 120;
+    doc.y = topY;
   }
-  return y;
 }
+
 
 function drawHeader(doc, vinMasked) {
   doc.rect(0, 0, doc.page.width, 70).fill("#000000");
@@ -155,14 +171,21 @@ async function generateVehicleReport({ analysis }) {
       let y = drawHeader(doc, vp.vinMasked);
 
       const drawSection = (title, renderer) => {
+        // page break guard BEFORE header
         ensureSpace(doc);
       
         drawSectionHeader(doc, title);
       
-        renderer(doc.y);
+        // renderer returns a y (because drawHybridParagraph returns y)
+        const nextY = renderer(doc.y);
+      
+        if (typeof nextY === "number" && Number.isFinite(nextY)) {
+          doc.y = nextY;
+        }
       
         doc.y += SECTION_GAP;
       };
+      
       
       
 
@@ -174,7 +197,7 @@ async function generateVehicleReport({ analysis }) {
         )
       );
 
-      doc.y += SECTION_GAP;
+
 
 
       drawSection("YOUR NEGOTIATION POSTURE", (y0) =>
@@ -249,6 +272,9 @@ async function generateVehicleReport({ analysis }) {
         
           return drawHybridParagraph(doc, formatted, { y: y0 });
         });
+
+
+
         //WHEN TO ESCALATE OR EXIT
         drawSection("WHEN TO ESCALATE OR EXIT", (y0) => {
           const guidance = analysis?.escalationGuidance;
@@ -283,7 +309,7 @@ async function generateVehicleReport({ analysis }) {
           { y: y0 }
         );
       });
-      doc.y += SECTION_GAP;
+
       
 
       // CONDITION
@@ -351,7 +377,7 @@ async function generateVehicleReport({ analysis }) {
           { y: y0 }
         );
       });
-      doc.y += SECTION_GAP;
+
       
 
       // METHODOLOGY
