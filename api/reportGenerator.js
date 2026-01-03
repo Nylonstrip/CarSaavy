@@ -78,13 +78,21 @@ function drawHybridParagraph(doc, text, opts = {}) {
   return cursorY;
 }
 
-function drawSectionHeader(doc, title, y) {
-  y += 14;
-  doc.rect(60, y, 475, 22).fill("#000000");
-  doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(13).text(title, 70, y + 5);
-  doc.fillColor("#000000");
-  return y + 42;
+function drawSectionHeader(doc, title) {
+  const y = doc.y;
+
+  doc
+    .rect(40, y, 520, 22)
+    .fillAndStroke("#f0f0f0", "#000");
+
+  doc
+    .fillColor("#000")
+    .fontSize(11)
+    .text(title, 50, y + 6);
+
+  doc.y = y + 30;
 }
+
 
 function ensureSpace(doc, y) {
   if (y > doc.page.height - 120) {
@@ -147,18 +155,15 @@ async function generateVehicleReport({ analysis }) {
       let y = drawHeader(doc, vp.vinMasked);
 
       const drawSection = (title, renderer) => {
-        // Ensure space BEFORE the header
         ensureSpace(doc);
       
-        // Draw header
         drawSectionHeader(doc, title);
       
-        // Let renderer draw content starting at current doc.y
         renderer(doc.y);
       
-        // Add consistent spacing after section
         doc.y += SECTION_GAP;
       };
+      
       
 
       // EXECUTIVE SNAPSHOT
