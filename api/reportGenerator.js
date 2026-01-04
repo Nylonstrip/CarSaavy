@@ -131,7 +131,7 @@ function drawHeader(doc, vinMasked) {
   doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(18)
     .text("CARSAAVY NEGOTIATION READINESS REPORT", 50, 20);
   doc.font("Helvetica").fontSize(10)
-    .text(`VIN: ${vinMasked || "N/A"}`, 400, 24, { align: "right" })
+    .text(`VIN: ${vinMasked || "N/A"}`, 400, 36, { align: "right" })
     .text(`Generated: ${new Date().toLocaleDateString()}`, 400, 40, { align: "right" });
   doc.fillColor("#000000");
   return 110;
@@ -195,7 +195,7 @@ async function generateVehicleReport({ analysis }) {
       };
       
       
-      doc.y += 28;
+      doc.y += 32;
 
 
       // EXECUTIVE SNAPSHOT
