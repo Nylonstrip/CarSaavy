@@ -127,15 +127,32 @@ function ensureSpace(doc, bottomPadding = 120, topY = 110) {
 
 
 function drawHeader(doc, vinMasked) {
+  // Header background
   doc.rect(0, 0, doc.page.width, 70).fill("#000000");
-  doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(18)
-    .text("CARSAAVY NEGOTIATION READINESS REPORT", 50, 20);
-  doc.font("Helvetica").fontSize(10)
-    .text(`VIN: ${vinMasked || "N/A"}`, 400, 36, { align: "right" })
-    .text(`Generated: ${new Date().toLocaleDateString()}`, 400, 40, { align: "right" });
+
+  // Title (row 1)
+  doc
+    .fillColor("#FFFFFF")
+    .font("Helvetica-Bold")
+    .fontSize(18)
+    .text("CARSAAVY NEGOTIATION READINESS REPORT", 50, 18);
+
+  // Metadata (row 2 — clearly separated)
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .text(`VIN: ${vinMasked || "N/A"}`, 50, 42)
+    .text(`Generated: ${new Date().toLocaleDateString()}`, 400, 42, {
+      align: "right",
+    });
+
+  // Reset color for body
   doc.fillColor("#000000");
+
+  // Cursor below header
   return 110;
 }
+
 
 function getInspectionGuidance(priority) {
   switch (priority) {
