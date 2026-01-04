@@ -195,7 +195,8 @@ async function generateVehicleReport({ analysis }) {
       };
       
       
-      
+      doc.y += 18;
+
 
       // EXECUTIVE SNAPSHOT
       drawSection("EXECUTIVE SNAPSHOT", (y0) =>
