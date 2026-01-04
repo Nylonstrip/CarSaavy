@@ -97,17 +97,25 @@ function drawHybridParagraph(doc, text, opts = {}) {
 function drawSectionHeader(doc, title) {
   const y = doc.y;
 
+  // Black header bar
   doc
-    .rect(40, y, 520, 22)
-    .fillAndStroke("#f0f0f0", "#000");
+    .rect(40, y, 520, 24)
+    .fill("#000");
 
+  // Header text
   doc
-    .fillColor("#000")
+    .fillColor("#fff")
     .fontSize(11)
-    .text(title, 50, y + 6);
+    .font("Helvetica-Bold")
+    .text(title, 50, y + 7);
 
-  doc.y = y + 30;
+  // Reset text color for body
+  doc.fillColor("#000");
+
+  // Advance cursor
+  doc.y = y + 32;
 }
+
 
 
 function ensureSpace(doc, bottomPadding = 120, topY = 110) {
