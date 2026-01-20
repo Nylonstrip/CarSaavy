@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Reports — CarSaavy</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e12;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 18, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #7dd3fc;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        
+        .nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+            
+        .nav a:hover {
+            color: #ffffff;
+            background: linear-gradient(90deg, #0077b6, #00b4d8);
+            box-shadow: 0 6px 18px rgba(0, 180, 216, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .nav a.active {
+            color: #7dd3fc;
+            background: rgba(0, 119, 182, 0.1);
+        }
+        
+        /* Hero */
+        .hero {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 24px 40px;
+        }
+        
+        .beta-badge {
+            display: inline-block;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ade80;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .hero h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #7dd3fc 0%, #0284c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero p {
+            color: #94a3b8;
+            font-size: 17px;
+            max-width: 700px;
+            margin-bottom: 12px;
+        }
+        
+        .hero .note {
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        /* Main Grid */
+        .main-grid {
+            max-width: 1200px;
+            margin: 40px auto 80px;
+            padding: 0 24px;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 32px;
+            align-items: start;
+        }
+        
+        /* Form Card */
+        .form-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 40px;
+        }
+        
+        .form-card h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+        
+        .section-divider {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            margin: 32px 0;
+        }
+        
+        .section-header {
+            margin-bottom: 20px;
+        }
+        
+        .section-header h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .section-hint {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        
+        /* Form Fields */
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+        
+        .required {
+            color: #f87171;
+        }
+        
+        .required-badge {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="url"],
+        textarea {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #0284c7;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+        }
+        
+        input::placeholder,
+        textarea::placeholder {
+            color: #64748b;
+        }
+        
+        .field-hint {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 6px;
+        }
+        
+        /* Pill Radio Buttons */
+        .pill-radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        .pill-radio {
+            position: relative;
+        }
+        
+        .pill-radio input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .pill-radio span {
+            display: block;
+            padding: 10px 18px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .pill-radio input[type="radio"]:checked + span {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-color: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }
+        
+        .pill-radio:hover span {
+            border-color: rgba(125, 211, 252, 0.3);
+        }
+        
+        /* Error Banner */
+        .error-banner {
+            padding: 14px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            color: #fca5a5;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 28px;
+        }
+        
+        button[type="submit"] {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4);
+        }
+        
+        .submit-note {
+            font-size: 13px;
+            color: #64748b;
+            margin: 0;
+        }
+        
+        .disclaimer {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 16px;
+            line-height: 1.6;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: sticky;
+            top: 100px;
+        }
+        
+        /* Plan Cards */
+        .plan-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .plan-card {
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .plan-card input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .plan-card-content {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.4) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .plan-card input[type="radio"]:checked + .plan-card-content {
+            border-color: #0284c7;
+            background: linear-gradient(180deg, rgba(2, 132, 199, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%);
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.2);
+        }
+        
+        .plan-card:hover .plan-card-content {
+            border-color: rgba(125, 211, 252, 0.3);
+        }
+        
+        .plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+        }
+        
+        .plan-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+        
+        .plan-price {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #7dd3fc;
+        }
+        
+        .plan-delivery {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        
+        .plan-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        
+        .tag {
+            padding: 4px 10px;
+            background: rgba(125, 211, 252, 0.1);
+            border: 1px solid rgba(125, 211, 252, 0.2);
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #7dd3fc;
+        }
+        
+        .tag.rush {
+            background: rgba(251, 191, 36, 0.1);
+            border-color: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+        
+        /* Info Box */
+        .info-box {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.4) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        
+        .info-box h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .steps-list {
+            list-style: none;
+            counter-reset: step;
+        }
+        
+        .steps-list li {
+            counter-increment: step;
+            padding-left: 32px;
+            position: relative;
+            margin-bottom: 14px;
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        
+        .steps-list li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            color: #ffffff;
+        }
+        
+        .info-box p {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 12px;
+        }
+        
+        /* Footer */
+        .footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 40px 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 968px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: static;
+            }
+            
+            .nav {
+                display: none;
+            }
+            
+            .hero h1 {
+                font-size: 32px;
+            }
+            
+            .form-card {
+                padding: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">CARSAAVY</a>
+            <nav class="nav">
+                <a href="/index">Home</a>
+                <a href="/products">Products</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/privacy">Privacy</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="beta-badge">MANUAL REPORT SERVICE</div>
+        <h1><span class="gradient-text">Expert-Reviewed</span> Negotiation Intelligence</h1>
+        <p>Submit your vehicle details and receive a manually analyzed report with specific pricing targets, dealer counterplay scripts, and complete negotiation strategy.</p>
+        <p class="note">Currently serving U.S.-based vehicles only · Delivery windows in Eastern Time (EST)</p>
+    </section>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+        <!-- Form -->
+        <div class="form-card">
+            <h2>Order Your Report</h2>
+            
+            <form id="manualForm" novalidate>
+                <!-- Contact -->
+                <div class="form-group">
+                    <label for="fullName">Full Name <span class="required">*</span></label>
+                    <input type="text" id="fullName" name="fullName" autocomplete="name" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" autocomplete="email" required />
+                    <p class="field-hint">We'll deliver your report to this email</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">
+                        Phone
+                        <span id="phoneRequiredBadge" class="required-badge" style="display:none;">Required for rush orders</span>
+                    </label>
+                    <input type="tel" id="phone" name="phone" autocomplete="tel" />
+                    <p class="field-hint">Optional for 48hr delivery. Required for 24hr rush orders in case we need clarification.</p>
+                </div>
+
+                <hr class="section-divider" />
+
+                <!-- Vehicle -->
+                <div class="section-header">
+                    <h3>Vehicle Details</h3>
+                    <p class="section-hint">Provide at least a VIN or listing link</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="vin">VIN</label>
+                    <input type="text" id="vin" name="vin" maxlength="17" placeholder="17-character VIN (if available)" />
+                </div>
+
+                <div class="form-group">
+                    <label for="listingUrl">Listing URL</label>
+                    <input type="url" id="listingUrl" name="listingUrl" placeholder="Link to the car's online listing" />
+                    <p class="field-hint">If VIN is missing, a working listing link is required</p>
+                </div>
+
+                <hr class="section-divider" />
+
+                <!-- Context -->
+                <div class="section-header">
+                    <h3>Purchase Context</h3>
+                </div>
+
+                <div class="form-group">
+                    <label>Purpose of purchase <span class="required">*</span></label>
+                    <div class="pill-radio-group">
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="commuter" required />
+                            <span>Daily commute</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="replacement" />
+                            <span>Replacement vehicle</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="first_time" />
+                            <span>First-time buyer</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="lease_buyout" />
+                            <span>Lease buyout</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="family_utility" />
+                            <span>Family / utility</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="fun_weekend" />
+                            <span>Fun / weekend</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="performance" />
+                            <span>Performance</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="ev_transition" />
+                            <span>EV transition</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="business" />
+                            <span>Business use</span>
+                        </label>
+                        <label class="pill-radio">
+                            <input type="radio" name="purchasePurpose" value="other" />
+                            <span>Other</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="purchasePurposeOtherRow" style="display:none;">
+                    <label for="purchasePurposeOther">Briefly describe (max 120 characters)</label>
+                    <input type="text" id="purchasePurposeOther" name="purchasePurposeOther" maxlength="120" placeholder="Example: Shared car between siblings" />
+                </div>
+
+                <div class="form-group">
+                    <label for="timelineContext">Timeline & urgency (optional)</label>
+                    <textarea id="timelineContext" name="timelineContext" rows="2" placeholder="Example: Test driving Saturday morning, need decision by Monday"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="budget">Target budget (optional)</label>
+                    <input type="text" id="budget" name="budget" maxlength="50" placeholder="Example: Prefer under $20,000, but flexible" />
+                    <p class="field-hint">Helps shape realistic vs. aggressive scenarios</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalContext">Anything else we should know? (optional)</label>
+                    <textarea id="additionalContext" name="additionalContext" rows="3" placeholder="Known issues, dealer behavior, trade-in details, financing plans, etc."></textarea>
+                </div>
+
+                <p id="formError" class="error-banner" style="display:none;"></p>
+
+                <div class="button-group">
+                    <button type="submit">Review & Continue to Payment</button>
+                    <p class="submit-note">You'll review your total on Stripe's checkout page before confirming</p>
+                </div>
+
+                <p class="disclaimer">
+                    By purchasing, you agree that manual reports are final sale once research begins. Refunds are only issued if CarSaavy cannot fulfill the report due to service issues.
+                </p>
+            </form>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h2 style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; margin-bottom: 20px;">Choose Your Tier</h2>
+            
+            <div class="plan-cards">
+                <label class="plan-card">
+                    <input type="radio" name="plan" value="esse48" 
+                           data-price-id="price_1Sp7knB3RPy2OIjKrcsdbwOh"
+                           data-tier="essential" data-rush="false" data-sla="48" />
+                    <div class="plan-card-content">
+                        <div class="plan-header">
+                            <div class="plan-name">Essentials</div>
+                            <div class="plan-price">$50</div>
+                        </div>
+                        <div class="plan-delivery">48hr delivery</div>
+                        <div class="plan-tags">
+                            <span class="tag">Standard</span>
+                            <span class="tag">Budget-friendly</span>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="plan-card">
+                    <input type="radio" name="plan" value="esse24"
+                           data-price-id="price_1Sp7knB3RPy2OIjKhoKcCQvd"
+                           data-tier="essential" data-rush="true" data-sla="24" />
+                    <div class="plan-card-content">
+                        <div class="plan-header">
+                            <div class="plan-name">Essentials (Rush)</div>
+                            <div class="plan-price">$75</div>
+                        </div>
+                        <div class="plan-delivery">24hr delivery</div>
+                        <div class="plan-tags">
+                            <span class="tag rush">Rush</span>
+                            <span class="tag">Time-sensitive</span>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="plan-card">
+                    <input type="radio" name="plan" value="comp48"
+                           data-price-id="price_1Sp7knB3RPy2OIjKIYLLu1Ai"
+                           data-tier="comprehensive" data-rush="false" data-sla="48" checked />
+                    <div class="plan-card-content">
+                        <div class="plan-header">
+                            <div class="plan-name">Comprehensive</div>
+                            <div class="plan-price">$75</div>
+                        </div>
+                        <div class="plan-delivery">48hr delivery · Launch pricing</div>
+                        <div class="plan-tags">
+                            <span class="tag">Best value</span>
+                            <span class="tag">Normally $125</span>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="plan-card">
+                    <input type="radio" name="plan" value="comp24"
+                           data-price-id="price_1Sp7knB3RPy2OIjKFUxur3UJ"
+                           data-tier="comprehensive" data-rush="true" data-sla="24" />
+                    <div class="plan-card-content">
+                        <div class="plan-header">
+                            <div class="plan-name">Comprehensive (Rush)</div>
+                            <div class="plan-price">$100</div>
+                        </div>
+                        <div class="plan-delivery">24hr delivery · Launch pricing</div>
+                        <div class="plan-tags">
+                            <span class="tag rush">Rush</span>
+                            <span class="tag">Normally $150</span>
+                        </div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="info-box">
+                <h3>What happens next?</h3>
+                <ol class="steps-list">
+                    <li>We validate your intake and create a Stripe checkout session</li>
+                    <li>After payment, your order enters the queue with a reference ID</li>
+                    <li>You receive an email with your queue position and delivery window</li>
+                    <li>Your report is delivered via email as PDF + secure HTML link</li>
+                </ol>
+                <p>For rush orders, we may reach out if anything needs clarification before we begin.</p>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        © 2025 CarSaavy — Negotiate Smarter
+    </footer>
+
+    <script>
+        const form = document.getElementById("manualForm");
+        const errorEl = document.getElementById("formError");
+        const phoneInput = document.getElementById("phone");
+        const phoneBadge = document.getElementById("phoneRequiredBadge");
+        const purchasePurposeOtherRow = document.getElementById("purchasePurposeOtherRow");
+        const purchasePurposeOtherInput = document.getElementById("purchasePurposeOther");
+
+        function getSelectedPlan() {
+            return document.querySelector('input[name="plan"]:checked');
+        }
+
+        function setPhoneRequirement(planInput) {
+            if (!planInput) {
+                phoneInput.required = false;
+                phoneBadge.style.display = "none";
+                return;
+            }
+            const isRush = planInput.dataset.rush === "true";
+            phoneInput.required = isRush;
+            phoneBadge.style.display = isRush ? "inline-block" : "none";
+        }
+
+        document.querySelectorAll('input[name="plan"]').forEach(input => {
+            input.addEventListener("change", () => setPhoneRequirement(input));
+        });
+
+        document.querySelectorAll('input[name="purchasePurpose"]').forEach(input => {
+            input.addEventListener("change", () => {
+                if (input.value === "other" && input.checked) {
+                    purchasePurposeOtherRow.style.display = "block";
+                    purchasePurposeOtherInput.required = true;
+                } else if (input.checked) {
+                    purchasePurposeOtherRow.style.display = "none";
+                    purchasePurposeOtherInput.required = false;
+                    purchasePurposeOtherInput.value = "";
+                }
+            });
+        });
+
+        function showError(msg) {
+            errorEl.textContent = msg;
+            errorEl.style.display = "block";
+            errorEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function clearError() {
+            errorEl.textContent = "";
+            errorEl.style.display = "none";
+        }
+
+        function isValidEmail(email) {
+            return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+        }
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            clearError();
+
+            const plan = getSelectedPlan();
+            if (!plan) {
+                showError("Please select a report tier

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service — CarSaavy</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e12;
+            color: #e2e8f0;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 18, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #7dd3fc;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        
+        .nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+            
+        .nav a:hover {
+            color: #ffffff;
+            background: linear-gradient(90deg, #0077b6, #00b4d8);
+            box-shadow: 0 6px 18px rgba(0, 180, 216, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .nav a.active {
+            color: #7dd3fc;
+            background: rgba(0, 119, 182, 0.1);
+        }
+        
+        main {
+            flex: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 24px;
+            width: 100%;
+        }
+        
+        .content-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 48px;
+        }
+        
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #7dd3fc 0%, #0284c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .last-updated {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .intro {
+            color: #94a3b8;
+            font-size: 17px;
+            line-height: 1.7;
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 40px 0 16px;
+            color: #e2e8f0;
+        }
+        
+        h2:first-of-type {
+            margin-top: 0;
+        }
+        
+        h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 28px 0 12px;
+            color: #cbd5e1;
+        }
+        
+        p {
+            color: #94a3b8;
+            margin-bottom: 16px;
+            line-height: 1.7;
+        }
+        
+        ul, ol {
+            margin: 16px 0 24px 0;
+            padding-left: 24px;
+        }
+        
+        li {
+            color: #cbd5e1;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        strong {
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+        
+        .warning-box {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin: 24px 0;
+        }
+        
+        .warning-box p {
+            color: #fca5a5;
+            margin: 0;
+        }
+        
+        .info-box {
+            background: rgba(2, 132, 199, 0.1);
+            border: 1px solid rgba(2, 132, 199, 0.3);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin: 24px 0;
+        }
+        
+        .info-box p {
+            color: #7dd3fc;
+            margin: 0;
+        }
+        
+        .contact-box {
+            background: rgba(2, 132, 199, 0.1);
+            border: 1px solid rgba(2, 132, 199, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 40px;
+        }
+        
+        .contact-box p {
+            color: #cbd5e1;
+            margin: 0;
+        }
+        
+        .contact-box a {
+            color: #7dd3fc;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        
+        .contact-box a:hover {
+            color: #38bdf8;
+        }
+        
+        .footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        
+        .footer-links a {
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer-links a:hover {
+            color: #7dd3fc;
+        }
+        
+        @media (max-width: 768px) {
+            .content-card {
+                padding: 32px 24px;
+            }
+            
+            h1 {
+                font-size: 32px;
+            }
+            
+            .nav {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">CARSAAVY</a>
+            <nav class="nav">
+                <a href="/index">Home</a>
+                <a href="/products">Products</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/privacy">Privacy</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="content-card">
+            <h1><span class="gradient-text">Terms of Service</span></h1>
+            <p class="last-updated">Last Updated: January 2025</p>
+            
+            <p class="intro">
+                These Terms of Service ("Terms") govern your use of CarSaavy's website and services. By purchasing a report or using our services, you agree to these Terms. Please read them carefully.
+            </p>
+
+            <h2>1. Services Provided</h2>
+            <p>
+                CarSaavy provides vehicle negotiation intelligence reports designed to assist buyers in understanding market positioning, inspection priorities, and negotiation strategy. We offer three tiers:
+            </p>
+            <ul>
+                <li><strong>Negotiation Positioning ($15):</strong> Automated framework with general strategy and dealer response scripts (instant delivery)</li>
+                <li><strong>Essentials ($50-75):</strong> Manual vehicle-specific analysis with inspection priorities and risk assessment (48hr or 24hr delivery)</li>
+                <li><strong>Comprehensive ($75-150):</strong> Full tactical breakdown with specific pricing targets, dealer counterplay, and complete negotiation sequence (48hr or 24hr delivery)</li>
+            </ul>
+
+            <h2>2. Purchases & Payment</h2>
+            
+            <h3>Pricing</h3>
+            <p>
+                All prices are listed in U.S. dollars and are subject to change. Promotional or "launch pricing" may be offered for a limited time or limited number of customers.
+            </p>
+
+            <h3>Payment Processing</h3>
+            <p>
+                Payments are processed securely through Stripe. By submitting payment information, you authorize CarSaavy to charge the total amount for your selected report tier.
+            </p>
+
+            <h3>Order Confirmation</h3>
+            <p>
+                You will receive an email confirmation once your order is placed. For manual reports, this email will include your order reference number and expected delivery timeframe.
+            </p>
+
+            <h2>3. Delivery</h2>
+            
+            <h3>Automated Reports</h3>
+            <p>
+                Negotiation Positioning reports are delivered instantly via email after payment confirmation.
+            </p>
+
+            <h3>Manual Reports</h3>
+            <p>
+                Essentials and Comprehensive reports are delivered within the timeframe selected at purchase (48 hours or 24 hours from order confirmation). Delivery times are measured in Eastern Time (EST).
+            </p>
+            <ul>
+                <li><strong>48hr delivery:</strong> Report delivered within 48 hours of order confirmation</li>
+                <li><strong>24hr delivery (rush):</strong> Report delivered within 24 hours of order confirmation</li>
+            </ul>
+
+            <div class="info-box">
+                <p><strong>Missed Deadlines:</strong> If we fail to deliver your report within the promised timeframe, you will receive either a full refund or a credit toward a future report at your choice.</p>
+            </div>
+
+            <h3>Delivery Format</h3>
+            <p>
+                Reports are delivered via email as both an interactive HTML link and a downloadable PDF. Both formats contain the same content and analysis.
+            </p>
+
+            <h2>4. Refund Policy</h2>
+            
+            <h3>Automated Reports</h3>
+            <p>
+                Negotiation Positioning reports ($15) are <strong>non-refundable</strong> as they are delivered instantly upon purchase.
+            </p>
+
+            <h3>Manual Reports</h3>
+            <p>
+                Essentials and Comprehensive reports are <strong>final sale once research begins</strong>. Refunds are only issued if:
+            </p>
+            <ul>
+                <li>CarSaavy cannot fulfill the report due to service issues or technical problems</li>
+                <li>The intake data provided is unserviceable (e.g., invalid VIN, inaccessible listing)</li>
+                <li>We fail to deliver within the promised timeframe (you may choose refund or credit)</li>
+            </ul>
+
+            <div class="warning-box">
+                <p><strong>Important:</strong> If the vehicle you requested a report for sells or becomes unavailable before delivery, this does not qualify for a refund. The analysis, strategies, and frameworks in your report can still be applied to comparable vehicles.</p>
+            </div>
+
+            <h3>Requesting a Refund</h3>
+            <p>
+                To request a refund, contact <strong>support@carsaavy.com</strong> with your order reference number and reason for the request.
+            </p>
+
+            <h2>5. Report Usage & Restrictions</h2>
+            
+            <h3>Personal Use License</h3>
+            <p>
+                Reports are licensed for <strong>personal use only</strong> in connection with your vehicle purchase. You may:
+            </p>
+            <ul>
+                <li>Use the report to guide your own negotiation</li>
+                <li>Share relevant sections with immediate family or advisors assisting with the purchase</li>
+                <li>Show sections to the dealer during negotiation</li>
+                <li>Print a copy for your personal reference</li>
+            </ul>
+
+            <h3>Prohibited Uses</h3>
+            <p>
+                You may <strong>not</strong>:
+            </p>
+            <ul>
+                <li>Resell, redistribute, or commercially exploit the report</li>
+                <li>Post the report publicly online or in forums</li>
+                <li>Use the report for commercial purposes or on behalf of others</li>
+                <li>Modify, reverse-engineer, or create derivative works from the report</li>
+            </ul>
+
+            <h2>6. Disclaimers & Limitations</h2>
+            
+            <h3>No Guarantee of Outcomes</h3>
+            <p>
+                CarSaavy reports provide <strong>negotiation guidance and strategic recommendations</strong> based on available data and market analysis. We do not and cannot guarantee:
+            </p>
+            <ul>
+                <li>That you will achieve a specific purchase price or savings amount</li>
+                <li>That dealers will accept your offers or negotiate in good faith</li>
+                <li>The accuracy of third-party data (vehicle history, market pricing, etc.)</li>
+                <li>The mechanical condition or future reliability of any vehicle</li>
+            </ul>
+
+            <h3>Not Professional Advice</h3>
+            <p>
+                Reports do not constitute professional financial, legal, or purchasing advice. Final outcomes depend on:
+            </p>
+            <ul>
+                <li>Dealer behavior and negotiation tactics</li>
+                <li>Actual vehicle condition discovered during inspection</li>
+                <li>Market timing and local inventory dynamics</li>
+                <li>Your execution of the negotiation strategy</li>
+            </ul>
+
+            <h3>Limitation of Liability</h3>
+            <p>
+                CarSaavy is not responsible or liable for:
+            </p>
+            <ul>
+                <li>Negotiation outcomes or financial decisions made using our reports</li>
+                <li>Vehicle condition, defects, or undisclosed issues</li>
+                <li>Dealer misrepresentation or fraudulent behavior</li>
+                <li>Losses resulting from reliance on report recommendations</li>
+            </ul>
+
+            <div class="warning-box">
+                <p><strong>To the maximum extent permitted by law, CarSaavy's total liability for any claim related to our services shall not exceed the amount you paid for the report in question.</strong></p>
+            </div>
+
+            <h2>7. Data & Privacy</h2>
+            <p>
+                Your use of our services is also governed by our <a href="/privacy" style="color: #7dd3fc; text-decoration: underline;">Privacy Policy</a>. By using CarSaavy, you consent to the collection and use of information as described in that policy.
+            </p>
+
+            <h2>8. Service Availability</h2>
+            <p>
+                CarSaavy currently serves <strong>U.S.-based vehicles only</strong>. We reserve the right to:
+            </p>
+            <ul>
+                <li>Refuse service for vehicles outside our coverage area</li>
+                <li>Temporarily suspend services for maintenance or updates</li>
+                <li>Discontinue or modify services at any time</li>
+            </ul>
+
+            <h2>9. Modifications to Terms</h2>
+            <p>
+                We may update these Terms from time to time. Changes will be posted on this page with an updated "Last Updated" date. Continued use of our services after changes constitutes acceptance of the updated Terms.
+            </p>
+
+            <h2>10. Dispute Resolution</h2>
+            <p>
+                If you have a dispute or concern regarding our services:
+            </p>
+            <ol>
+                <li><strong>Contact us first:</strong> Email <strong>support@carsaavy.com</strong> with your order reference number and detailed explanation of the issue</li>
+                <li><strong>Good faith resolution:</strong> Both parties agree to make reasonable efforts to resolve disputes directly before pursuing legal action</li>
+                <li><strong>Governing law:</strong> These Terms are governed by the laws of the United States and the state in which CarSaavy operates</li>
+            </ol>
+
+            <h2>11. Contact Information</h2>
+            <p>
+                For questions about these Terms or our services:
+            </p>
+
+            <div class="contact-box">
+                <p>
+                    <strong>Email:</strong> <a href="mailto:support@carsaavy.com">support@carsaavy.com</a><br>
+                    <strong>Website:</strong> <a href="https://carsaavy.com">carsaavy.com</a>
+                </p>
+            </div>
+
+            <p style="margin-top: 40px; padding-top: 32px; border-top: 1px solid rgba(255, 255, 255, 0.08); color: #64748b; font-size: 14px;">
+                By purchasing a report or using CarSaavy's services, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
+            </p>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/products">Products</a>
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+            <a href="/privacy">Privacy</a>
+        </div>
+        <p>© 2025 CarSaavy. All rights reserved.</p>
+    </footer>
+</body>
+</html>

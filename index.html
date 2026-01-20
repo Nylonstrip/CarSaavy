@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>CarSaavy — Negotiation-ready VIN reports</title>
+<title>CarSaavy — Negotiation Readiness Reports</title>
 <link rel="icon" href="/favicon.ico" />
 <style>
   :root{
@@ -21,42 +21,60 @@
     margin:0;
     font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     background:#121212;
-    color:#e6eef6;
+    color:#eaf6ff;
     -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-    display:flex;flex-direction:column;min-height:100vh;
+  }
+  a{text-decoration:none;color:inherit}
+
+  /* Layout */
+  .page-wrap{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    background:
+      radial-gradient(circle at top left, rgba(0,180,216,0.18), transparent 55%),
+      radial-gradient(circle at bottom right, rgba(0,119,182,0.25), transparent 55%),
+      #05070a;
   }
 
-  /* Header */
   header.site-header{
-    position:sticky;top:0;z-index:50;
-    backdrop-filter: blur(6px);
-    background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    display:flex;align-items:center;justify-content:space-between;
-    padding:12px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 20px;
+    position:sticky;
+    top:0;
+    z-index:40;
+    background:rgba(5,8,12,0.96);
+    backdrop-filter:blur(18px);
+    border-bottom:1px solid rgba(255,255,255,0.06);
   }
-  .brand{display:flex;align-items:center;gap:14px}
-  .brand img{height:44px;display:block}
-  nav.site-nav{display:flex;gap:14px;align-items:center}
+  .brand img{height:30px;display:block}
+  nav.site-nav{display:flex;gap:8px;font-size:0.9rem}
   nav.site-nav a{
     color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
     transition: all .18s ease;
   }
-  nav.site-nav a:hover{color:#fff;background:linear-gradient(90deg,var(--accent1),var(--accent2));box-shadow:0 6px 18px rgba(0,180,216,0.12);transform:translateY(-2px);}
+  nav.site-nav a:hover{
+    color:#fff;
+    background:linear-gradient(90deg,var(--accent1),var(--accent2));
+    box-shadow:0 6px 18px rgba(0,180,216,0.12);
+    transform:translateY(-2px);
+  }
 
-  /* Hero */
-  .container{width:100%;max-width:1100px;margin:0 auto;padding:36px 20px;flex:1}
+  /* Hero / container */
+  .container{width:100%;max-width:1200px;margin:0 auto;padding:36px 20px;flex:1}
   .hero{
     display:grid;grid-template-columns:1fr 420px;gap:28px;align-items:center;
     margin-top:36px;
   }
+
+  /* Old hero card utils (still available if needed elsewhere) */
   .hero-card{
     background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
     border-radius:var(--radius);padding:28px;border:1px solid rgba(255,255,255,0.03);
     box-shadow: 0 10px 30px rgba(2,6,23,0.6);
   }
-  h1{font-size:34px;margin:0 0 12px;color:linear-gradient(90deg,var(--accent1),var(--accent2));}
   p.lead{color:var(--muted);margin:0 0 18px;line-height:1.45}
 
   .cta-row{display:flex;gap:12px;align-items:center}
@@ -65,15 +83,28 @@
     color:#071018;background:linear-gradient(90deg,var(--accent1),var(--accent2));
     box-shadow:0 10px 30px rgba(0,180,216,0.12);transition:transform .14s ease,box-shadow .14s ease;
   }
-  .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);box-shadow:none}
+  .btn.secondary{
+    background:transparent;
+    border:1px solid rgba(255,255,255,0.14);
+    color:var(--muted);
+    box-shadow:none;
+  }
   .btn:active{transform:translateY(1px)}
 
-  /* VIN box */
-  .vin-box{background:var(--card);padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
-  input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:#0f1418;color:#e8f5ff}
+  /* VIN box (kept if you want to reuse later) */
+  .vin-box{
+    background:var(--card);
+    padding:18px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.03)
+  }
+  input[type=text]{
+    width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);
+    background:#0f1418;color:#e8f5ff;font-size:0.95rem;
+  }
   .muted{color:var(--muted);font-size:0.92rem}
 
-  /* features */
+  /* Original feature cards (still available) */
   .features{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}
   .feature{background:var(--glass);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
   .feature h4{margin:0 0 6px;font-size:1rem;color:#eaf6ff}
@@ -86,22 +117,253 @@
       color: #9ed9ef;
     }
 
-  /* Responsive */
+  /* New homepage layout extensions */
+  .hero-shell{
+    min-height:55vh;
+    padding:32px 0 40px;
+    align-items:center;
+  }
+  .hero-content{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .hero-title{
+    font-size:34px;
+    margin:0;
+    background:linear-gradient(90deg,var(--accent1),var(--accent2));
+    -webkit-background-clip:text;
+    color:transparent;
+  }
+  .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    font-size:0.75rem;
+    color:var(--muted);
+    margin:0;
+  }
+  .hero-cta{
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
+  .micro-copy{
+    margin:4px 0 0;
+    font-size:0.82rem;
+    color:var(--muted);
+  }
+  .hero-tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+  }
+  .pill{
+    border-radius:999px;
+    padding:4px 10px;
+    font-size:0.78rem;
+    background:var(--glass);
+    color:#eaf6ff;
+    border:1px solid rgba(255,255,255,0.04);
+  }
+  .hero-visual{
+    display:flex;
+    justify-content:flex-end;
+  }
+  .hero-visual .demo-card-hero{
+    max-width:380px;
+  }
+
+  .section{
+    margin-top:40px;
+  }
+  .section-slim{
+    max-width:800px;
+    margin:40px auto 0;
+    text-align:left;
+  }
+  .section-title{
+    font-size:1.4rem;
+    margin:0 0 8px;
+    color:#eaf6ff;
+  }
+  .section-body{
+    margin:0;
+    color:var(--muted);
+    font-size:0.95rem;
+    line-height:1.6;
+  }
+
+  .feature-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:16px;
+    margin-top:18px;
+  }
+  .feature-grid .feature{
+    background:var(--glass);
+    padding:16px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.04);
+  }
+
+  .demo-section{
+    margin-top:52px;
+  }
+  .section-header-row{
+    display:flex;
+    flex-direction:row;
+    justify-content:space-between;
+    gap:24px;
+    align-items:flex-start;
+  }
+  .demo-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;
+    margin-top:20px;
+  }
+  .demo-card{
+    background:var(--card);
+    border-radius:12px;
+    padding:12px 12px 10px;
+    border:1px solid rgba(255,255,255,0.05);
+    box-shadow:0 14px 35px rgba(2,6,23,0.7);
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+  }
+  .demo-card img{
+    width:100%;
+    display:block;
+    border-radius:8px;
+  }
+  .demo-card-label{
+    font-size:0.9rem;
+    font-weight:600;
+    color:#eaf6ff;
+    margin-bottom:8px;
+  }
+  .demo-card-zoom-hint{
+    position:absolute;
+    bottom:8px;
+    right:10px;
+    font-size:0.75rem;
+    color:var(--muted);
+    background:rgba(0,0,0,0.6);
+    padding:2px 8px;
+    border-radius:999px;
+  }
+  .demo-card-wide{
+    grid-column:1 / -1;
+  }
+  .demo-cta-row{
+    margin-top:20px;
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    justify-content:flex-start;
+  }
+
+  .pricing-section{
+    margin-bottom:40px;
+  }
+  .pricing-card{
+    background:var(--card);
+    border-radius:14px;
+    padding:22px 20px 24px;
+    border:1px solid rgba(255,255,255,0.06);
+    max-width:720px;
+  }
+  .pricing-amount{
+    font-size:1.8rem;
+    margin:4px 0 8px;
+    color:#eaf6ff;
+  }
+  .pricing-list{
+    margin:8px 0 16px;
+    padding-left:18px;
+    color:var(--muted);
+    font-size:0.9rem;
+  }
+
+  /* Image modal */
+  .image-modal-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(10,22,34,0.85);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:60;
+  }
+  .image-modal-content{
+    max-width:960px;
+    max-height:90vh;
+    padding:12px;
+    background:#05070a;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.08);
+    box-shadow:0 24px 80px rgba(0,0,0,0.9);
+    position:relative;
+  }
+  .image-modal-content img{
+    max-width:100%;
+    max-height:80vh;
+    display:block;
+    border-radius:8px;
+  }
+  .image-modal-close{
+    position:absolute;
+    top:18px;
+    right:24px;
+    font-size:0.9rem;
+    color:var(--muted);
+    cursor:pointer;
+  }
+
   @media (max-width:900px){
-    .hero{grid-template-columns:1fr; padding-bottom:20px}
+    .hero-shell{
+      grid-template-columns:1fr;
+      row-gap:26px;
+    }
+    .hero-visual{
+      justify-content:flex-start;
+    }
     nav.site-nav{display:none}
+    .section-header-row{
+      flex-direction:column;
+    }
+    .feature-grid{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .demo-grid{
+      grid-template-columns:1fr;
+    }
+    .pricing-card{
+      max-width:100%;
+    }
+  }
+  @media (max-width:640px){
+    .feature-grid{
+      grid-template-columns:1fr;
+    }
+    .hero-title{
+      font-size:1.6rem;
+    }
   }
 </style>
 </head>
 <body>
+<div class="page-wrap">
   <header class="site-header">
     <div class="brand">
       <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
     </div>
 
-    <nav class="site-nav" aria-label="Main nav">
+    <nav class="site-nav">
       <a href="/index">Home</a>
-      <a href="/vin">VIN Tool</a>
+      <a href="/manual.html">Manual Reports (BETA) </a>
+      <a href="/vin">Negotiation Reports</a>
       <a href="/about">About</a>
       <a href="/contact">Contact</a>
       <a href="/privacy">Privacy</a>
@@ -109,71 +371,192 @@
   </header>
 
   <main class="container">
-    <section class="hero">
-      <div class="hero-card">
-        <h1 style="background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;color:transparent;">
-          Get negotiation-ready in minutes
+    <!-- HERO: Tesla VIN pushback visual + core value -->
+    <section class="hero hero-shell">
+      <div class="hero-content">
+        <p class="eyebrow">CarSaavy Negotiation Readiness Report</p>
+        <h1 class="hero-title">
+          Negotiate used cars with real leverage.
         </h1>
-        <p class="lead">CarSaavy converts a VIN into a short, high-impact negotiation checklist you can take to a dealer. Fast, actionable, and designed to save you thousands.</p>
+        <p class="lead">
+          CarSaavy turns your vehicle details into a dealership-ready negotiation brief:
+          stance, talking points, inspection angles, escalation paths, and walk-away rules.
+        </p>
 
-        <div class="cta-row" style="margin-top:18px;">
-          <a class="btn" href="/vin">Start a VIN Report</a>
-          <a class="btn secondary" href="/about">How it works</a>
+        <div class="cta-row hero-cta">
+          <a class="btn" href="/vin.html">Get My Report</a>
+          <a class="btn secondary" href="/sample-report.html">View Sample Report</a>
         </div>
 
-        <div style="margin-top:22px" class="vin-box">
-          <label class="muted">Quick check — paste VIN (17 chars)</label>
-          <form id="inline-check" onsubmit="return false" style="margin-top:8px;">
-            <input id="quickVin" placeholder="Enter VIN (example: 1HGCM82633A004352)" maxlength="17" />
-            <div style="display:flex;gap:10px;margin-top:12px">
-              <button class="btn" onclick="goToVin()">Go</button>
-              <button class="btn secondary" onclick="document.getElementById('quickVin').value=''">Clear</button>
-            </div>
-          </form>
-        </div>
+        <p class="micro-copy">
+          Delivered instantly as a PDF. Works with VIN <strong>or</strong> Year / Make / Model.
+        </p>
 
-        <div class="features" style="margin-top:18px;">
-          <div class="feature">
-            <h4>Negotiation checklist</h4>
-            <p>Priced guidance, walk-away threshold, and key questions to ask the dealer.</p>
-          </div>
-          <div class="feature">
-            <h4>Recalls & history</h4>
-            <p>Pulls recall and history flags so you don't get stuck with surprises.</p>
-          </div>
-          <div class="feature">
-            <h4>PDF & email</h4>
-            <p>Deliverable PDF and email link you can use at the dealership or share.</p>
-          </div>
+        <div class="hero-tags">
+          <span class="pill">Price leverage</span>
+          <span class="pill">Dealer pushback responses</span>
+          <span class="pill">Inspection talking points</span>
         </div>
       </div>
 
-      <aside>
-        <div class="hero-card" style="width:420px">
-          <h3 style="margin-top:0">Why CarSaavy?</h3>
-          <p class="muted">Tailored negotiation points — not just raw VIN data. Our report highlights leverage you can use in the moment.</p>
-          <div style="margin-top:14px">
-            <strong>Price:</strong> $20 per report • <span class="muted">Secure Stripe checkout</span>
-          </div>
-          <div style="margin-top:18px">
-            <a class="btn" href="/vin">Generate a report</a>
-          </div>
+      <div class="hero-visual">
+        <div class="demo-card demo-card-hero" onclick="openImageModal('/images/demo-pushback-tesla.png','Dealer pushback responses preview')">
+          <div class="demo-card-label">Dealer pushback &amp; responses</div>
+          <img src="/images/demo-pushback-tesla.png" alt="Preview of dealer pushback responses section from a Tesla negotiation report" />
+          <div class="demo-card-zoom-hint">Click to zoom</div>
         </div>
-      </aside>
+      </div>
+    </section>
+
+    <!-- WHO IT'S FOR / WHY IT EXISTS -->
+    <section class="section section-slim">
+      <h2 class="section-title">Built for buyers who don't want to get steamrolled at the desk.</h2>
+      <p class="section-body">
+        Dealers do this every day. Most buyers don't. CarSaavy gives you a structured plan so you can
+        walk into the showroom calm, prepared, and ready to push back professionally when the numbers
+        don't make sense.
+      </p>
+    </section>
+
+    <!-- FEATURE GRID -->
+    <section class="section">
+      <h2 class="section-title">What you get in every negotiation readiness report.</h2>
+      <div class="feature-grid">
+        <article class="feature">
+          <h4>Negotiation stance &amp; tone</h4>
+          <p>Recommended posture based on vehicle age, segment, and mileage so you know whether to open curious, firm, or aggressive.</p>
+        </article>
+        <article class="feature">
+          <h4>Price leverage zones</h4>
+          <p>Clear guidance on where you likely have leverage vs. where the dealer does, so you don&apos;t fight the wrong battle.</p>
+        </article>
+        <article class="feature">
+          <h4>Dealer pushback scripts</h4>
+          <p>Specific language to respond when the dealer says things like &ldquo;we&apos;re already below market&rdquo; or &ldquo;we don&apos;t discount used.&rdquo;</p>
+        </article>
+        <article class="feature">
+          <h4>Inspection &amp; condition angles</h4>
+          <p>Talking points to tie cosmetic and mechanical issues to real money at the desk, not just &ldquo;can you fix this?&rdquo;</p>
+        </article>
+        <article class="feature">
+          <h4>Escalation or exit plan</h4>
+          <p>When to involve a manager, when to pause, and when it&apos;s smarter to walk away and let the deal come back to you.</p>
+        </article>
+        <article class="feature">
+          <h4>Segment &amp; trim behavior</h4>
+          <p>Guidance that respects how different segments behave (commuter sedan vs. truck vs. EV) so your expectations are realistic.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- VISUAL DEMO SECTION -->
+    <section class="section demo-section">
+      <div class="section-header-row">
+        <h2 class="section-title">See the playbook before you buy.</h2>
+        <p class="section-body">
+          These are real sections from an actual CarSaavy report (Tesla VIN example). Click any preview to
+          zoom in and read the detail.
+        </p>
+      </div>
+
+      <div class="demo-grid">
+        <article class="demo-card" onclick="openImageModal('/images/demo-zones-tesla.png','Negotiation zones preview')">
+          <div class="demo-card-label">Negotiation zones</div>
+          <img src="/images/demo-zones-tesla.png" alt="Preview of negotiation zones section in a Tesla report" />
+          <div class="demo-card-zoom-hint">Click to zoom</div>
+        </article>
+
+        <article class="demo-card" onclick="openImageModal('/images/demo-escalation-tesla.png','Escalation guidance preview')">
+          <div class="demo-card-label">When to escalate or exit</div>
+          <img src="/images/demo-escalation-tesla.png" alt="Preview of escalation and exit guidance section in a Tesla report" />
+          <div class="demo-card-zoom-hint">Click to zoom</div>
+        </article>
+
+        <article class="demo-card demo-card-wide" onclick="openImageModal('/images/demo-pushback-tesla.png','Dealer pushback responses preview')">
+          <div class="demo-card-label">Dealer pushback &amp; responses</div>
+          <img src="/images/demo-pushback-tesla.png" alt="Preview of dealer pushback responses section in a Tesla report" />
+          <div class="demo-card-zoom-hint">Click to zoom</div>
+        </article>
+      </div>
+
+      <div class="demo-cta-row">
+        <a class="btn secondary" href="/sample-report.html">Open full sample report</a>
+        <a class="btn" href="/vin.html">Get My Report</a>
+      </div>
+    </section>
+
+    <!-- PRICING SECTION -->
+    <section class="section pricing-section">
+      <div class="pricing-card">
+        <h2 class="section-title">Straightforward pricing.</h2>
+        <p class="pricing-amount">$15 per negotiation readiness report.</p>
+        <p class="section-body">
+          One-time purchase. No subscriptions, no upsells at checkout. Your PDF is generated after payment
+          and emailed to you so you can bring it to the dealership.
+        </p>
+        <ul class="pricing-list">
+          <li>Works with VIN or Year / Make / Model.</li>
+          <li>Secure Stripe checkout.</li>
+          <li>Designed for real dealership conversations, not just &ldquo;online research.&rdquo;</li>
+        </ul>
+
+        <div class="cta-row hero-cta">
+          <a class="btn" href="/vin.html">Get My Report</a>
+          <span class="micro-copy">Most buyers use CarSaavy within 24 hours of visiting a dealer.</span>
+        </div>
+      </div>
     </section>
   </main>
 
   <footer>
     © 2025 CarSaavy — Negotiate Smarter • <a href="/privacy" style="color:var(--muted);text-decoration:underline">Privacy</a>
   </footer>
+</div>
 
 <script>
   function goToVin(){
-    const val = (document.getElementById('quickVin').value || '').trim().toUpperCase();
+    const val = (document.getElementById('quickVin')?.value || '').trim().toUpperCase();
     if(!val || val.length < 11){ alert('Please enter a VIN'); return; }
-    // direct user to VIN page with vin as query param
     window.location.href = `/vin.html?vin=${encodeURIComponent(val)}`;
   }
+
+  // Simple image modal for report previews
+  function openImageModal(src, alt){
+    let existing = document.getElementById('image-modal-root');
+    if(existing){
+      existing.querySelector('img').src = src;
+      existing.querySelector('img').alt = alt || '';
+      existing.style.display = 'flex';
+      return;
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'image-modal-root';
+    backdrop.className = 'image-modal-backdrop';
+
+    backdrop.innerHTML = `
+      <div class="image-modal-content">
+        <div class="image-modal-close" onclick="closeImageModal()">Click anywhere to close ✕</div>
+        <img src="${src}" alt="${alt || ''}" />
+      </div>
+    `;
+
+    backdrop.addEventListener('click', function(e){
+      if(e.target === backdrop){
+        closeImageModal();
+      }
+    });
+
+    document.body.appendChild(backdrop);
+  }
+
+  function closeImageModal(){
+    const el = document.getElementById('image-modal-root');
+    if(el){
+      el.style.display = 'none';
+    }
+  }
 </script>
+
 </body>
 </html>

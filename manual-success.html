@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmed — CarSaavy</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e12;
+            color: #e2e8f0;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(10, 14, 18, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        
+        .nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+            
+        .nav a:hover {
+            color: #ffffff;
+            background: linear-gradient(90deg, #0077b6, #00b4d8);
+            box-shadow: 0 6px 18px rgba(0, 180, 216, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .nav a.active {
+            color: #7dd3fc;
+            background: rgba(0, 119, 182, 0.1);
+        }
+
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #7dd3fc;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        
+        /* Main */
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 24px;
+        }
+        
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        /* Success Page Styles */
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            box-shadow: 0 8px 32px rgba(34, 197, 94, 0.3);
+        }
+        
+        .cancel-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
+        }
+        
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #7dd3fc 0%, #0284c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .lead {
+            font-size: 18px;
+            color: #94a3b8;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+        
+        .info-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            text-align: left;
+        }
+        
+        .info-card h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+        }
+        
+        .steps-list {
+            list-style: none;
+            counter-reset: step;
+        }
+        
+        .steps-list li {
+            counter-increment: step;
+            padding-left: 40px;
+            position: relative;
+            margin-bottom: 16px;
+            font-size: 15px;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+        
+        .steps-list li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            color: #ffffff;
+        }
+        
+        .note {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-top: 24px;
+            font-size: 14px;
+            color: #86efac;
+            text-align: left;
+        }
+        
+        .warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 32px;
+            font-size: 15px;
+            color: #fcd34d;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn-primary {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4);
+        }
+        
+        .btn-secondary {
+            padding: 14px 28px;
+            background: transparent;
+            color: #7dd3fc;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            border-color: rgba(125, 211, 252, 0.3);
+            background: rgba(125, 211, 252, 0.05);
+        }
+        
+        /* Footer */
+        .footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 32px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .btn-primary,
+            .btn-secondary {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- SUCCESS PAGE -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">CARSAAVY</a>
+            <nav class="nav">
+                <a href="/index">Home</a>
+                <a href="/products">Products</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/privacy">Privacy</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="success-icon">✓</div>
+            <h1>Order <span class="gradient-text">Confirmed</span></h1>
+            <p class="lead">We've received your request and your report is now in the queue. Check your email for confirmation and next steps.</p>
+            
+            <div class="info-card">
+                <h2>What Happens Next</h2>
+                <ol class="steps-list">
+                    <li>We validate your intake and begin research on your vehicle</li>
+                    <li>You'll receive status updates at key milestones via email</li>
+                    <li>Your completed report will be delivered within your selected timeframe</li>
+                    <li>Report arrives as both PDF attachment and secure HTML download link</li>
+                </ol>
+                
+                <div class="note">
+                    <strong>Need to clarify something?</strong> Reply to your confirmation email and we'll update your order before we begin research.
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <a href="/" class="btn-primary">Return to Home</a>
+                <a href="/products" class="btn-secondary">View All Products</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        © 2025 CarSaavy — Negotiate Smarter
+    </footer>
+
+    <!-- ============================================ -->
+    <!-- CANCEL PAGE (use this HTML for cancel.html) -->
+    <!-- ============================================ -->
+    <!--
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">CARSAAVY</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="cancel-icon">⚠</div>
+            <h1>Checkout <span class="gradient-text">Cancelled</span></h1>
+            <p class="lead">Your order was not completed. No charge has been made to your account.</p>
+            
+            <div class="warning">
+                If you encountered an issue or have questions about pricing, feel free to <a href="/contact" style="color: #fbbf24; text-decoration: underline;">contact us</a> before trying again.
+            </div>
+            
+            <div class="info-card">
+                <h2>Ready to Continue?</h2>
+                <p style="color: #94a3b8; margin-bottom: 24px;">
+                    No problem if you need more time to decide. Your vehicle and intake details weren't saved, so you'll need to re-enter them when you're ready.
+                </p>
+                
+                <div class="button-group">
+                    <a href="/manual" class="btn-primary">Resume Manual Report Order</a>
+                    <a href="/vin" class="btn-secondary">Try Instant $15 Report</a>
+                </div>
+            </div>
+            
+            <a href="/" class="btn-secondary" style="margin-top: 24px;">Return to Home</a>
+        </div>
+    </main>
+
+    <footer class="footer">
+        © 2025 CarSaavy — Negotiate Smarter
+    </footer>
+    -->
+</body>
+</html>

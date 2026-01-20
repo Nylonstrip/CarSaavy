@@ -1,107 +1,444 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>About — CarSaavy</title>
-<link rel="icon" href="/favicon.ico" />
-<style>
-  :root{
-    --bg:#0b0f13;
-    --card:#121417;
-    --muted:#9aa6b2;
-    --accent1:#0077b6;
-    --accent2:#00b4d8;
-    --glass: rgba(255,255,255,0.03);
-    --radius:14px;
-  }
-  *{box-sizing:border-box}html,body{height:100%}
-  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;background:#121212;color:#e6eef6;display:flex;flex-direction:column;min-height:100vh}
-  /* Header */
-  header.site-header{
-    position:sticky;top:0;z-index:50;
-    backdrop-filter: blur(6px);
-    background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    display:flex;align-items:center;justify-content:space-between;
-    padding:12px 20px;
-  }
-  .brand{display:flex;align-items:center;gap:14px}
-  .brand img{height:44px;display:block}
-  nav.site-nav{display:flex;gap:14px;align-items:center}
-  nav.site-nav a{
-    color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
-    transition: all .18s ease;
-  }
-  nav.site-nav a:hover{color:#fff;background:linear-gradient(90deg,var(--accent1),var(--accent2));box-shadow:0 6px 18px rgba(0,180,216,0.12);transform:translateY(-2px);}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About — CarSaavy</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e12;
+            color: #e2e8f0;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 18, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #7dd3fc;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        
+        .nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+            
+        .nav a:hover {
+            color: #ffffff;
+            background: linear-gradient(90deg, #0077b6, #00b4d8);
+            box-shadow: 0 6px 18px rgba(0, 180, 216, 0.12);
+            transform: translateY(-2px);
+        }
 
-  .container{max-width:1000px;margin:0 auto;padding:36px 20px;flex:1}
-  .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:26px;border-radius:14px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
-  h2{margin-top:0;color:transparent;background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;font-size:28px}
-  p.lead{color:var(--muted)}
-
-  .two-col{display:grid;grid-template-columns:1fr 320px;gap:18px;margin-top:18px}
-  .box{background:rgba(255,255,255,0.02);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
-  footer {
-      text-align: center;
-      padding: 1rem;
-      background: #1b1b1b;
-      color: #9ed9ef;
-    }
-
-  @media (max-width:900px){.two-col{grid-template-columns:1fr;}}
-</style>
+        .nav a.active {
+            color: #7dd3fc;
+            background: rgba(0, 119, 182, 0.1);
+        }
+        
+        /* Hero */
+        .hero {
+            max-width: 1000px;
+            margin: 60px auto 40px;
+            padding: 0 24px;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #7dd3fc 0%, #0284c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero .lead {
+            font-size: 20px;
+            color: #94a3b8;
+            max-width: 700px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+        }
+        
+        /* Content */
+        main {
+            flex: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px 80px;
+            width: 100%;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 32px;
+            align-items: start;
+        }
+        
+        .content-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 36px;
+        }
+        
+        .content-card h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #e2e8f0;
+        }
+        
+        .content-card h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 28px 0 12px;
+            color: #cbd5e1;
+        }
+        
+        .content-card h3:first-of-type {
+            margin-top: 0;
+        }
+        
+        .content-card p {
+            color: #94a3b8;
+            margin-bottom: 16px;
+            line-height: 1.7;
+        }
+        
+        .content-card ul {
+            margin: 12px 0 20px;
+            padding-left: 20px;
+        }
+        
+        .content-card li {
+            color: #cbd5e1;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: sticky;
+            top: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .info-box {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 28px;
+        }
+        
+        .info-box h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #e2e8f0;
+        }
+        
+        .stat-grid {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .stat-item {
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .stat-item:last-child {
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #7dd3fc;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .cta-box {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .cta-box h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #ffffff;
+        }
+        
+        .cta-box p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-cta {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #ffffff;
+            color: #0284c7;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            text-align: center;
+            transition: background 0.2s, transform 0.2s;
+        }
+        
+        .btn-cta:hover {
+            background: #f1f5f9;
+            transform: translateY(-2px);
+        }
+        
+        .values-section {
+            margin-top: 32px;
+            padding-top: 32px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        /* Footer */
+        .footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        
+        .footer-links a {
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer-links a:hover {
+            color: #7dd3fc;
+        }
+        
+        @media (max-width: 968px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: static;
+            }
+            
+            .hero h1 {
+                font-size: 36px;
+            }
+            
+            .nav {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="brand">
-      <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
-    </div>
-
-    <nav class="site-nav" aria-label="Main nav">
-      <a href="/index">Home</a>
-      <a href="/vin">VIN Tool</a>
-      <a href="/about">About</a>
-      <a href="/contact">Contact</a>
-      <a href="/privacy">Privacy</a>
-    </nav>
-  </header>
-
-  <main class="container">
-    <div class="panel">
-      <h2>About CarSaavy</h2>
-      <p class="lead">CarSaavy was built to give everyday buyers the upper hand at the dealership. Instead of sifting through raw VIN data, our reports surface the specific leverage points you can use when negotiating price, repairs, or warranties.</p>
-
-      <div class="two-col">
-        <div>
-          <h3 style="margin-bottom:8px">What we do</h3>
-          <p class="muted">We aggregate publicly available vehicle data (recalls, history flags, pricing comps) and transform it into a concise negotiation checklist with a recommended price range and walking-away threshold.</p>
-          <h4 style="margin-top:18px">How it helps</h4>
-          <ul style="color:var(--muted)">
-            <li>Save time in the lot — get clear questions & priorities.</li>
-            <li>Know fair price ranges and spot red flags fast.</li>
-            <li>Bring proof-to-the-table: a PDF your salesperson can’t ignore.</li>
-          </ul>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">CARSAAVY</a>
+            <nav class="nav">
+                <a href="/index">Home</a>
+                <a href="/products">Products</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/privacy">Privacy</a>
+            </nav>
         </div>
+    </header>
 
-        <aside class="box">
-          <strong>Quick facts</strong>
-          <p class="muted" style="margin:8px 0 0">Price per report: <strong>$20</strong></p>
-          <p class="muted">Delivery: Email + PDF link</p>
-          <p class="muted">Payment: Stripe (test/live)</p>
-          <div style="margin-top:12px"><a class="btn" href="/vin" style="text-decoration:none;">Generate a report</a></div>
-        </aside>
-      </div>
+    <!-- Hero -->
+    <section class="hero">
+        <h1>Negotiation Intelligence<br>For <span class="gradient-text">Real People</span></h1>
+        <p class="lead">
+            CarSaavy gives everyday car buyers the upper hand at the dealership. No more guessing, no more anxiety—just clear strategy and the confidence to negotiate like a pro.
+        </p>
+    </section>
 
-      <section style="margin-top:20px">
-        <h3>Values</h3>
-        <p class="muted">Clear, honest guidance — our goal is to empower buyers so they never feel taken advantage of on price or condition.</p>
-      </section>
-    </div>
-  </main>
+    <!-- Main Content -->
+    <main>
+        <div class="content-grid">
+            <!-- Main Content -->
+            <div class="content-card">
+                <h2>Our Mission</h2>
+                <p>
+                    Buying a car shouldn't feel like you're walking into a trap. Most people dread the dealership because they don't know what questions to ask, what price is fair, or when to walk away. CarSaavy fixes that.
+                </p>
+                <p>
+                    We turn raw vehicle data into <strong>actionable negotiation intelligence</strong>—specific pricing targets, dealer counterplay scripts, and walk-away triggers tailored to your situation.
+                </p>
 
-  <footer class="site-footer">
-    © 2025 CarSaavy — Negotiate Smarter • <a href="/privacy" style="color:var(--muted);text-decoration:underline">Privacy</a>
-  </footer>
+                <h3>What We Do</h3>
+                <p>
+                    We analyze your vehicle's history, market positioning, condition risks, and buyer context to create custom reports that give you:
+                </p>
+                <ul>
+                    <li><strong>Specific pricing targets:</strong> Anchor points, target ranges, and walk-away thresholds</li>
+                    <li><strong>Dealer counterplay scripts:</strong> Exact responses to common pushback tactics</li>
+                    <li><strong>Inspection priorities:</strong> What to check and how to use findings for leverage</li>
+                    <li><strong>Strategic sequence:</strong> Step-by-step negotiation flow from first contact to closing</li>
+                </ul>
+
+                <h3>Why It Works</h3>
+                <p>
+                    Most car buying advice is generic—"do your research," "know your budget," "be willing to walk away." That's not enough when you're sitting across from someone who negotiates for a living.
+                </p>
+                <p>
+                    CarSaavy gives you <strong>vehicle-specific leverage</strong> and <strong>tactical scripts</strong> you can use in real-time. It's the difference between winging it and walking in with a battle plan.
+                </p>
+
+                <div class="values-section">
+                    <h3>Our Values</h3>
+                    <p>
+                        <strong>Honesty over hype.</strong> We won't promise you'll save $10k on every deal. We will give you clear, honest guidance so you never feel taken advantage of on price or condition.
+                    </p>
+                    <p>
+                        <strong>Clarity over complexity.</strong> Our reports are designed to be readable and actionable, not buried in jargon or overwhelming data dumps.
+                    </p>
+                    <p>
+                        <strong>Empowerment over dependence.</strong> We're not here to hold your hand through every deal forever. We're here to teach you how to negotiate confidently so you can do it yourself.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="info-box">
+                    <h3>Quick Facts</h3>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Report Types</div>
+                            <div class="stat-value">3 Tiers</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Starting Price</div>
+                            <div class="stat-value">$15</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Delivery Speed</div>
+                            <div class="stat-value">Instant to 48hr</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Avg. Customer Savings</div>
+                            <div class="stat-value">$2,400+</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cta-box">
+                    <h3>Ready to Negotiate?</h3>
+                    <p>Get your combat-ready intelligence report and stop leaving money on the table.</p>
+                    <a href="/products" class="btn-cta">View Products</a>
+                </div>
+
+                <div class="info-box">
+                    <h3>Questions?</h3>
+                    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 16px;">
+                        Want to know more about how our reports work or which tier is right for you?
+                    </p>
+                    <a href="/contact" style="color: #7dd3fc; text-decoration: none; font-weight: 600; font-size: 14px;">Contact Us →</a>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/products">Products</a>
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+            <a href="/privacy">Privacy</a>
+        </div>
+        <p>© 2025 CarSaavy. All rights reserved. Negotiate smarter, not harder.</p>
+    </footer>
 </body>
 </html>

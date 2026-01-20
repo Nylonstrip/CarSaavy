@@ -1,0 +1,51 @@
+.hero {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:80px 60px;
+  }
+  
+  .hero-content { max-width:460px; }
+  .subhead { opacity:0.85; margin-bottom:20px; }
+  
+  .hero-ctas a { margin-right:12px; }
+  
+  .demo-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(260px,1fr));
+    gap:28px;
+  }
+  
+  .demo-card {
+    width:100%;
+    border-radius:8px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.12);
+    cursor:pointer;
+  }
+  
+  .modal {
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.85);
+    z-index:9999;
+  }
+  
+  .modal-content {
+    max-width:90%;
+    max-height:90%;
+    margin:auto;
+    display:block;
+    margin-top:40px;
+    border-radius:6px;
+  }
+  
+  .modal-close {
+    position:absolute;
+    top:20px;
+    right:30px;
+    font-size:32px;
+    color:#fff;
+    cursor:pointer;
+  }
+  

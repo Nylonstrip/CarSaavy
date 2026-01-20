@@ -122,8 +122,8 @@ module.exports = async (req, res) => {
       // Optional mirror for debugging
       metadata,
 
-      success_url: `${baseUrl}/success`,
-      cancel_url: `${baseUrl}/cancel`,
+      success_url: `/manual-success.html`,
+      cancel_url: `/manual-cancel.html`,
     });
 
     console.log("✅ Checkout session created:", session.id);

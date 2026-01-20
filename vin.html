@@ -1,346 +1,682 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CarSaavy — Negotiation Report Tool</title>
-  <link rel="icon" type="image/png" href="/favicon.ico" />
-  <style>
-    /* ===== EXISTING STYLES — UNCHANGED ===== */
-    :root{
-      --bg:#0b0f13;
-      --card:#121417;
-      --muted:#9aa6b2;
-      --accent1:#0077b6;
-      --accent2:#00b4d8;
-      --glass: rgba(255,255,255,0.03);
-      --radius:14px;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Negotiation Positioning Tool — CarSaavy</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e12;
+            color: #e2e8f0;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 18, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #7dd3fc;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        
+        .nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+            
+        .nav a:hover {
+            color: #ffffff;
+            background: linear-gradient(90deg, #0077b6, #00b4d8);
+            box-shadow: 0 6px 18px rgba(0, 180, 216, 0.12);
+            transform: translateY(-2px);
+        }
 
-    header.site-header{
-      position:sticky;top:0;z-index:50;
-      backdrop-filter: blur(6px);
-      background: linear-gradient(180deg, rgba(10,12,14,0.6), rgba(10,12,14,0.4));
-      border-bottom: 1px solid rgba(255,255,255,0.03);
-      display:flex;align-items:center;justify-content:space-between;
-      padding:12px 20px;
-    }
-    .brand{display:flex;align-items:center;gap:14px}
-    .brand img{height:44px;display:block}
-    nav.site-nav{display:flex;gap:14px;align-items:center}
-    nav.site-nav a{
-      color:var(--muted);text-decoration:none;font-weight:600;padding:8px 12px;border-radius:10px;
-      transition: all .18s ease;
-    }
-    nav.site-nav a:hover{
-      color:#fff;
-      background:linear-gradient(90deg,var(--accent1),var(--accent2));
-      box-shadow:0 6px 18px rgba(0,180,216,0.12);
-      transform:translateY(-2px);
-    }
-
-    body {
-      margin: 0;
-      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background-color: #121212;
-      color: #f0f0f0;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-    main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 2rem;
-    }
-
-    h1 {
-      color: #22b7f0;
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .steps {
-      display: flex;
-      justify-content: center;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    .steps.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .step {
-      background: #1b2a35;
-      border: 1px solid #22b7f0;
-      border-radius: 12px;
-      padding: 1rem 1.5rem;
-      min-width: 150px;
-      color: #9ed9ef;
-      font-weight: 600;
-      opacity: 0.7;
-      transition: all 0.4s ease;
-      box-shadow: 0 0 5px rgba(34, 183, 240, 0.3);
-    }
-    .step.active {
-      opacity: 1;
-      background: #22b7f0;
-      color: #0c0c0c;
-      transform: scale(1.05);
-      box-shadow: 0 0 20px rgba(34, 183, 240, 0.8);
-    }
-    .step.glow {
-      box-shadow: 0 0 20px rgba(34, 183, 240, 0.9);
-    }
-
-    form {
-      background: #1e1e1e;
-      padding: 2rem;
-      border-radius: 16px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-      width: 100%;
-      max-width: 450px;
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    form.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    input[type="text"],
-    input[type="email"],
-    select {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #444;
-      border-radius: 8px;
-      font-size: 1rem;
-      background: #2a2a2a;
-      color: #f0f0f0;
-      margin-bottom: 0.75rem;
-    }
-
-    button {
-      width: 100%;
-      margin-top: 0.25rem;
-      background-color: #22b7f0;
-      color: #0c0c0c;
-      border: none;
-      padding: 0.85rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.2s ease-in-out, transform 0.2s ease;
-    }
-    button:hover { background-color: #1a9dce; }
-
-    .message {
-      margin-top: 1rem;
-      font-size: 0.95rem;
-      color: #f87171;
-      display: none;
-    }
-
-    footer {
-      text-align: center;
-      padding: 1rem;
-      background: #1b1b1b;
-      color: #9ed9ef;
-    }
-  </style>
+        .nav a.active {
+            color: #7dd3fc;
+            background: rgba(0, 119, 182, 0.1);
+        }
+        
+        /* Main Content */
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+        }
+        
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 40px;
+            align-items: start;
+        }
+        
+        .form-section h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 38px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #7dd3fc 0%, #0284c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .form-section p {
+            color: #94a3b8;
+            font-size: 16px;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+        
+        /* Steps */
+        .steps {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        
+        .steps.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .step {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.3s ease;
+        }
+        
+        .step.active {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-color: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.3);
+        }
+        
+        /* Form */
+        .form-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 32px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        
+        .form-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #0284c7;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+        }
+        
+        input::placeholder {
+            color: #64748b;
+        }
+        
+        .toggle-link {
+            display: inline-block;
+            color: #7dd3fc;
+            font-size: 14px;
+            text-decoration: none;
+            font-weight: 500;
+            margin-top: 12px;
+            transition: color 0.2s;
+        }
+        
+        .toggle-link:hover {
+            color: #38bdf8;
+        }
+        
+        #vehicleDetails {
+            margin-top: 20px;
+        }
+        
+        .helper-text {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 6px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+        }
+        
+        button[type="submit"] {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+        }
+        
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4);
+        }
+        
+        button[type="button"] {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+        }
+        
+        button[type="button"]:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #cbd5e1;
+        }
+        
+        .message {
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-top: 16px;
+            display: none;
+        }
+        
+        .message.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+        
+        /* Info Card */
+        .info-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 32px;
+            position: sticky;
+            top: 100px;
+        }
+        
+        .price-badge {
+            display: inline-block;
+            background: rgba(2, 132, 199, 0.1);
+            border: 1px solid rgba(2, 132, 199, 0.3);
+            color: #7dd3fc;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .info-card h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .info-card p {
+            color: #94a3b8;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .features-list {
+            list-style: none;
+            margin-bottom: 24px;
+        }
+        
+        .features-list li {
+            padding: 10px 0;
+            color: #cbd5e1;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            line-height: 1.5;
+        }
+        
+        .features-list li:before {
+            content: "✓";
+            color: #7dd3fc;
+            font-weight: 700;
+            flex-shrink: 0;
+            font-size: 16px;
+        }
+        
+        .price-display {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 42px;
+            font-weight: 700;
+            color: #7dd3fc;
+            margin-bottom: 8px;
+        }
+        
+        .price-note {
+            font-size: 13px;
+            color: #64748b;
+        }
+        
+        .upgrade-link {
+            display: block;
+            margin-top: 20px;
+            padding: 14px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            text-align: center;
+            color: #7dd3fc;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        
+        .upgrade-link:hover {
+            border-color: rgba(125, 211, 252, 0.3);
+            background: rgba(125, 211, 252, 0.05);
+        }
+        
+        /* Footer */
+        .footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .info-card {
+                position: static;
+            }
+            
+            .nav {
+                display: none;
+            }
+            
+            .form-section h1 {
+                font-size: 32px;
+            }
+            
+            .steps {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">CARSAAVY</a>
+            <nav class="nav">
+                <a href="/index">Home</a>
+                <a href="/products">Products</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/privacy">Privacy</a>
+            </nav>
+        </div>
+    </header>
 
-<header class="site-header">
-  <div class="brand">
-    <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
-  </div>
-  <nav class="site-nav">
-    <a href="/index">Home</a>
-    <a href="/vin">VIN Tool</a>
-    <a href="/about">About</a>
-    <a href="/contact">Contact</a>
-    <a href="/privacy">Privacy</a>
-  </nav>
-</header>
+    <!-- Main -->
+    <main>
+        <div class="container">
+            <!-- Form Section -->
+            <div class="form-section">
+                <h1>Get <span class="gradient-text">Negotiation-Ready</span> in Minutes</h1>
+                <p>Enter your vehicle details and receive an instant negotiation positioning report with dealer response scripts and strategic guidance.</p>
+                
+                <div class="steps" id="steps">
+                    <div class="step active">1️⃣ Vehicle Info</div>
+                    <div class="step">2️⃣ Pay & Process</div>
+                    <div class="step">3️⃣ Receive Report</div>
+                </div>
+                
+                <div class="form-card" id="formCard">
+                    <form id="vinForm">
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <input type="email" 
+                                   id="email" 
+                                   name="email"
+                                   placeholder="your@email.com" 
+                                   required 
+                                   autocomplete="email" />
+                            <p class="helper-text">We'll send your report to this email</p>
+                        </div>
 
-<main>
-  <h1>Get Your Negotiation-Ready Report</h1>
-  <p>Enter your VIN, or provide vehicle details if a VIN isn’t available.</p>
+                        <div class="form-group">
+                            <label for="vin">Vehicle VIN</label>
+                            <input type="text" 
+                                   id="vin" 
+                                   name="vin"
+                                   placeholder="Enter 17-character VIN (e.g., 1HGCM82633A004352)" 
+                                   maxlength="17" />
+                            <a href="#" id="toggleDetails" class="toggle-link">
+                                Don't have a VIN? Enter vehicle details instead →
+                            </a>
+                        </div>
 
-  <div class="steps" id="steps">
-    <div class="step active">1️⃣ Vehicle Info</div>
-    <div class="step">2️⃣ Pay & Process</div>
-    <div class="step">3️⃣ Receive Report</div>
-  </div>
+                        <div class="form-group">
+                            <label for="askingPrice">Asking Price (Optional)</label>
+                            <input type="text" 
+                                   id="askingPrice" 
+                                   name="askingPrice"
+                                   placeholder="e.g., $25,000" />
+                        </div>
 
-  <form id="vinForm">
-    <input type="email" id="email" placeholder="Enter your email" required />
-    <input type="text" id="vin" placeholder="Enter your 17-character VIN (optional)" maxlength="17" />
-    <input type="text" id="askingPrice" placeholder="Asking Price (optional)" />
+                        <div id="vehicleDetails" style="display:none;">
+                            <div class="form-group">
+                                <label for="year">Year *</label>
+                                <input type="text" 
+                                       id="year" 
+                                       name="year"
+                                       placeholder="e.g., 2020" />
+                            </div>
 
-    <p style="margin:10px 0;color:#9aa6b2;font-size:0.9rem;">
-      Don’t have a VIN?
-      <a href="#" id="toggleDetails" style="color:#22b7f0;text-decoration:underline;">
-        Enter vehicle details instead
-      </a>
-    </p>
+                            <div class="form-group">
+                                <label for="make">Make *</label>
+                                <input type="text" 
+                                       id="make" 
+                                       name="make"
+                                       placeholder="e.g., Toyota" />
+                            </div>
 
-    <div id="vehicleDetails" style="display:none;">
-      <input type="text" id="year" placeholder="Year (e.g. 2020)" />
-      <input type="text" id="make" placeholder="Make (e.g. Toyota)" />
-      <input type="text" id="model" placeholder="Model (e.g. Camry)" />
+                            <div class="form-group">
+                                <label for="model">Model *</label>
+                                <input type="text" 
+                                       id="model" 
+                                       name="model"
+                                       placeholder="e.g., Camry" />
+                            </div>
 
-      <select id="segment">
-        <option value="">Select vehicle segment</option>
-        <option value="economy">Economy / Compact</option>
-        <option value="sedan">Sedan</option>
-        <option value="suv">SUV / Crossover</option>
-        <option value="truck">Pickup Truck</option>
-        <option value="performance">Performance / Sports</option>
-        <option value="luxury">Luxury</option>
-        <option value="hybrid">Hybrid / EV</option>
-      </select>
+                            <div class="form-group">
+                                <label for="segment">Vehicle Segment</label>
+                                <select id="segment" name="segment">
+                                    <option value="">Select segment</option>
+                                    <option value="economy">Economy / Compact</option>
+                                    <option value="sedan">Sedan</option>
+                                    <option value="suv">SUV / Crossover</option>
+                                    <option value="truck">Pickup Truck</option>
+                                    <option value="performance">Performance / Sports</option>
+                                    <option value="luxury">Luxury</option>
+                                    <option value="hybrid">Hybrid / EV</option>
+                                </select>
+                            </div>
 
-      <select id="trimTier">
-        <option value="">Select trim tier</option>
-        <option value="base">Base</option>
-        <option value="mid">Mid</option>
-        <option value="premium">Premium</option>
-        <option value="performance">Performance</option>
-      </select>
-    </div>
+                            <div class="form-group">
+                                <label for="trimTier">Trim Tier</label>
+                                <select id="trimTier" name="trimTier">
+                                    <option value="">Select trim tier</option>
+                                    <option value="base">Base</option>
+                                    <option value="mid">Mid</option>
+                                    <option value="premium">Premium</option>
+                                    <option value="performance">Performance</option>
+                                </select>
+                            </div>
+                        </div>
 
-    <button type="submit">Generate Report</button>
-    <div class="message" id="message"></div>
-  </form>
-</main>
+                        <div class="button-group">
+                            <button type="submit">Generate Report</button>
+                            <button type="button" onclick="document.getElementById('vinForm').reset(); document.getElementById('vehicleDetails').style.display='none';">Clear</button>
+                        </div>
 
-<footer>© 2025 CarSaavy — Negotiate Smarter</footer>
+                        <div class="message error" id="message"></div>
+                    </form>
+                </div>
+            </div>
 
-<script>
-  const form = document.getElementById("vinForm");
-  const messageEl = document.getElementById("message");
-  const toggle = document.getElementById("toggleDetails");
-  const details = document.getElementById("vehicleDetails");
+            <!-- Info Card -->
+            <aside class="info-card">
+                <div class="price-badge">INSTANT DELIVERY</div>
+                <h3>What You'll Get</h3>
+                <p>An automated negotiation positioning report with strategic guidance and dealer response scripts.</p>
+                
+                <ul class="features-list">
+                    <li>Generic negotiation framework</li>
+                    <li>Dealer pushback responses</li>
+                    <li>Timeline & urgency tactics</li>
+                    <li>Inspection guidance</li>
+                    <li>Walk-away triggers</li>
+                    <li>Instant PDF delivery</li>
+                </ul>
+                
+                <div class="price-display">$15</div>
+                <p class="price-note">One-time payment · Secure Stripe checkout</p>
+                
+                <a href="/manual" class="upgrade-link">
+                    Want vehicle-specific pricing targets? Upgrade to Manual Reports →
+                </a>
+            </aside>
+        </div>
+    </main>
 
-  // Cache inputs ONCE (top-level)
-  const vinInput = document.getElementById("vin");
-  const yearInput = document.getElementById("year");
-  const makeInput = document.getElementById("make");
-  const modelInput = document.getElementById("model");
-  const segmentSelect = document.getElementById("segment");
-  const trimSelect = document.getElementById("trimTier");
+    <!-- Footer -->
+    <footer class="footer">
+        © 2025 CarSaavy — Negotiate Smarter
+    </footer>
 
-  function isValidVIN(v) {
-    return /^[A-HJ-NPR-Z0-9]{17}$/i.test(v);
-  }
+    <script>
+        const form = document.getElementById("vinForm");
+        const messageEl = document.getElementById("message");
+        const toggle = document.getElementById("toggleDetails");
+        const details = document.getElementById("vehicleDetails");
 
-  function activateVinMode() {
-    [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
-      el.value = "";
-      el.disabled = true;
-    });
-    details.style.display = "none";
-    vinInput.disabled = false;
-  }
+        const vinInput = document.getElementById("vin");
+        const yearInput = document.getElementById("year");
+        const makeInput = document.getElementById("make");
+        const modelInput = document.getElementById("model");
+        const segmentSelect = document.getElementById("segment");
+        const trimSelect = document.getElementById("trimTier");
 
-  function activateManualMode() {
-    vinInput.value = "";
-    vinInput.disabled = true;
+        function isValidVIN(v) {
+            return /^[A-HJ-NPR-Z0-9]{17}$/i.test(v);
+        }
 
-    [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
-      el.disabled = false;
-    });
+        function activateVinMode() {
+            [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
+                el.value = "";
+                el.disabled = true;
+            });
+            details.style.display = "none";
+            vinInput.disabled = false;
+        }
 
-    details.style.display = "block";
-  }
+        function activateManualMode() {
+            vinInput.value = "";
+            vinInput.disabled = true;
+            [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
+                el.disabled = false;
+            });
+            details.style.display = "block";
+        }
 
-  function resetIdentityMode() {
-    vinInput.disabled = false;
-    [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
-      el.disabled = false;
-    });
-    details.style.display = "none";
-  }
+        function resetIdentityMode() {
+            vinInput.disabled = false;
+            [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
+                el.disabled = false;
+            });
+            details.style.display = "none";
+        }
 
-  toggle.addEventListener("click", e => {
-    e.preventDefault();
-    activateManualMode();
-  });
+        toggle.addEventListener("click", e => {
+            e.preventDefault();
+            activateManualMode();
+        });
 
-  vinInput.addEventListener("input", () => {
-    const vinVal = vinInput.value.trim();
-    if (vinVal.length > 0) {
-      activateVinMode();
-    } else {
-      resetIdentityMode();
-    }
-  });
+        vinInput.addEventListener("input", () => {
+            const vinVal = vinInput.value.trim();
+            if (vinVal.length > 0) {
+                activateVinMode();
+            } else {
+                resetIdentityMode();
+            }
+        });
 
-  form.addEventListener("submit", async e => {
-    e.preventDefault();
+        form.addEventListener("submit", async e => {
+            e.preventDefault();
+            messageEl.style.display = "none";
 
-    const email = document.getElementById("email").value.trim();
-    const vin = vinInput.value.trim().toUpperCase();
-    const askingPrice = document.getElementById("askingPrice").value.trim();
+            const email = document.getElementById("email").value.trim();
+            const vin = vinInput.value.trim().toUpperCase();
+            const askingPrice = document.getElementById("askingPrice").value.trim();
+            const year = yearInput.value.trim();
+            const make = makeInput.value.trim();
+            const model = modelInput.value.trim();
+            const segment = segmentSelect.value;
+            const trimTier = trimSelect.value;
 
-    const year = yearInput.value.trim();
-    const make = makeInput.value.trim();
-    const model = modelInput.value.trim();
-    const segment = segmentSelect.value;
-    const trimTier = trimSelect.value;
+            const hasVin = vin && isValidVIN(vin);
+            const hasDetails = year && make && model;
 
-    const hasVin = vin && isValidVIN(vin);
-    const hasDetails = year && make && model;
+            if (!hasVin && !hasDetails) {
+                messageEl.textContent = "Please enter a valid VIN or provide your vehicle details.";
+                messageEl.style.display = "block";
+                return;
+            }
 
-    if (!hasVin && !hasDetails) {
-      messageEl.textContent =
-        "Please enter a valid VIN or provide your vehicle details.";
-      messageEl.style.display = "block";
-      return;
-    }
+            try {
+                const res = await fetch("/api/create-payment", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email,
+                        vin: hasVin ? vin : null,
+                        year: hasDetails ? year : null,
+                        make: hasDetails ? make : null,
+                        model: hasDetails ? model : null,
+                        segment,
+                        trimTier,
+                        askingPrice: askingPrice || null
+                    })
+                });
 
-    try {
-      const res = await fetch("/api/create-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          vin: hasVin ? vin : null,
-          year: hasDetails ? year : null,
-          make: hasDetails ? make : null,
-          model: hasDetails ? model : null,
-          segment,
-          trimTier,
-          askingPrice: askingPrice || null
-        })
-      });
+                const data = await res.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    throw new Error("Checkout failed");
+                }
+            } catch {
+                messageEl.textContent = "Something went wrong. Please try again.";
+                messageEl.style.display = "block";
+            }
+        });
 
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-      else throw new Error("Checkout failed");
-    } catch {
-      messageEl.textContent = "Something went wrong. Please try again.";
-      messageEl.style.display = "block";
-    }
-  });
-
-  window.addEventListener("load", () => {
-    document.querySelector(".steps").classList.add("visible");
-    document.querySelector("form").classList.add("visible");
-  });
-</script>
-
+        window.addEventListener("load", () => {
+            document.querySelector(".steps").classList.add("visible");
+            document.querySelector(".form-card").classList.add("visible");
+        });
+    </script>
 </body>
 </html>

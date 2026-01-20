@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CarSaavy — Sample Negotiation Readiness Report</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:#0b0f13;
+      color:#eaf6ff;
+      -webkit-font-smoothing:antialiased;
+    }
+    .site-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 20px;
+      background:rgba(5,8,12,0.96);
+      border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    .site-header img{height:30px}
+    .site-header a{
+      color:#9aa6b2;
+      text-decoration:none;
+      font-size:0.9rem;
+      margin-left:14px;
+    }
+    .container{
+      max-width:1100px;
+      margin:0 auto;
+      padding:28px 20px 40px;
+    }
+    h1{
+      font-size:1.8rem;
+      margin:0 0 8px;
+    }
+    p.lead{
+      margin:0 0 18px;
+      color:#9aa6b2;
+      font-size:0.98rem;
+      line-height:1.6;
+    }
+    .badge-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:16px;
+    }
+    .badge{
+      border-radius:999px;
+      padding:4px 10px;
+      background:rgba(255,255,255,0.06);
+      font-size:0.78rem;
+      color:#d9f2ff;
+    }
+    .sample-layout{
+      display:grid;
+      grid-template-columns:2fr 1fr;
+      gap:20px;
+      margin-top:20px;
+    }
+    .sample-frame{
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:#05070a;
+      padding:12px;
+    }
+    .sample-frame iframe{
+      width:100%;
+      height:70vh;
+      border:none;
+      border-radius:10px;
+      background:#0b0f13;
+    }
+    .side-notes h2{
+      font-size:1.1rem;
+      margin:0 0 6px;
+    }
+    .side-notes p{
+      margin:0 0 10px;
+      font-size:0.9rem;
+      color:#9aa6b2;
+    }
+    .side-notes ul{
+      padding-left:18px;
+      margin:6px 0 14px;
+      font-size:0.9rem;
+      color:#9aa6b2;
+    }
+    .btn{
+      display:inline-block;
+      padding:10px 16px;
+      border-radius:999px;
+      background:linear-gradient(90deg,#0077b6,#00b4d8);
+      color:#071018;
+      font-weight:600;
+      text-decoration:none;
+      font-size:0.9rem;
+      margin-top:10px;
+    }
+    .btn.secondary{
+      background:transparent;
+      color:#9aa6b2;
+      border:1px solid rgba(255,255,255,0.08);
+      margin-right:10px;
+    }
+    @media(max-width:900px){
+      .sample-layout{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a href="/"><img src="/images/carsaavy_header.webp" alt="CarSaavy logo" /></a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/vin.html">Get a report</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Sample negotiation readiness report</h1>
+    <p class="lead">
+      This is a real CarSaavy report generated from a Year / Make / Model input (Toyota Camry example).
+      Your report will match your vehicle and negotiation situation, but the overall structure will be similar.
+    </p>
+
+    <div class="badge-row">
+      <span class="badge">Segment &amp; trim behavior</span>
+      <span class="badge">Negotiation zones</span>
+      <span class="badge">Dealer pushback responses</span>
+      <span class="badge">Inspection &amp; condition</span>
+      <span class="badge">Escalation / exit paths</span>
+    </div>
+
+    <div class="sample-layout">
+      <section class="sample-frame">
+        <!-- TODO: Update src to your hosted sample PDF -->
+        <iframe src="/samples/carsaavy-sample-camry.pdf" title="CarSaavy sample report PDF preview"></iframe>
+      </section>
+
+      <aside class="side-notes">
+        <h2>How to read this report</h2>
+        <p>
+          Think of this as a briefing document you review before walking into the dealership.
+          It&apos;s designed to be skimmed in a few minutes, then referenced on your phone during the
+          negotiation itself.
+        </p>
+
+        <h2>What changes for your car?</h2>
+        <ul>
+          <li>Segment behavior and risk notes will match your vehicle type (truck, EV, SUV, sedan, etc.).</li>
+          <li>Age, mileage, and condition guidance will align to your inputs.</li>
+          <li>Negotiation stance and pushback responses will be tuned to your leverage profile.</li>
+        </ul>
+
+        <h2>Ready to generate your own?</h2>
+        <p>Use your VIN or select Year / Make / Model to get a tailored negotiation plan in minutes.</p>
+        <a class="btn secondary" href="/vin.html">Get my report</a>
+        <a class="btn" href="/">Back to homepage</a>
+      </aside>
+    </div>
+  </main>
+</body>
+</html>
