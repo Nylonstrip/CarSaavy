@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products — CarSaavy</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e12;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 18, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #7dd3fc;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+        
+        .nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+        
+        .nav a:hover {
+            color: #7dd3fc;
+        }
+        
+        /* Hero */
+        .hero {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 24px 40px;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #7dd3fc 0%, #0284c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero p {
+            font-size: 18px;
+            color: #94a3b8;
+            max-width: 700px;
+            margin: 0 auto 40px;
+        }
+        
+        .launch-badge {
+            display: inline-block;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ade80;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        /* Products Section */
+        .products {
+            max-width: 1200px;
+            margin: 0 auto 80px;
+            padding: 0 24px;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+        
+        .product-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 32px;
+            transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(125, 211, 252, 0.3);
+            box-shadow: 0 16px 48px rgba(2, 132, 199, 0.15);
+        }
+        
+        .product-card.featured {
+            border: 2px solid #0284c7;
+            box-shadow: 0 8px 32px rgba(2, 132, 199, 0.2);
+        }
+        
+        .featured-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .limited-badge {
+            position: absolute;
+            top: -12px;
+            right: 24px;
+            background: #22c55e;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .product-tier {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #7dd3fc;
+            margin-bottom: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .product-name {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .product-price {
+            font-size: 42px;
+            font-weight: 700;
+            color: #7dd3fc;
+            margin-bottom: 4px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .price-strike {
+            font-size: 24px;
+            color: #64748b;
+            text-decoration: line-through;
+            margin-right: 8px;
+        }
+        
+        .product-price span {
+            font-size: 18px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .product-delivery {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+        
+        .product-description {
+            color: #94a3b8;
+            margin-bottom: 24px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        
+        .product-features {
+            list-style: none;
+            margin-bottom: 28px;
+        }
+        
+        .product-features li {
+            padding: 10px 0;
+            color: #cbd5e1;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            line-height: 1.5;
+        }
+        
+        .product-features li:before {
+            content: "✓";
+            color: #7dd3fc;
+            font-weight: 700;
+            flex-shrink: 0;
+            font-size: 16px;
+        }
+        
+        .product-cta {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+        
+        .product-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.3);
+        }
+        
+        .product-card:not(.featured) .product-cta {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #7dd3fc;
+        }
+        
+        /* Comparison Table */
+        .comparison-section {
+            margin-top: 80px;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .section-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 38px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .section-header p {
+            font-size: 17px;
+            color: #94a3b8;
+        }
+        
+        .comparison-table {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.4) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .comparison-table th {
+            background: rgba(2, 132, 199, 0.1);
+            padding: 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            color: #7dd3fc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .comparison-table td {
+            padding: 18px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+        
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .comparison-table .feature-name {
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        
+        .comparison-table .check {
+            color: #4ade80;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        
+        .comparison-table .dash {
+            color: #64748b;
+        }
+        
+        /* FAQ */
+        .faq-section {
+            margin-top: 80px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .faq-item {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.3) 0%, rgba(15, 23, 42, 0.3) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+        
+        .faq-question {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .faq-answer {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+        
+        /* Footer */
+        .footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 40px 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+            margin-top: 80px;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        
+        .footer-links a {
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer-links a:hover {
+            color: #7dd3fc;
+        }
+        
+        /* Responsive */
+        @media (max-width: 968px) {
+            .hero h1 {
+                font-size: 36px;
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav {
+                display: none;
+            }
+            
+            .comparison-table {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo">CARSAAVY</a>
+            <nav class="nav">
+                <a href="/index">Home</a>
+                <a href="/products">Products</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/privacy">Privacy</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="launch-badge">🚀 LAUNCH PRICING — First 50 Customers</div>
+        <h1>
+            Choose Your <span class="gradient-text">Intelligence Report</span>
+        </h1>
+        <p>
+            From instant positioning frameworks to full tactical breakdowns with specific pricing targets. Every report is designed to give you negotiation leverage and save you thousands.
+        </p>
+    </section>
+
+    <!-- Products -->
+    <section class="products">
+        <div class="products-grid">
+            <!-- Negotiation Positioning -->
+            <div class="product-card">
+                <div class="product-tier">Automated</div>
+                <h3 class="product-name">Negotiation Positioning</h3>
+                <div class="product-price">$15</div>
+                <div class="product-delivery">Instant Delivery</div>
+                <p class="product-description">
+                    Automated framework with general negotiation strategy, dealer response scripts, and timing guidance.
+                </p>
+                <ul class="product-features">
+                    <li>Generic negotiation framework</li>
+                    <li>Dealer pushback responses</li>
+                    <li>Timeline & urgency tactics</li>
+                    <li>Inspection guidance</li>
+                    <li>Instant PDF delivery</li>
+                </ul>
+                <a href="/vin" class="product-cta">Get Report Now</a>
+            </div>
+
+            <!-- Essentials -->
+            <div class="product-card">
+                <div class="product-tier">Manual Analysis</div>
+                <h3 class="product-name">Essentials Report</h3>
+                <div class="product-price">$50 <span>/ 48hr</span></div>
+                <div class="product-delivery">Manual Analysis · 48hr Delivery</div>
+                <p class="product-description">
+                    Vehicle-specific intelligence with inspection priorities, risk assessment, and walk-away triggers.
+                </p>
+                <ul class="product-features">
+                    <li>Vehicle snapshot & history</li>
+                    <li>Buyer posture analysis</li>
+                    <li>Inspection priorities</li>
+                    <li>Condition & risk signals</li>
+                    <li>Walk-away logic</li>
+                    <li>24hr rush available ($75)</li>
+                </ul>
+                <a href="/manual" class="product-cta">Order Essentials</a>
+            </div>
+
+            <!-- Comprehensive -->
+            <div class="product-card featured">
+                <div class="featured-badge">BEST VALUE</div>
+                <div class="limited-badge">LIMITED</div>
+                <div class="product-tier">Premium</div>
+                <h3 class="product-name">Comprehensive</h3>
+                <div class="product-price">
+                    <span class="price-strike">$125</span>
+                    $75 <span>/ 48hr</span>
+                </div>
+                <div class="product-delivery">Full Analysis · 48hr Delivery · Launch Pricing</div>
+                <p class="product-description">
+                    Complete tactical breakdown with specific pricing targets, dealer counterplay scripts, and full negotiation sequence.
+                </p>
+                <ul class="product-features">
+                    <li>Everything in Essentials, plus:</li>
+                    <li>Market positioning context</li>
+                    <li>Specific pricing targets & zones</li>
+                    <li>Dealer counterplay map</li>
+                    <li>9-step negotiation sequence</li>
+                    <li>Multiple scenario planning</li>
+                    <li>HTML + PDF delivery</li>
+                    <li>24hr rush available ($100)</li>
+                </ul>
+                <a href="/manual" class="product-cta">Get Full Intel</a>
+            </div>
+        </div>
+
+        <!-- Comparison Table -->
+        <div class="comparison-section">
+            <div class="section-header">
+                <h2>Feature <span class="gradient-text">Comparison</span></h2>
+                <p>See what's included in each report tier</p>
+            </div>
+            
+            <div class="comparison-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Negotiation<br>Positioning</th>
+                            <th>Essentials</th>
+                            <th>Comprehensive</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="feature-name">Delivery Speed</td>
+                            <td>Instant</td>
+                            <td>48hr (24hr rush +$25)</td>
+                            <td>48hr (24hr rush +$25)</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Generic Framework</td>
+                            <td class="check">✓</td>
+                            <td class="dash">—</td>
+                            <td class="dash">—</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Vehicle-Specific Analysis</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Buyer Posture Assessment</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Inspection Priorities</td>
+                            <td>Generic</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Risk & Condition Signals</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Walk-Away Triggers</td>
+                            <td>Generic</td>
+                            <td class="check">✓</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Market Positioning Analysis</td>
+                            <td class="dash">—</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Specific Pricing Targets</td>
+                            <td class="dash">—</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Dealer Counterplay Scripts</td>
+                            <td>Generic</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Full Negotiation Sequence</td>
+                            <td class="dash">—</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">Multiple Scenarios</td>
+                            <td class="dash">—</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                        </tr>
+                        <tr>
+                            <td class="feature-name">HTML Interactive Version</td>
+                            <td class="dash">—</td>
+                            <td class="dash">—</td>
+                            <td class="check">✓</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="faq-section">
+            <div class="section-header">
+                <h2>Frequently Asked <span class="gradient-text">Questions</span></h2>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">What's the difference between Essentials and Comprehensive?</div>
+                <div class="faq-answer">
+                    Essentials gives you vehicle-specific inspection priorities and risk assessment to avoid getting screwed. Comprehensive adds market analysis, specific dollar-amount pricing targets, dealer counterplay scripts, and a complete 9-step negotiation sequence. If you want to know exactly what to offer and how to respond to pushback, Comprehensive is worth it.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">How much can I actually save?</div>
+                <div class="faq-answer">
+                    Our customers report saving anywhere from $800 to $3,200+ on their purchases. The amount depends on the vehicle, market conditions, and your execution. The report gives you the leverage and strategy — you still need to negotiate confidently.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">What if the car sells before I get my report?</div>
+                <div class="faq-answer">
+                    Manual reports are final sale once research begins. However, the strategies, pricing frameworks, and negotiation tactics apply to similar vehicles in your market. Many customers use their report to evaluate multiple comparable cars.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">Do you offer refunds?</div>
+                <div class="faq-answer">
+                    Refunds are only issued if CarSaavy cannot fulfill the report due to service issues or unserviceable intake data. Once research begins, reports are final sale. We recommend starting with the Negotiation Positioning ($15) if you're unsure.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">What's "launch pricing"?</div>
+                <div class="faq-answer">
+                    The first 50 customers get Comprehensive reports at $75 (48hr) or $100 (24hr) instead of the normal $125/$150. This is to build testimonials and case studies. Once we hit 50 orders, pricing goes to full rate. Early adopters save up to $50.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+        </div>
+        <p>© 2025 CarSaavy. All rights reserved. Negotiate smarter, not harder.</p>
+    </footer>
+</body>
+</html>
