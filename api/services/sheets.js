@@ -26,8 +26,6 @@ async function getCounterForTier(tier) {
   const sheets = getSheetsClient();
   const sheetId = process.env.SHEET_ID;
 
-  await sheets.context._options.auth.authrize();
-
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: "counters!A2:B3",
