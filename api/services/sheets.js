@@ -3,24 +3,23 @@ const { google } = require("googleapis");
 let sheetsClient = null;
 
 function getSheetsClient() {
-  if (sheetsClient) return sheetsClient;
-
-  const credentials = JSON.parse(
-    Buffer.from(process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64, "base64").toString("utf8")
-  );
-  
-  const privatekey = credentials.private_key.replace(/\\n/g, '\n');
+  const credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64, "base64").toString("utf-8"));
 
   const auth = new google.auth.JWT(
     credentials.client_email,
     null,
-    privatekey,
-    ["https://www.googleapis.com/auth/spreadsheets"]
+    credentials.private_key,
+    [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive"
+    ]
   );
 
-  sheetsClient = google.sheets({ version: "v4", auth });
-  return sheetsClient;
+  return google.sheets({ version: "v4", auth });
 }
+
+module.exports = { getSheetsClient };
+
 
 async function getCounterForTier(tier) {
   const sheets = getSheetsClient();

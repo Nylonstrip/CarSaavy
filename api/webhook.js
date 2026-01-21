@@ -254,6 +254,10 @@ module.exports = async function handler(req, res) {
     //   purchasePurpose: metadata.purchasePurpose,
     // });
     //
+    console.log("SHEETS_CREDS_BASE64_PRESENT:", !!process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64);
+    console.log("SHEETS_CREDS_LENGTH:", process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64?.length || 0);
+
+
     const sku = await assignSku(metadata.tier, metadata.slaHours, metadata);
     metadata.sku = sku;
 
