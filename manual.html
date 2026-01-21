@@ -766,6 +766,9 @@
 
     <script>
         const form = document.getElementById("manualForm");
+        if (!form) {
+        console.warn("Manual form script did not find #manualForm on this page");
+        }
         const errorEl = document.getElementById("formError");
         const phoneInput = document.getElementById("phone");
         const phoneBadge = document.getElementById("phoneRequiredBadge");
