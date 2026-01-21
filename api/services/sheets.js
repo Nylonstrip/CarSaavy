@@ -9,10 +9,12 @@ function getSheetsClient() {
     Buffer.from(process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64, "base64").toString("utf8")
   );
   
+  const privatekey = credentials.private_key.replace(/\\n/g, '\n');
+
   const auth = new google.auth.JWT(
     credentials.client_email,
     null,
-    credentials.private_key,
+    privatekey,
     ["https://www.googleapis.com/auth/spreadsheets"]
   );
 
@@ -23,6 +25,8 @@ function getSheetsClient() {
 async function getCounterForTier(tier) {
   const sheets = getSheetsClient();
   const sheetId = process.env.SHEET_ID;
+
+  await sheets.context._options.auth.authrize();
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
@@ -46,6 +50,8 @@ async function incrementCounterForTier(tier) {
   const sheetId = process.env.SHEET_ID;
 
   const rowIndex = tier === "comp" ? 2 : 3;
+
+
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
