@@ -765,115 +765,118 @@
     </footer>
 
     <script>
-        const form = document.getElementById("manualForm");
-        if (!form) {
-        console.warn("Manual form script did not find #manualForm on this page");
-        }
-        const errorEl = document.getElementById("formError");
-        const phoneInput = document.getElementById("phone");
-        const phoneBadge = document.getElementById("phoneRequiredBadge");
-        const purchasePurposeOtherRow = document.getElementById("purchasePurposeOtherRow");
-        const purchasePurposeOtherInput = document.getElementById("purchasePurposeOther");
-
-        function getSelectedPlan() {
+        document.addEventListener("DOMContentLoaded", () => {
+          const form = document.getElementById("manualForm");
+          if (!form) return;
+  
+          const errorEl = document.getElementById("formError");
+          const phoneInput = document.getElementById("phone");
+          const phoneBadge = document.getElementById("phoneRequiredBadge");
+          const purchasePurposeOtherRow = document.getElementById("purchasePurposeOtherRow");
+          const purchasePurposeOtherInput = document.getElementById("purchasePurposeOther");
+  
+          function getSelectedPlan() {
             return document.querySelector('input[name="plan"]:checked');
-        }
-
-        function setPhoneRequirement(planInput) {
+          }
+  
+          function setPhoneRequirement(planInput) {
             if (!planInput) {
-                phoneInput.required = false;
-                phoneBadge.style.display = "none";
-                return;
+              phoneInput.required = false;
+              phoneBadge.style.display = "none";
+              return;
             }
             const isRush = planInput.dataset.rush === "true";
             phoneInput.required = isRush;
             phoneBadge.style.display = isRush ? "inline-block" : "none";
-        }
-
-        document.querySelectorAll('input[name="plan"]').forEach(input => {
+          }
+  
+          document.querySelectorAll('input[name="plan"]').forEach((input) => {
             input.addEventListener("change", () => setPhoneRequirement(input));
-        });
-
-        document.querySelectorAll('input[name="purchasePurpose"]').forEach(input => {
+          });
+  
+          document.querySelectorAll('input[name="purchasePurpose"]').forEach((input) => {
             input.addEventListener("change", () => {
-                if (input.value === "other" && input.checked) {
-                    purchasePurposeOtherRow.style.display = "block";
-                    purchasePurposeOtherInput.required = true;
-                } else if (input.checked) {
-                    purchasePurposeOtherRow.style.display = "none";
-                    purchasePurposeOtherInput.required = false;
-                    purchasePurposeOtherInput.value = "";
-                }
+              if (input.value === "other" && input.checked) {
+                purchasePurposeOtherRow.style.display = "block";
+                purchasePurposeOtherInput.required = true;
+              } else if (input.checked) {
+                purchasePurposeOtherRow.style.display = "none";
+                purchasePurposeOtherInput.required = false;
+                purchasePurposeOtherInput.value = "";
+              }
             });
-        });
-
-        function showError(msg) {
+          });
+  
+          function showError(msg) {
             errorEl.textContent = msg;
             errorEl.style.display = "block";
             errorEl.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-
-        function clearError() {
+          }
+  
+          function clearError() {
             errorEl.textContent = "";
             errorEl.style.display = "none";
-        }
-
-        function isValidEmail(email) {
-            return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-        }
-
-        form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        clearError();
-
-        const plan = getSelectedPlan();
-        if (!plan) {
-            showError("Please select a report tier");
-            return;
-        }
-
-        const purchasePurpose = form.purchasePurpose;
-        const purchasePurposeOther = form.purchasePurposeOther;
-
-        // Conditional phone requirement for rush orders
-        if (plan.dataset.rush === "true" && !form.phone.value.trim()) {
-            showError("Phone number is required for rush orders.");
-            return;
-        }
-
-        // Build form payload matching backend shape
-        const payload = {
-            fullName: form.fullName.value.trim(),
-            email: form.email.value.trim(),
-            phone: form.phone.value.trim(),
-            vin: form.vin.value.trim(),
-            listingUrl: form.listingUrl.value.trim(),
-            timelineContext: form.timelineContext.value.trim(),
-            budget: form.budget.value.trim(),
-            additionalContext: form.additionalContext.value.trim(),
-            purchasePurpose: purchasePurpose.value,
-            purchasePurposeOther: purchasePurposeOther?.value?.trim() || "",
-            priceId: plan.dataset.priceId,
-            tier: plan.dataset.tier,
-            rush: plan.dataset.rush === "true",
-            slaHours: Number(plan.dataset.sla),
-        };
-
-        // Call backend to get Stripe checkout session
-        const res = await fetch("/api/create-session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+          }
+  
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            clearError();
+  
+            const plan = getSelectedPlan();
+            if (!plan) {
+              showError("Please select a report tier");
+              return;
+            }
+  
+            const purchasePurpose = form.purchasePurpose;
+            const purchasePurposeOther = form.purchasePurposeOther;
+  
+            // Rush orders require phone
+            if (plan.dataset.rush === "true" && !form.phone.value.trim()) {
+              showError("Phone number is required for rush orders.");
+              return;
+            }
+  
+            // Build payload expected by /api/create-session
+            const payload = {
+              fullName: form.fullName.value.trim(),
+              email: form.email.value.trim(),
+              phone: form.phone.value.trim(),
+              vin: form.vin.value.trim(),
+              listingUrl: form.listingUrl.value.trim(),
+              timelineContext: form.timelineContext.value.trim(),
+              budget: form.budget.value.trim(),
+              additionalContext: form.additionalContext.value.trim(),
+              purchasePurpose: purchasePurpose.value,
+              purchasePurposeOther: purchasePurposeOther?.value?.trim() || "",
+              priceId: plan.dataset.priceId,
+              tier: plan.dataset.tier,
+              rush: plan.dataset.rush === "true",
+              slaHours: Number(plan.dataset.sla),
+            };
+  
+            try {
+              const res = await fetch("/api/create-session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+  
+              if (!res.ok) {
+                const { error } = await res.json();
+                showError(error || "Checkout initialization failed.");
+                return;
+              }
+  
+              const { url } = await res.json();
+              window.location = url; // Stripe Checkout redirect
+            } catch (err) {
+              console.error("manual submit error", err);
+              showError("Network error. Please try again.");
+            }
+          });
         });
-
-        if (!res.ok) {
-            const { error } = await res.json();
-            showError(error || "Checkout initialization failed.");
-            return;
-        }
-
-        const { url } = await res.json();
-
-        // Redirect to Stripe Checkout
-        window.location = url;
-        });
+      </script>
+    </body>
+  </html>
+  
