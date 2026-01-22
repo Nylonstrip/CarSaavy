@@ -7,37 +7,39 @@ const { getAllVehicleData } = require("./services/vehicleData");
 
 const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
+const { createClient } = require("@supabase/supabase-js");
 const { incrementCounterForTier, logOrderRow } = require("./services/sheets");
 
 module.exports.config = {
   api: { bodyParser: false },
 };
 
-async function assignSku(tier, sla, metadata) {
-  const seq = await incrementCounterForTier(tier);
-  const seqStr = seq.toString().padStart(4, "0");
+async function assignSku(tier, slaHours) {
+  // tier: 'comprehensive' or 'essential'
+  // slaHours: 24 or 48
 
-  const sku = `${tier.toUpperCase()}-${sla}-${seqStr}`;
+  const shortTier = tier === 'comprehensive' ? 'COMP' : 'ESS';
+  const shortSla = slaHours === 24 ? '24' : '48';
 
-  // record vehicle or "N/A"
-  const vehicle = metadata.vehicle || `${metadata.year || ""} ${metadata.make || ""} ${metadata.model || ""}`.trim();
-
-  const orderAt = new Date().toLocaleString("en-US", {
-    timeZone: "America/New_York",
+  // increment counter via RPC
+  const { data, error } = await supabase.rpc('increment_counter', {
+    t: shortTier.toLowerCase()
   });
 
-  await logOrderRow({
-    sku,
-    tier,
-    sla,
-    email: metadata.email,
-    vehicle,
-    orderAt,
-  });
+  if (error) throw new Error(`SKU counter failed: ${error.message}`);
 
-  return sku;
+  const counter = data;
+
+  const sku = `${shortTier}-${shortSla}-${String(counter).padStart(4, '0')}`;
+
+  return { sku, counter };
 }
 
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE
+);
 
 // -----------------------------
 // Email helper
@@ -186,6 +188,7 @@ Thank you for trusting CarSaavy — you're in good hands.
 }
 
 
+
 // -----------------------------
 // MAIN WEBHOOK HANDLER
 // -----------------------------
@@ -260,6 +263,37 @@ module.exports = async function handler(req, res) {
 
     const sku = await assignSku(metadata.tier, metadata.slaHours, metadata);
     metadata.sku = sku;
+
+    // Save order
+    const { error: insertError } = await supabase
+      .from('orders')
+      .insert([{
+        sku,
+        tier,
+        sla_hours: slaHours,
+        email,
+        phone,
+        stripe_session_id: session.id,
+        vehicle: {
+          vin,
+          listingUrl,
+        },
+        intake: {
+          purchasePurpose,
+          purchasePurposeOther,
+          timelineContext,
+          budget,
+          additionalContext
+        },
+        status: 'queued'
+      }]);
+
+if (insertError) {
+  console.error('SUPABASE INSERT FAILED:', insertError);
+} else {
+  console.log('SUPABASE INSERT OK for', sku);
+}
+
 
 
     await notifyOpsOfManualOrder(metadata);
