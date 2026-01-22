@@ -227,81 +227,86 @@ module.exports = async function handler(req, res) {
 
 
   // 🧩 NEW: manual report branch – do NOT run the automated engine for these
-  if (mode === "manual-report") {
-    const orderNumber = metadata.orderNumber || "UNKNOWN";
-    console.log("🧾 Manual report payment received:", {
-      email: metadata.email,
-      tier: metadata.tier,
-      rush: metadata.rush,
-      slaHours: metadata.slaHours,
-      vin: metadata.vin,
-      listingUrl: metadata.listingUrl,
-      purchasePurpose: metadata.purchasePurpose,
-    });
-
-    // TODO: generate a job ID (for your internal queue tracking)
-    const jobId = `MR-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    console.log("Assigned manual job ID:", jobId);
-
-    // TODO: send "queued" email to customer + internal notification to you
-    // Example (pseudo code, match your existing email service):
-    //
-    // await sendManualQueuedEmail({
-    //   to: metadata.email,
-    //   jobId,
-    //   tier: metadata.tier,
-    //   rush: metadata.rush === "true",
-    //   slaHours: metadata.slaHours,
-    //   vin: metadata.vin,
-    //   listingUrl: metadata.listingUrl,
-    //   purchasePurpose: metadata.purchasePurpose,
-    // });
-    //
-    console.log("SHEETS_CREDS_BASE64_PRESENT:", !!process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64);
-    console.log("SHEETS_CREDS_LENGTH:", process.env.GOOGLE_SHEETS_CREDENTIALS_BASE64?.length || 0);
-
-
-    const sku = await assignSku(metadata.tier, metadata.slaHours, metadata);
-    metadata.sku = sku;
-
-    // Save order
-    const { error: insertError } = await supabase
-      .from('orders')
-      .insert([{
-        sku,
-        tier,
-        sla_hours: slaHours,
+    if (mode === "manual-report") {
+      console.log("🧾 Manual report payment received:", metadata);
+    
+      // Extract fields from metadata
+      const {
         email,
         phone,
-        stripe_session_id: session.id,
-        vehicle: {
-          vin,
-          listingUrl,
-        },
-        intake: {
-          purchasePurpose,
-          purchasePurposeOther,
-          timelineContext,
-          budget,
-          additionalContext
-        },
-        status: 'queued'
-      }]);
-
-if (insertError) {
-  console.error('SUPABASE INSERT FAILED:', insertError);
-} else {
-  console.log('SUPABASE INSERT OK for', sku);
-}
-
-
-
-    await notifyOpsOfManualOrder(metadata);
-
-    await sendManualQueuedEmail(metadata);
-
-    return res.status(200).send("Manual report queued");
-  }
+        tier,
+        rush,
+        slaHours,
+        vin,
+        listingUrl,
+        purchasePurpose,
+        purchasePurposeOther,
+        timelineContext,
+        budget,
+        additionalContext
+      } = metadata;
+    
+      // Internal job ID (optional)
+      const jobId = `MR-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      console.log("Assigned manual job ID:", jobId);
+    
+      // Generate SKU
+      const { sku } = await assignSku(tier, Number(slaHours));
+    
+      // Insert into DB
+      const { error: insertError } = await supabase
+        .from('orders')
+        .insert([{
+          sku,
+          tier,
+          sla_hours: Number(slaHours),
+          email,
+          phone,
+          stripe_session_id: intent.id,
+          vehicle: { vin, listingUrl },
+          intake: {
+            purchasePurpose,
+            purchasePurposeOther,
+            timelineContext,
+            budget,
+            additionalContext
+          },
+          status: 'queued'
+        }]);
+    
+      if (insertError) {
+        console.error("SUPABASE INSERT FAILED:", insertError);
+      } else {
+        console.log("SUPABASE INSERT OK for", sku);
+      }
+    
+      // Ops + customer notifications
+      await notifyOpsOfManualOrder({
+        sku,
+        email,
+        tier,
+        rush,
+        slaHours,
+        vin,
+        listingUrl,
+        purchasePurpose,
+        purchasePurposeOther,
+        timelineContext,
+        budget,
+        additionalContext
+      });
+    
+      await sendManualQueuedEmail({
+        sku,
+        email,
+        tier,
+        rush,
+        slaHours,
+      });
+    
+      return res.status(200).send("Manual report queued");
+    }
+  
 
 
   const hasVin = !!metadata.vin;
