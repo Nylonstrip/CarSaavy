@@ -8,7 +8,6 @@ const { getAllVehicleData } = require("./services/vehicleData");
 const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 const { createClient } = require("@supabase/supabase-js");
-const { incrementCounterForTier, logOrderRow } = require("./services/sheets");
 
 module.exports.config = {
   api: { bodyParser: false },
