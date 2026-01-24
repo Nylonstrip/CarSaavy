@@ -175,6 +175,69 @@
             margin-bottom: 24px;
         }
         
+        .success-state {
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 55%),
+                radial-gradient(circle at bottom right, rgba(94, 234, 212, 0.12), transparent 55%);
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            padding: 32px 28px;
+            margin-top: 24px;
+            color: #e2e8f0;
+        }
+
+        .success-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid rgba(34, 197, 94, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .success-email {
+            font-weight: 600;
+            color: #e5e7eb;
+        }
+
+        .success-list {
+            margin: 16px 0;
+            padding-left: 22px;
+            font-size: 14px;
+            color: #cbd5f5;
+        }
+
+        .success-list li + li {
+            margin-top: 4px;
+        }
+
+        .success-note {
+            font-size: 13px;
+            color: #9ca3af;
+            margin-top: 8px;
+        }
+
+        .success-cta {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #e5e7eb;
+        }
+
+        .success-cta:hover {
+            border-color: rgba(248, 250, 252, 0.9);
+        }
+
+
         label {
             display: block;
             font-size: 14px;
@@ -534,6 +597,29 @@
 
                         <div class="message error" id="message"></div>
                     </form>
+                    <div id="successState" class="success-state" style="display:none;">
+                        <div class="success-icon">✓</div>
+                        <h2>Your Negotiation Positioning Report Is Being Prepared</h2>
+                        <p class="success-body">
+                            We're analyzing your vehicle details and building a tailored negotiation playbook.
+                            It will arrive at <span id="successEmail" class="success-email"></span> in the next few minutes.
+                        </p>
+                    
+                        <ul class="success-list">
+                            <li>Leverage positioning and pricing context for your specific vehicle</li>
+                            <li>Dealer pushback scripts you can reuse word-for-word</li>
+                            <li>Recommended buyer posture and walk-away triggers</li>
+                        </ul>
+                    
+                        <p class="success-note">
+                            If you don’t see it soon, check your Promotions or Spam folder just in case.
+                        </p>
+                    
+                        <a href="/manual" class="success-cta">
+                            Upgrade to a Comprehensive Manual Report
+                        </a>
+                    </div>
+                    
                 </div>
             </div>
 
@@ -572,63 +658,55 @@
         const messageEl = document.getElementById("message");
         const toggle = document.getElementById("toggleDetails");
         const details = document.getElementById("vehicleDetails");
-
+    
         const vinInput = document.getElementById("vin");
         const yearInput = document.getElementById("year");
         const makeInput = document.getElementById("make");
         const modelInput = document.getElementById("model");
         const segmentSelect = document.getElementById("segment");
         const trimSelect = document.getElementById("trimTier");
-
+    
         function isValidVIN(v) {
             return /^[A-HJ-NPR-Z0-9]{17}$/i.test(v);
         }
-
+    
         function activateVinMode() {
             [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
                 el.value = "";
                 el.disabled = true;
             });
             details.style.display = "none";
-            vinInput.disabled = false;
+            toggle.textContent = "Don't have a VIN? Enter vehicle details instead →";
         }
-
-        function activateManualMode() {
-            vinInput.value = "";
-            vinInput.disabled = true;
+    
+        function activateDetailsMode() {
             [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
                 el.disabled = false;
             });
             details.style.display = "block";
+            toggle.textContent = "Have a VIN instead? Switch back →";
         }
-
-        function resetIdentityMode() {
-            vinInput.disabled = false;
-            [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
-                el.disabled = false;
-            });
-            details.style.display = "none";
-        }
-
+    
         toggle.addEventListener("click", e => {
             e.preventDefault();
-            activateManualMode();
-        });
-
-        vinInput.addEventListener("input", () => {
-            const vinVal = vinInput.value.trim();
-            if (vinVal.length > 0) {
-                activateVinMode();
+            const isHidden = details.style.display === "none" || !details.style.display;
+            if (isHidden) {
+                activateDetailsMode();
             } else {
-                resetIdentityMode();
+                activateVinMode();
             }
         });
-
-        form.addEventListener("submit", async e => {
+    
+        // Default mode: VIN first
+        activateVinMode();
+    
+        form.addEventListener("submit", async (e) => {
             e.preventDefault();
             messageEl.style.display = "none";
-
-            const email = document.getElementById("email").value.trim();
+            messageEl.textContent = "";
+    
+            const emailInput = document.getElementById("email");
+            const email = emailInput.value.trim();
             const vin = vinInput.value.trim().toUpperCase();
             const askingPrice = document.getElementById("askingPrice").value.trim();
             const year = yearInput.value.trim();
@@ -636,48 +714,77 @@
             const model = modelInput.value.trim();
             const segment = segmentSelect.value;
             const trimTier = trimSelect.value;
-
+    
+            if (!email) {
+                messageEl.textContent = "Please enter a valid email so we can send your report.";
+                messageEl.style.display = "block";
+                return;
+            }
+    
             const hasVin = vin && isValidVIN(vin);
             const hasDetails = year && make && model;
-
+    
             if (!hasVin && !hasDetails) {
                 messageEl.textContent = "Please enter a valid VIN or provide your vehicle details.";
                 messageEl.style.display = "block";
                 return;
             }
-
+    
+            const payload = {
+                email,
+                vin: hasVin ? vin : null,
+                year: hasDetails ? year : null,
+                make: hasDetails ? make : null,
+                model: hasDetails ? model : null,
+                segment: segment || null,
+                trimTier: trimTier || null,
+                // Asking price is OPTIONAL (your choice B)
+                askingPrice: askingPrice || null
+            };
+    
             try {
-                const res = await fetch("/api/create-payment", {
+                const res = await fetch("/api/negotiation", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        email,
-                        vin: hasVin ? vin : null,
-                        year: hasDetails ? year : null,
-                        make: hasDetails ? make : null,
-                        model: hasDetails ? model : null,
-                        segment,
-                        trimTier,
-                        askingPrice: askingPrice || null
-                    })
+                    body: JSON.stringify(payload),
                 });
-
-                const data = await res.json();
-                if (data.url) {
-                    window.location.href = data.url;
-                } else {
-                    throw new Error("Checkout failed");
+    
+                if (!res.ok) {
+                    let errorMessage = "Something went wrong. Please try again.";
+                    try {
+                        const data = await res.json();
+                        if (data && data.error) errorMessage = data.error;
+                    } catch (_) {
+                        // ignore JSON errors, keep generic message
+                    }
+                    messageEl.textContent = errorMessage;
+                    messageEl.style.display = "block";
+                    return;
                 }
-            } catch {
+    
+                // Success → hide form, show success state
+                const formCard = document.getElementById("formCard");
+                const successState = document.getElementById("successState");
+                if (formCard && successState) {
+                    formCard.querySelector("form").style.display = "none";
+                    successState.style.display = "block";
+    
+                    const confirmEmailEl = document.getElementById("successEmail");
+                    if (confirmEmailEl) confirmEmailEl.textContent = email;
+                }
+    
+            } catch (err) {
+                console.error("Negotiation report error:", err);
                 messageEl.textContent = "Something went wrong. Please try again.";
                 messageEl.style.display = "block";
             }
         });
-
+    
         window.addEventListener("load", () => {
             document.querySelector(".steps").classList.add("visible");
             document.querySelector(".form-card").classList.add("visible");
         });
     </script>
+    
 </body>
 </html>

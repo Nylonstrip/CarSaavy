@@ -12,6 +12,7 @@
     { "src": "^/manual-success$", "dest": "/manual-success.html" },
     { "src": "^/manual-cancel$", "dest": "/manual-cancel.html" },
     { "src": "^/terms$", "dest": "/terms.html" },
+    { "src": "^/ops$", "dest": "/ops.html" },
     { "src": "/.*", "dest": "/index.html", "headers": { "Cache-Control": "no-cache" } }
   ]
 }

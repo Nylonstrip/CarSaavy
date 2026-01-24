@@ -245,6 +245,10 @@ module.exports = async function handler(req, res) {
         additionalContext
       } = metadata;
     
+      const now = new Date();
+      const slaMs = Number(slaHours) * 60 * 60 * 1000;
+      const slaDeadline = new Date(now.getTime() + slaMs).toISOString();
+    
       // Internal job ID (optional)
       const jobId = `MR-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       console.log("Assigned manual job ID:", jobId);
@@ -270,7 +274,8 @@ module.exports = async function handler(req, res) {
             budget,
             additionalContext
           },
-          status: 'queued'
+          status: 'queued',
+          sla_deadline: slaDeadline
         }]);
     
       if (insertError) {
