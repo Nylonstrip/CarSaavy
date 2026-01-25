@@ -7,26 +7,31 @@
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const resendApiKey = process.env.RESEND_API_KEY;
-const opsPasswordEnvRaw = process.env.OPS_PASSWORD;
+// --- SUPABASE ENV ---
+const supabaseUrl = process.env.SUPABASE_URL; // or SUPABASE_URL depending on your choice
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // must match your env var
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('[OPS] Missing Supabase env vars');
 }
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// --- RESEND ENV ---
+const resendApiKey = process.env.RESEND_API_KEY;
 if (!resendApiKey) {
   throw new Error('[OPS] Missing RESEND_API_KEY');
 }
-if (!opsPasswordEnv) {
+const resend = new Resend(resendApiKey);
+
+// --- OPS PASSWORD ---
+const opsPasswordEnvRaw = process.env.OPS_PASSWORD;
+if (!opsPasswordEnvRaw) {
   throw new Error('[OPS] Missing OPS_PASSWORD');
 }
 
-// 🔐 normalize env password once
+// normalize once
 const opsPasswordEnv = opsPasswordEnvRaw.trim();
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-const resend = new Resend(resendApiKey);
 
 // small helper: parse body safely
 function getBody(req) {
