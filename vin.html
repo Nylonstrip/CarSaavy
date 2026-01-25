@@ -451,6 +451,305 @@
             color: #64748b;
             font-size: 14px;
         }
+
+        /* Upgrade section block */
+        .upgrade-section {
+        margin-top: 32px;
+        }
+
+        .upgrade-card {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.95));
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 20px 20px 18px;
+        box-shadow: 0 14px 40px rgba(15, 23, 42, 0.8);
+        }
+
+        .upgrade-card h2 {
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 20px;
+        margin-bottom: 8px;
+        color: #e5e7eb;
+        }
+
+        .upgrade-text {
+        font-size: 14px;
+        color: #94a3b8;
+        margin-bottom: 14px;
+        }
+
+        .upgrade-primary-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+        color: #fff;
+        box-shadow: 0 10px 30px rgba(15, 118, 178, 0.6);
+        transition: all 0.2s ease;
+        }
+
+        .upgrade-primary-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 36px rgba(15, 118, 178, 0.75);
+        }
+
+        .upgrade-subtext {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #64748b;
+        }
+
+        /* Sticky ribbon */
+        .upgrade-ribbon {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 40;
+        background: linear-gradient(90deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+        border-top: 1px solid rgba(148, 163, 184, 0.35);
+        backdrop-filter: blur(10px);
+        }
+
+        .ribbon-inner {
+        max-width: 1024px;
+        margin: 0 auto;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        }
+
+        .ribbon-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        }
+
+        .ribbon-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #7dd3fc;
+        }
+
+        .ribbon-copy {
+        font-size: 13px;
+        color: #cbd5e1;
+        }
+
+        .ribbon-btn {
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+        color: #fff;
+        box-shadow: 0 10px 24px rgba(15, 118, 178, 0.7);
+        white-space: nowrap;
+        }
+
+        .ribbon-btn:hover {
+        transform: translateY(-1px);
+        }
+
+        /* Modal */
+        .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        }
+
+        .modal-panel {
+        position: relative;
+        max-width: 960px;
+        width: 100%;
+        margin: 16px;
+        padding: 20px 22px 18px;
+        border-radius: 18px;
+        background: rgba(15, 23, 42, 0.98);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.95);
+        }
+
+        .modal-header h2 {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        font-size: 20px;
+        color: #e5e7eb;
+        margin-bottom: 6px;
+        }
+
+        .modal-header p {
+        font-size: 14px;
+        color: #94a3b8;
+        margin-bottom: 14px;
+        }
+
+        .modal-close-btn {
+        position: absolute;
+        right: 14px;
+        top: 10px;
+        border: none;
+        background: transparent;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 18px;
+        }
+
+        .modal-close-btn:hover {
+        color: #e5e7eb;
+        }
+
+        .plan-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 8px;
+        }
+
+        @media (max-width: 768px) {
+        .plan-grid {
+            grid-template-columns: 1fr;
+        }
+        }
+
+        .plan-card {
+        background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.24), rgba(15, 23, 42, 0.96));
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        padding: 14px 16px 14px;
+        }
+
+        .plan-featured {
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.35), 0 20px 50px rgba(15, 23, 42, 0.9);
+        }
+
+        .plan-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        }
+
+        .plan-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #e5e7eb;
+        }
+
+        .plan-sla {
+        font-size: 12px;
+        color: #9ca3af;
+        }
+
+        .plan-sla.highlight {
+        color: #7dd3fc;
+        }
+
+        .plan-price {
+        font-size: 20px;
+        font-weight: 700;
+        color: #f9fafb;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        }
+
+        .plan-tag {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.15);
+        color: #7dd3fc;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        }
+
+        .plan-note {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-bottom: 4px;
+        }
+
+        .plan-features {
+        list-style: none;
+        margin: 0 0 10px 0;
+        padding: 0;
+        font-size: 13px;
+        color: #cbd5e1;
+        }
+
+        .plan-features li + li {
+        margin-top: 2px;
+        }
+
+        .plan-btn {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+        color: #fff;
+        box-shadow: 0 10px 28px rgba(15, 118, 178, 0.75);
+        }
+
+        .plan-btn:hover {
+        transform: translateY(-1px);
+        }
+
+        body.modal-open main {
+            transform: scale(0.98);
+            filter: brightness(0.7) blur(1px);
+            transition: all 0.25s ease;
+        }
+
+        .modal-footer {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        }
+
+        .modal-secondary {
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.8);
+        background: transparent;
+        color: #cbd5e1;
+        font-size: 13px;
+        padding: 6px 12px;
+        cursor: pointer;
+        }
+
+        .modal-secondary:hover {
+        border-color: #e5e7eb;
+        }
+
+        .modal-footnote {
+        font-size: 11px;
+        color: #64748b;
+        }
         
         /* Responsive */
         @media (max-width: 968px) {
@@ -619,40 +918,191 @@
                             Upgrade to a Comprehensive Manual Report
                         </a>
                     </div>
-                    
+                    <section id="upgradeSection" class="upgrade-section" style="display:none;">
+                        <div class="upgrade-card">
+                          <h2>Want the Full Tactical Playbook?</h2>
+                          <p class="upgrade-text">
+                            This free diagnostic tells you where you stand. Our manual intelligence reports go further with
+                            inspection priorities, pricing zones, dealer counterplays, fee audits, and walk-away logic tailored
+                            to this specific vehicle and deal.
+                          </p>
+                      
+                          <button type="button"
+                                  class="upgrade-primary-btn"
+                                  id="openUpgradeModalFromSection">
+                            View Manual Intelligence Report Options
+                          </button>
+                      
+                          <p class="upgrade-subtext">
+                            You'll complete a short intake form so we can tailor the report to your situation.
+                          </p>
+                        </div>
+                      </section>
                 </div>
             </div>
 
             <!-- Info Card -->
             <aside class="info-card">
-                <div class="price-badge">INSTANT DELIVERY</div>
+                <div class="price-badge">FREE INSTANT DIAGNOSTIC</div>
                 <h3>What You'll Get</h3>
-                <p>An automated negotiation positioning report with strategic guidance and dealer response scripts.</p>
-                
+                <p>
+                  A free negotiation positioning snapshot with stance, leverage, and dealer response framing for your specific vehicle context.
+                </p>
+              
                 <ul class="features-list">
-                    <li>Generic negotiation framework</li>
-                    <li>Dealer pushback responses</li>
-                    <li>Timeline & urgency tactics</li>
-                    <li>Inspection guidance</li>
-                    <li>Walk-away triggers</li>
-                    <li>Instant PDF delivery</li>
+                  <li>Negotiation stance (how strong your position is)</li>
+                  <li>Key leverage angles for this deal</li>
+                  <li>Dealer pushback response examples</li>
+                  <li>Timeline & urgency considerations</li>
                 </ul>
-                
-                <div class="price-display">$15</div>
-                <p class="price-note">One-time payment · Secure Stripe checkout</p>
-                
-                <a href="/manual" class="upgrade-link">
-                    Want vehicle-specific pricing targets? Upgrade to Manual Reports →
+              
+                <div class="price-display">Free</div>
+                <p class="price-note">No card required · Report emailed in minutes</p>
+              
+                <a href="#"
+                   id="inlineUpgradeTrigger"
+                   class="upgrade-link">
+                  Want a full manual intelligence report? See your options →
                 </a>
-            </aside>
+              </aside>
         </div>
     </main>
-
+        <div id="upgradeRibbon" class="upgrade-ribbon" style="display:none;">
+            <div class="ribbon-inner">
+            <div class="ribbon-text">
+                <span class="ribbon-label">Manual Intelligence Available</span>
+                <span class="ribbon-copy">
+                Turn this diagnostic into a full Essential or Comprehensive Intelligence Report with pricing, counterplays, and walk-away logic.
+                </span>
+            </div>
+            <button type="button"
+                    class="ribbon-btn"
+                    id="openUpgradeModalFromRibbon">
+                View Options
+            </button>
+            </div>
+        </div>
     <!-- Footer -->
     <footer class="footer">
         © 2025 CarSaavy — Negotiate Smarter
     </footer>
 
+
+    <!-- Upgrade Modal Backdrop -->
+    <div id="upgradeModalBackdrop" class="modal-backdrop" style="display:none;">
+    <div class="modal-panel">
+      <button class="modal-close-btn" id="upgradeModalClose" aria-label="Close">
+        ✕
+      </button>
+  
+      <header class="modal-header">
+        <h2>Upgrade to a Manual Intelligence Report</h2>
+        <p>
+          Get a tailored negotiation plan with inspection priorities, pricing zones, dealer counterplays,
+          and walk-away logic for this specific vehicle and deal.
+        </p>
+      </header>
+  
+      <div class="plan-grid">
+        <!-- Essential 48h -->
+        <article class="plan-card">
+          <div class="plan-header">
+            <span class="plan-name">Essential Intelligence</span>
+            <span class="plan-sla">48h turnaround</span>
+          </div>
+          <div class="plan-price">$50</div>
+          <ul class="plan-features">
+            <li>Inspection red flags</li>
+            <li>Pricing context & deal risk signals</li>
+            <li>Deal safety & walk-away indicators</li>
+          </ul>
+          <button class="plan-btn"
+                  data-lookup="price_manual_esst_48"
+                  data-tier="essential"
+                  data-sla="48"
+                  data-rush="false">
+            Select Essential 48h
+          </button>
+        </article>
+  
+        <!-- Essential 24h -->
+        <article class="plan-card">
+          <div class="plan-header">
+            <span class="plan-name">Essential Intelligence — Rush</span>
+            <span class="plan-sla highlight">24h turnaround</span>
+          </div>
+          <div class="plan-price">$75</div>
+          <ul class="plan-features">
+            <li>Everything in Essential 48h</li>
+            <li>Prioritized rush delivery</li>
+          </ul>
+          <button class="plan-btn"
+                  data-lookup="price_manual_esst_24"
+                  data-tier="essential"
+                  data-sla="24"
+                  data-rush="true">
+            Select Essential 24h
+          </button>
+        </article>
+  
+        <!-- Comprehensive 48h -->
+        <article class="plan-card plan-featured">
+          <div class="plan-header">
+            <span class="plan-name">Comprehensive Intelligence</span>
+            <span class="plan-sla">48h turnaround</span>
+          </div>
+          <div class="plan-price">
+            $75
+            <span class="plan-tag">Launch pricing</span>
+          </div>
+          <p class="plan-note">Future standard pricing $120–$150+</p>
+          <ul class="plan-features">
+            <li>Everything in Essential</li>
+            <li>Dealer counterplay scripts</li>
+            <li>Pricing zones & negotiation targets</li>
+            <li>Scenario mapping & timing tactics</li>
+            <li>Fee structure audit & walk-away logic</li>
+          </ul>
+          <button class="plan-btn"
+                  data-lookup="price_manual_comp_48"
+                  data-tier="comprehensive"
+                  data-sla="48"
+                  data-rush="false">
+            Select Comprehensive 48h
+          </button>
+        </article>
+  
+        <!-- Comprehensive 24h -->
+        <article class="plan-card">
+          <div class="plan-header">
+            <span class="plan-name">Comprehensive Intelligence — Rush</span>
+            <span class="plan-sla highlight">24h turnaround</span>
+          </div>
+          <div class="plan-price">$100</div>
+          <ul class="plan-features">
+            <li>Everything in Comprehensive 48h</li>
+            <li>Expedited for time-sensitive deals</li>
+          </ul>
+          <button class="plan-btn"
+                  data-lookup="price_manual_comp_24"
+                  data-tier="comprehensive"
+                  data-sla="24"
+                  data-rush="true">
+            Select Comprehensive 24h
+          </button>
+        </article>
+      </div>
+  
+      <footer class="modal-footer">
+        <button type="button" class="modal-secondary" id="upgradeModalMaybeLater">
+          Maybe later
+        </button>
+        <p class="modal-footnote">
+          You'll complete a short intake form, then be routed to secure Stripe checkout. No hidden fees.
+        </p>
+      </footer>
+    </div>
+  </div>
     <script>
         const form = document.getElementById("vinForm");
         const messageEl = document.getElementById("message");
@@ -772,7 +1222,9 @@
                     const confirmEmailEl = document.getElementById("successEmail");
                     if (confirmEmailEl) confirmEmailEl.textContent = email;
                 }
-    
+                document.getElementById("upgradeSection").style.display = "block";
+                document.getElementById("upgradeRibbon").style.display = "block";
+
             } catch (err) {
                 console.error("Negotiation report error:", err);
                 messageEl.textContent = "Something went wrong. Please try again.";
@@ -784,6 +1236,69 @@
             document.querySelector(".steps").classList.add("visible");
             document.querySelector(".form-card").classList.add("visible");
         });
+
+        // Upgrade modal wiring
+        (function () {
+        const backdrop = document.getElementById("upgradeModalBackdrop");
+        const closeBtn = document.getElementById("upgradeModalClose");
+        const maybeLaterBtn = document.getElementById("upgradeModalMaybeLater");
+        const inlineTrigger = document.getElementById("inlineUpgradeTrigger");
+        const sectionTrigger = document.getElementById("openUpgradeModalFromSection");
+        const ribbonTrigger = document.getElementById("openUpgradeModalFromRibbon");
+
+        function openModal() {
+            if (!backdrop) return;
+            backdrop.style.display = "flex";
+            document.body.classList.add("modal-open");
+        }
+
+        function closeModal() {
+            if (!backdrop) return;
+            backdrop.style.display = "none";
+            document.body.classList.remove("modal-open");
+        }
+
+        [inlineTrigger, sectionTrigger, ribbonTrigger].forEach((btn) => {
+            if (btn) btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openModal();
+            });
+        });
+
+        if (closeBtn) closeBtn.addEventListener("click", closeModal);
+        if (maybeLaterBtn) maybeLaterBtn.addEventListener("click", closeModal);
+
+        if (backdrop) {
+            backdrop.addEventListener("click", (e) => {
+            if (e.target === backdrop) {
+                closeModal();
+            }
+            });
+        }
+
+        // Plan selection → route to manual intake with lookup_key, tier, sla, rush
+        const planButtons = backdrop
+            ? backdrop.querySelectorAll(".plan-btn")
+            : [];
+
+        planButtons.forEach((btn) => {
+            btn.addEventListener("click", () => {
+            const lookup = btn.getAttribute("data-lookup");
+            const tier = btn.getAttribute("data-tier");
+            const sla = btn.getAttribute("data-sla");
+            const rush = btn.getAttribute("data-rush");
+
+            const params = new URLSearchParams({
+                lookup_key: lookup,
+                tier,
+                slaHours: sla,
+                rush
+            });
+
+            window.location.href = `/manual.html?${params.toString()}`;
+            });
+        });
+        })();
     </script>
     
 </body>

@@ -1,342 +1,374 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>CarSaavy Ops</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <title>CarSaavy OPS Portal</title>
+  <meta name="robots" content="noindex,nofollow" />
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 740px;
+      margin: 32px auto;
+      padding: 16px;
       background: #020617;
       color: #e5e7eb;
-      margin: 0;
-      padding: 24px;
     }
     h1 {
-      margin-bottom: 16px;
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
+    }
+    h2 {
+      font-size: 1.1rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .muted {
+      color: #9ca3af;
+      font-size: 0.85rem;
     }
     .card {
-      max-width: 1100px;
-      margin: 0 auto;
-      background: #020617;
-      border-radius: 16px;
-      border: 1px solid #1f2937;
+      background: #0f172a;
       padding: 16px 20px;
-      box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+      border-radius: 12px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.7);
+      border: 1px solid #1e293b;
+      margin-top: 16px;
     }
     label {
       display: block;
-      margin-bottom: 8px;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      color: #9ca3af;
     }
+    input[type="text"],
+    input[type="email"],
+    select,
     input[type="password"] {
       width: 100%;
       padding: 8px 10px;
       border-radius: 8px;
-      border: 1px solid #4b5563;
+      border: 1px solid #1f2933;
       background: #020617;
       color: #e5e7eb;
+      font-size: 0.9rem;
+    }
+    input[type="file"] {
+      margin-top: 4px;
+      font-size: 0.85rem;
+    }
+    .radio-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .radio-row label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0;
     }
     button {
-      border: none;
-      border-radius: 999px;
-      padding: 6px 14px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    button.primary {
-      background: #22c55e;
-      color: #022c22;
-      font-weight: 600;
-    }
-    button.small {
-      font-size: 12px;
-      padding: 4px 10px;
-    }
-    .error {
-      color: #f97373;
-      margin-top: 8px;
-      font-size: 13px;
-    }
-    table {
+      margin-top: 16px;
       width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-      font-size: 14px;
-    }
-    th, td {
-      padding: 8px 6px;
-      border-bottom: 1px solid #1f2937;
-      text-align: left;
-    }
-    th {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #9ca3af;
-    }
-    tr:hover {
-      background: rgba(15,23,42,0.8);
-    }
-    .status-pill {
+      padding: 10px 0;
       border-radius: 999px;
-      padding: 2px 8px;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      border: none;
+      background: linear-gradient(90deg, #22c55e, #0ea5e9);
+      color: #020617;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
     }
-    .status-queued { background: #1f2937; color: #fbbf24; }
-    .status-in_progress { background: #1f2937; color: #38bdf8; }
-    .status-ready { background: #1f2937; color: #22c55e; }
-    .status-sent { background: #022c22; color: #bbf7d0; }
-    .status-canceled { background: #3f1f2b; color: #fecaca; }
-    select {
-      background: #020617;
-      color: #e5e7eb;
-      border-radius: 999px;
-      border: 1px solid #4b5563;
-      padding: 2px 6px;
-      font-size: 12px;
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
-    .row-meta {
-      font-size: 11px;
-      color: #9ca3af;
+    .status {
+      margin-top: 10px;
+      font-size: 0.85rem;
+    }
+    .status.ok {
+      color: #4ade80;
+    }
+    .status.err {
+      color: #f97373;
+    }
+    small {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+    /* Login vs panel */
+    #loginView,
+    #panelView {
+      display: none;
+    }
+    #loginView.active,
+    #panelView.active {
+      display: block;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>CarSaavy Ops</h1>
-    <div id="login-view">
-      <label for="opsPassword">Enter ops password</label>
-      <input id="opsPassword" type="password" autocomplete="off" />
-      <button class="primary" id="loginBtn">Enter</button>
-      <div class="error" id="loginError" style="display:none;"></div>
-    </div>
+  <header>
+    <h1>CarSaavy OPS Portal</h1>
+    <p class="muted">
+      Internal manual fulfillment only. Bookmark this URL. Do not share publicly.
+    </p>
+  </header>
 
-    <div id="orders-view" style="display:none;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <div style="font-size:13px; color:#9ca3af;">
-          <span id="ordersCount">0</span> orders
-        </div>
-        <div>
-          <button id="refreshBtn" class="small primary">Refresh</button>
-          <button id="logoutBtn" class="small" style="margin-left:6px;">Logout</button>
-        </div>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>SKU</th>
-            <th>Tier</th>
-            <th>SLA</th>
-            <th>Email</th>
-            <th>Received</th>
-            <th>Deadline</th>
-            <th>Status</th>
-            <th>Update</th>
-          </tr>
-        </thead>
-        <tbody id="ordersBody">
-        </tbody>
-      </table>
-    </div>
+  <!-- LOGIN VIEW -->
+  <div id="loginView" class="card active">
+    <h2>Operator Login</h2>
+    <p class="muted">
+      Enter the OPS password (matches <code>OPS_PASSWORD</code> in your Vercel env).
+    </p>
+    <form id="loginForm">
+      <label>
+        Operator password
+        <input type="password" id="loginPassword" required />
+      </label>
+      <button type="submit" id="loginBtn">Access Panel</button>
+      <div id="loginStatus" class="status"></div>
+    </form>
   </div>
 
-<script>
-(function() {
-  const loginView = document.getElementById("login-view");
-  const ordersView = document.getElementById("orders-view");
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const refreshBtn = document.getElementById("refreshBtn");
-  const pwInput = document.getElementById("opsPassword");
-  const loginError = document.getElementById("loginError");
-  const ordersBody = document.getElementById("ordersBody");
-  const ordersCount = document.getElementById("ordersCount");
+  <!-- MAIN PANEL VIEW -->
+  <div id="panelView" class="card">
+    <h2>Manual Report Fulfillment</h2>
+    <p class="muted">
+      Send completed manual reports via Resend. Customers receive a PDF and an HTML copy.
+    </p>
 
-  const STATUS_OPTIONS = ["queued", "in_progress", "ready", "sent", "canceled"];
+    <form id="fulfillForm">
+      <label>
+        Current OPS session (password in memory)
+        <input type="password" id="opsPasswordDisplay" disabled />
+        <small>Set when you log in above. Refresh the page to reset.</small>
+      </label>
 
-  function getPassword() {
-    return sessionStorage.getItem("opsPassword") || "";
-  }
-  function setPassword(pw) {
-    sessionStorage.setItem("opsPassword", pw);
-  }
-  function clearPassword() {
-    sessionStorage.removeItem("opsPassword");
-  }
+      <label>
+        Order SKU (e.g. COMP-48-0005)
+        <input type="text" id="sku" required />
+      </label>
 
-  async function fetchOrders() {
-    const pw = getPassword();
-    if (!pw) return;
+      <label>
+        Customer full name
+        <input type="text" id="fullName" required />
+      </label>
 
-    const res = await fetch("/api/ops/list-orders", {
-      headers: { "x-ops-key": pw }
-    });
+      <label>
+        Customer email
+        <input type="email" id="email" required />
+      </label>
 
-    if (res.status === 401) {
-      clearPassword();
-      showLogin();
-      loginError.textContent = "Session expired or invalid password.";
-      loginError.style.display = "block";
-      return;
-    }
+      <label>
+        Tier
+        <select id="tier" required>
+          <option value="essential">Essential</option>
+          <option value="comprehensive">Comprehensive</option>
+        </select>
+      </label>
 
-    const data = await res.json();
-    renderOrders(data.orders || []);
-  }
+      <label>
+        SLA hours
+        <select id="slaHours" required>
+          <option value="24">24h</option>
+          <option value="48" selected>48h</option>
+        </select>
+      </label>
 
-  function renderOrders(orders) {
-    ordersCount.textContent = orders.length;
-    ordersBody.innerHTML = "";
+      <label> Email style </label>
+      <div class="radio-row">
+        <label>
+          <input type="radio" name="mode" value="short" checked />
+          Short
+        </label>
+        <label>
+          <input type="radio" name="mode" value="branded" />
+          Branded
+        </label>
+      </div>
+      <small>Short = concise delivery email. Branded = more polished structure.</small>
 
-    orders.forEach(order => {
-      const tr = document.createElement("tr");
+      <label>
+        PDF file
+        <input type="file" id="pdfFile" accept="application/pdf" required />
+      </label>
 
-      const createdAt = order.created_at ? new Date(order.created_at) : null;
-      const slaDeadline = order.sla_deadline ? new Date(order.sla_deadline) : null;
+      <label>
+        HTML file
+        <input type="file" id="htmlFile" accept=".html,text/html" required />
+        <small>This should be your final CarSaavy report HTML file.</small>
+      </label>
 
-      const tdSku = document.createElement("td");
-      tdSku.textContent = order.sku || "(pending)";
-      tr.appendChild(tdSku);
+      <button type="submit" id="sendBtn">Send via Resend</button>
+      <div id="status" class="status"></div>
+    </form>
+  </div>
 
-      const tdTier = document.createElement("td");
-      tdTier.textContent = order.tier || "";
-      tr.appendChild(tdTier);
+  <script>
+    let opsPassword = null;
 
-      const tdSla = document.createElement("td");
-      tdSla.textContent = order.sla_hours ? order.sla_hours + "h" : "";
-      tr.appendChild(tdSla);
+    const loginView = document.getElementById('loginView');
+    const panelView = document.getElementById('panelView');
+    const loginForm = document.getElementById('loginForm');
+    const loginStatus = document.getElementById('loginStatus');
+    const loginBtn = document.getElementById('loginBtn');
+    const opsPasswordDisplay = document.getElementById('opsPasswordDisplay');
 
-      const tdEmail = document.createElement("td");
-      tdEmail.textContent = order.email || "";
-      tr.appendChild(tdEmail);
+    const fulfillForm = document.getElementById('fulfillForm');
+    const statusEl = document.getElementById('status');
+    const sendBtn = document.getElementById('sendBtn');
 
-      const tdCreated = document.createElement("td");
-      tdCreated.innerHTML = createdAt
-        ? createdAt.toLocaleString()
-        : "";
-      tr.appendChild(tdCreated);
+    // Simple login: test the password by calling /api/ops?action=list
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginStatus.textContent = '';
+      loginStatus.className = 'status';
+      loginBtn.disabled = true;
 
-      const tdDeadline = document.createElement("td");
-      if (slaDeadline) {
-        tdDeadline.innerHTML = slaDeadline.toLocaleString();
-      } else {
-        tdDeadline.textContent = "";
+      const pw = document.getElementById('loginPassword').value.trim();
+      if (!pw) {
+        loginStatus.textContent = 'Please enter a password.';
+        loginStatus.className = 'status err';
+        loginBtn.disabled = false;
+        return;
       }
-      tr.appendChild(tdDeadline);
 
-      const tdStatus = document.createElement("td");
-      const pill = document.createElement("span");
-      const status = order.status || "queued";
-      pill.textContent = status.replace("_", " ");
-      pill.className = "status-pill status-" + status;
-      tdStatus.appendChild(pill);
-      tr.appendChild(tdStatus);
-
-      const tdUpdate = document.createElement("td");
-      const select = document.createElement("select");
-      STATUS_OPTIONS.forEach(opt => {
-        const o = document.createElement("option");
-        o.value = opt;
-        o.textContent = opt.replace("_", " ");
-        if (opt === status) o.selected = true;
-        select.appendChild(o);
-      });
-
-      const btn = document.createElement("button");
-      btn.textContent = "Save";
-      btn.className = "small primary";
-      btn.style.marginLeft = "4px";
-
-      btn.addEventListener("click", async () => {
-        const newStatus = select.value;
-        if (newStatus === status) return;
-
-        const pw = getPassword();
-        const res = await fetch("/api/ops/update-status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-ops-key": pw
-          },
-          body: JSON.stringify({ sku: order.sku, status: newStatus })
+      try {
+        const resp = await fetch('/api/ops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'list',
+            opsPassword: pw
+          })
         });
 
-        if (res.status === 200) {
-          pill.textContent = newStatus.replace("_", " ");
-          pill.className = "status-pill status-" + newStatus;
-        } else if (res.status === 401) {
-          clearPassword();
-          showLogin();
-          loginError.textContent = "Session expired or unauthorized.";
-          loginError.style.display = "block";
-        } else {
-          alert("Failed to update status");
+        if (!resp.ok) {
+          loginStatus.textContent = 'Incorrect password or API error.';
+          loginStatus.className = 'status err';
+          loginBtn.disabled = false;
+          return;
         }
-      });
 
-      tdUpdate.appendChild(select);
-      tdUpdate.appendChild(btn);
-      tr.appendChild(tdUpdate);
+        // Success → store password in memory and show panel
+        opsPassword = pw;
+        opsPasswordDisplay.value = '••••••••'; // just to show "active", not the real value
 
-      ordersBody.appendChild(tr);
-    });
-  }
+        loginView.classList.remove('active');
+        panelView.classList.add('active');
 
-  function showLogin() {
-    loginView.style.display = "block";
-    ordersView.style.display = "none";
-  }
-
-  function showOrders() {
-    loginView.style.display = "none";
-    ordersView.style.display = "block";
-  }
-
-  loginBtn.addEventListener("click", async () => {
-    const pw = pwInput.value.trim();
-    if (!pw) return;
-    loginError.style.display = "none";
-
-    // Try a cheap auth check by hitting list-orders
-    setPassword(pw);
-    const res = await fetch("/api/ops/list-orders", {
-      headers: { "x-ops-key": pw }
+        loginStatus.textContent = '';
+        loginStatus.className = 'status';
+      } catch (err) {
+        console.error(err);
+        loginStatus.textContent = 'Network error.';
+        loginStatus.className = 'status err';
+      } finally {
+        loginBtn.disabled = false;
+      }
     });
 
-    if (res.status === 200) {
-      showOrders();
-      const data = await res.json();
-      renderOrders(data.orders || []);
-    } else {
-      clearPassword();
-      loginError.textContent = "Invalid password.";
-      loginError.style.display = "block";
-    }
-  });
+    // Fulfillment form
+    fulfillForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.textContent = '';
+      statusEl.className = 'status';
+      sendBtn.disabled = true;
 
-  pwInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      loginBtn.click();
-    }
-  });
+      try {
+        if (!opsPassword) {
+          throw new Error('You must log in first.');
+        }
 
-  logoutBtn.addEventListener("click", () => {
-    clearPassword();
-    showLogin();
-  });
+        const sku = document.getElementById('sku').value.trim();
+        const fullName = document.getElementById('fullName').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const tier = document.getElementById('tier').value;
+        const slaHours = document.getElementById('slaHours').value;
+        const mode = [...document.querySelectorAll('input[name="mode"]')]
+          .find(r => r.checked).value;
 
-  refreshBtn.addEventListener("click", fetchOrders);
+        const pdfFile = document.getElementById('pdfFile').files[0];
+        const htmlFile = document.getElementById('htmlFile').files[0];
 
-  // Auto-try if session already has password
-  if (getPassword()) {
-    showOrders();
-    fetchOrders();
-  } else {
-    showLogin();
-  }
-})();
-</script>
+        if (!sku || !fullName || !email) {
+          throw new Error('SKU, name, and email are required.');
+        }
+        if (!pdfFile || !htmlFile) {
+          throw new Error('Please attach both PDF and HTML files.');
+        }
+
+        const readFileAsBase64 = (file) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = reader.result.split(',')[1];
+              resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        };
+
+        const readFileAsText = (file) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+        };
+
+        const [pdfBase64, htmlContent] = await Promise.all([
+          readFileAsBase64(pdfFile),
+          readFileAsText(htmlFile)
+        ]);
+
+        const payload = {
+          action: 'fulfill',
+          opsPassword,
+          sku,
+          fullName,
+          email,
+          tier,
+          slaHours: Number(slaHours),
+          mode,
+          pdf: {
+            filename: pdfFile.name,
+            base64: pdfBase64
+          },
+          html: {
+            filename: htmlFile.name,
+            content: htmlContent
+          }
+        };
+
+        const resp = await fetch('/api/ops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          throw new Error(data.error || 'Unknown error from API');
+        }
+
+        statusEl.textContent = 'Sent successfully ✅';
+        statusEl.className = 'status ok';
+        fulfillForm.reset();
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'status err';
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html>
