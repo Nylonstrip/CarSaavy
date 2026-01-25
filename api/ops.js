@@ -348,6 +348,39 @@ module.exports = async (req, res) => {
     }
 
     // -----------------------
+    // ACTION: START BY SKU
+    // -----------------------
+    if (action === 'start-by-sku') {
+        const { sku } = body;
+        if (!sku) {
+        return res.status(400).json({ error: 'Missing sku' });
+        }
+    
+        // Update latest order with that SKU
+        const now = new Date().toISOString();
+    
+        const { data, error } = await supabase
+        .from('orders')
+        .update({
+            status: 'working',
+            started_at: now
+        })
+        .eq('sku', sku)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .select()
+        .single();
+    
+        if (error) {
+        console.error('[OPS] start-by-sku error:', error);
+        return res.status(500).json({ error: 'DB update error' });
+        }
+    
+        return res.status(200).json({ ok: true, order: data });
+    }
+
+
+    // -----------------------
     // UNKNOWN ACTION
     // -----------------------
     res.status(400).json({ error: 'Unknown action' });
