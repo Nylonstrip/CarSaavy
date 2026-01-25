@@ -148,51 +148,38 @@ module.exports = async (req, res) => {
     // ACTION: UPDATE STATUS
     // -----------------------
     if (action === 'update') {
-      const { id, status } = body;
-
-      if (!id || !status) {
-        res.status(400).json({ error: 'Missing id or status' });
-        return;
+        const { id, status } = body;
+      
+        if (!id || !status) {
+          return res.status(400).json({ error: 'Missing id or status' });
+        }
+      
+        const allowed = ['queued', 'working', 'delivered', 'cancelled'];
+        if (!allowed.includes(status)) {
+          return res.status(400).json({ error: 'Invalid status' });
+        }
+      
+        const updatePatch = { status };
+      
+        if (status === 'working') {
+          updatePatch.started_at = new Date().toISOString();
+        }
+      
+        if (status === 'delivered') {
+          updatePatch.delivered_at = new Date().toISOString();
+        }
+      
+        const { data, error } = await supabase
+          .from('orders')
+          .update(updatePatch)
+          .eq('id', id)
+          .select()
+          .single();
+      
+        if (error) throw error;
+      
+        return res.status(200).json({ ok: true, order: data });
       }
-
-      if (action === "update" && status === "working") {
-        await supabase
-          .from("orders")
-          .update({ status: "working" })
-          .eq("id", id)
-      }
-
-      if (action === "update" && status === "cancelled") {
-        await supabase
-          .from("orders")
-          .update({ status: "cancelled" })
-          .eq("id", id)
-      }
-
-      const allowed = ['queued', 'working', 'delivered', 'cancelled'];
-      if (!allowed.includes(status)) {
-        res.status(400).json({ error: 'Invalid status' });
-        return;
-      }
-
-      const updatePatch = { status };
-
-      if (status === 'delivered') {
-        updatePatch.delivered_at = new Date().toISOString();
-      }
-
-      const { data, error } = await supabase
-        .from('orders')
-        .update(updatePatch)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      res.status(200).json({ ok: true, order: data });
-      return;
-    }
 
     // -----------------------
     // ACTION: FULFILL MANUAL
