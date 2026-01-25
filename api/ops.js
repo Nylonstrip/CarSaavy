@@ -10,7 +10,7 @@ const { Resend } = require('resend');
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE;
 const resendApiKey = process.env.RESEND_API_KEY;
-const opsPasswordEnv = process.env.OPS_PASSWORD;
+const opsPasswordEnvRaw = process.env.OPS_PASSWORD;
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('[OPS] Missing Supabase env vars');
@@ -21,6 +21,9 @@ if (!resendApiKey) {
 if (!opsPasswordEnv) {
   throw new Error('[OPS] Missing OPS_PASSWORD');
 }
+
+// 🔐 normalize env password once
+const opsPasswordEnv = opsPasswordEnvRaw.trim();
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 const resend = new Resend(resendApiKey);
@@ -65,9 +68,18 @@ module.exports = async (req, res) => {
     const body = getBody(req);
     const { action, opsPassword } = body;
 
-    if (!opsPassword || opsPassword !== opsPasswordEnv) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
+    // normalize what came from the browser too
+    const incomingPassword = (opsPassword || '').trim();
+
+    if (!incomingPassword || incomingPassword !== opsPasswordEnv) {
+    // TEMP: if you want, add a debug log just once while testing
+    // console.log('[OPS] auth mismatch', {
+    //   incomingPassword,
+    //   incomingLen: incomingPassword.length,
+    //   envLen: opsPasswordEnv.length,
+    // });
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
     }
 
     if (!action) {
