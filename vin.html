@@ -897,11 +897,12 @@
                         <div class="message error" id="message"></div>
                     </form>
                     <div id="successState" class="success-state" style="display:none;">
+                        <div id="nprOutput" style="margin-top:24px;display:none;"></div>
                         <div class="success-icon">✓</div>
-                        <h2>Your Negotiation Positioning Report Is Being Prepared</h2>
+                        <h2>Your Negotiation Positioning Report Is Ready</h2>
                         <p class="success-body">
                             We're analyzing your vehicle details and building a tailored negotiation playbook.
-                            It will arrive at <span id="successEmail" class="success-email"></span> in the next few minutes.
+                            It will arrive at <span id="successEmail" class="success-email"></span> momentarily.
                         </p>
                     
                         <ul class="success-list">
@@ -982,6 +983,7 @@
             </button>
             </div>
         </div>
+        <div id="npr-output"></div>
     <!-- Footer -->
     <footer class="footer">
         © 2025 CarSaavy — Negotiate Smarter
@@ -1221,6 +1223,15 @@
     
                     const confirmEmailEl = document.getElementById("successEmail");
                     if (confirmEmailEl) confirmEmailEl.textContent = email;
+                }
+                // --- NPR inline rendering ---
+                const data = await res.json();
+                if (data && data.html) {
+                    const mount = document.getElementById("nprOutput");
+                    if (mount) {
+                        mount.innerHTML = data.html;
+                        mount.style.display = "block";
+                    }
                 }
                 document.getElementById("upgradeSection").style.display = "block";
                 document.getElementById("upgradeRibbon").style.display = "block";
