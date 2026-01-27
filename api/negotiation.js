@@ -221,7 +221,7 @@ module.exports = async (req, res) => {
     }
 
     if (year && year < 1981) {
-      return json({ error: "VINs before 1981 are not supported." }, { status: 400 });
+      return res.status(400).json({ error: "VINs before 1981 are not supported." });
       }
     // -----------------------------
     // Resolve vehicle profile
@@ -260,7 +260,7 @@ module.exports = async (req, res) => {
     const analysis = buildMvpAnalysis(analysisInput);
     const vehicleLabel = buildVehicleLabel(vp);
     const html = buildEmailHtml(vehicleLabel, analysis);
-    await sendNprInlineEmail(email, vin, reportHtml);
+    await sendNprInlineEmail(email, vin, html);
 
     // -----------------------------
     // Save lead to Supabase
@@ -312,7 +312,7 @@ module.exports = async (req, res) => {
       // We still return success since the lead is stored; but you can flip this if you prefer
     }
 
-    return res.status(200).json({ success: true, html: reportHtml });
+    return res.status(200).json({ success: true, html });
   } catch (err) {
     console.error("[Negotiation] Unexpected error:", err);
     return res.status(500).json({
