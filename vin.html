@@ -1068,7 +1068,7 @@
           </button>
         </article>
       </div>
-  
+      <div id="nprResult" style="display:none; margin-top:32px;"></div>
       <footer class="modal-footer">
         <button type="button" class="modal-secondary" id="upgradeModalMaybeLater">
           Maybe later
@@ -1216,9 +1216,6 @@
                 const data = await res.json();
                 if (data && data.html) {
                 // send to inline renderer
-                return new Response(JSON.stringify({ html: data.html }), {
-                headers: { 'Content-Type': 'application/json' }
-                });
                 }
                 document.getElementById("upgradeSection").style.display = "block";
                 document.getElementById("upgradeRibbon").style.display = "block";
