@@ -77,7 +77,7 @@ NEW MANUAL ORDER RECEIVED
 
 ORDER DETAILS
 --------------
-Full Name: ${md.full_name}
+Full Name: ${md.fullName}
 Order #: ${md.sku}
 Tier: ${md.tier}
 Rush: ${md.rush === "true" ? "24h" : "48h"}
@@ -232,7 +232,7 @@ module.exports = async function handler(req, res) {
     console.log("🧾 Manual manual-report payment received:", metadata);
   
     const {
-      full_name,
+      fullName,
       email,
       phone,
       tier,
@@ -272,7 +272,7 @@ module.exports = async function handler(req, res) {
     const { error: insertError } = await supabase
       .from('orders')
       .insert([{
-        full_name,
+        full_name: fullName,
         sku,
         tier: safeTier,
         sla_hours: Number(slaHours),
@@ -296,8 +296,8 @@ module.exports = async function handler(req, res) {
       return res.status(500).send("Insert failed");
     }
   
-    await notifyOpsOfManualOrder({ full_name, sku, email, tier: safeTier, slaHours });
-    await sendManualQueuedEmail({ full_name, sku, email, tier: safeTier, slaHours });
+    await notifyOpsOfManualOrder({ fullName, sku, email, tier: safeTier, slaHours });
+    await sendManualQueuedEmail({ fullName, sku, email, tier: safeTier, slaHours });
   
     return res.status(200).send("Manual report queued");
   }
@@ -318,7 +318,7 @@ module.exports = async function handler(req, res) {
   // -----------------------------
   const vin = metadata.vin || null;
   const email = metadata.email || null;
-  const full_name = metadata.full_name || null;
+  const fullName = metadata.fullName || null;
   const year = metadata.year || null;
   const make = metadata.make || null;
   const model = metadata.model || null;
@@ -336,7 +336,7 @@ module.exports = async function handler(req, res) {
   }
 
   console.log("📌 Payment metadata:", {
-    full_name,
+    fullName,
     vin,
     email,
     year,
