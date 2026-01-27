@@ -77,6 +77,7 @@ NEW MANUAL ORDER RECEIVED
 
 ORDER DETAILS
 --------------
+Full Name: ${md.full_name}
 Order #: ${md.sku}
 Tier: ${md.tier}
 Rush: ${md.rush === "true" ? "24h" : "48h"}
@@ -231,6 +232,7 @@ module.exports = async function handler(req, res) {
     console.log("🧾 Manual manual-report payment received:", metadata);
   
     const {
+      full_name,
       email,
       phone,
       tier,
@@ -294,8 +296,8 @@ module.exports = async function handler(req, res) {
       return res.status(500).send("Insert failed");
     }
   
-    await notifyOpsOfManualOrder({ sku, email, tier: safeTier, slaHours });
-    await sendManualQueuedEmail({ sku, email, tier: safeTier, slaHours });
+    await notifyOpsOfManualOrder({ full_name, sku, email, tier: safeTier, slaHours });
+    await sendManualQueuedEmail({ full_name, sku, email, tier: safeTier, slaHours });
   
     return res.status(200).send("Manual report queued");
   }
@@ -316,7 +318,7 @@ module.exports = async function handler(req, res) {
   // -----------------------------
   const vin = metadata.vin || null;
   const email = metadata.email || null;
-  
+  const full_name = metadata.full_name || null;
   const year = metadata.year || null;
   const make = metadata.make || null;
   const model = metadata.model || null;
@@ -334,6 +336,7 @@ module.exports = async function handler(req, res) {
   }
 
   console.log("📌 Payment metadata:", {
+    full_name,
     vin,
     email,
     year,
