@@ -270,6 +270,7 @@ module.exports = async function handler(req, res) {
     const { error: insertError } = await supabase
       .from('orders')
       .insert([{
+        full_name,
         sku,
         tier: safeTier,
         sla_hours: Number(slaHours),
