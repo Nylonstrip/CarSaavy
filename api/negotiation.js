@@ -218,6 +218,9 @@ module.exports = async (req, res) => {
       });
     }
 
+    if (year && year < 1981) {
+      return json({ error: "VINs before 1981 are not supported." }, { status: 400 });
+      }
     // -----------------------------
     // Resolve vehicle profile
     // -----------------------------

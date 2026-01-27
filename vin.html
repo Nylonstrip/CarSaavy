@@ -798,13 +798,6 @@
             <div class="form-section">
                 <h1>Get <span class="gradient-text">Negotiation-Ready</span> in Minutes</h1>
                 <p>Enter your vehicle details and receive an instant negotiation positioning report with dealer response scripts and strategic guidance.</p>
-                
-                <div class="steps" id="steps">
-                    <div class="step active">1️⃣ Vehicle Info</div>
-                    <div class="step">2️⃣ Pay & Process</div>
-                    <div class="step">3️⃣ Receive Report</div>
-                </div>
-                
                 <div class="form-card" id="formCard">
                     <form id="vinForm">
                         <div class="form-group">
@@ -896,6 +889,7 @@
 
                         <div class="message error" id="message"></div>
                     </form>
+                    <div id="nprResult" style="display:none; margin-top:32px;"></div>
                     <div id="successState" class="success-state" style="display:none;">
                         <div id="nprOutput" style="margin-top:24px;display:none;"></div>
                         <div class="success-icon">✓</div>
@@ -919,26 +913,6 @@
                             Upgrade to a Comprehensive Manual Report
                         </a>
                     </div>
-                    <section id="upgradeSection" class="upgrade-section" style="display:none;">
-                        <div class="upgrade-card">
-                          <h2>Want the Full Tactical Playbook?</h2>
-                          <p class="upgrade-text">
-                            This free diagnostic tells you where you stand. Our manual intelligence reports go further with
-                            inspection priorities, pricing zones, dealer counterplays, fee audits, and walk-away logic tailored
-                            to this specific vehicle and deal.
-                          </p>
-                      
-                          <button type="button"
-                                  class="upgrade-primary-btn"
-                                  id="openUpgradeModalFromSection">
-                            View Manual Intelligence Report Options
-                          </button>
-                      
-                          <p class="upgrade-subtext">
-                            You'll complete a short intake form so we can tailor the report to your situation.
-                          </p>
-                        </div>
-                      </section>
                 </div>
             </div>
 
@@ -1139,6 +1113,13 @@
             toggle.textContent = "Have a VIN instead? Switch back →";
         }
     
+        function showNPR(html) {
+        document.getElementById('vinForm').style.display = 'none';
+        const r = document.getElementById('nprResult');
+        r.innerHTML = html;
+        r.style.display = 'block';
+        }
+
         toggle.addEventListener("click", e => {
             e.preventDefault();
             const isHidden = details.style.display === "none" || !details.style.display;
@@ -1193,7 +1174,10 @@
                 // Asking price is OPTIONAL (your choice B)
                 askingPrice: askingPrice || null
             };
-    
+            if (vin.length < 11) {
+                message("Invalid VIN. Please check and try again.");
+                return;
+                }
             try {
                 const res = await fetch("/api/negotiation", {
                     method: "POST",
@@ -1205,6 +1189,10 @@
                     let errorMessage = "Something went wrong. Please try again.";
                     try {
                         const data = await res.json();
+                        if (data && data.html) {
+                        showNPR(data.html);
+                        return;
+                        }
                         if (data && data.error) errorMessage = data.error;
                     } catch (_) {
                         // ignore JSON errors, keep generic message
@@ -1227,11 +1215,10 @@
                 // --- NPR inline rendering ---
                 const data = await res.json();
                 if (data && data.html) {
-                    const mount = document.getElementById("nprOutput");
-                    if (mount) {
-                        mount.innerHTML = data.html;
-                        mount.style.display = "block";
-                    }
+                // send to inline renderer
+                return new Response(JSON.stringify({ html: data.html }), {
+                headers: { 'Content-Type': 'application/json' }
+                });
                 }
                 document.getElementById("upgradeSection").style.display = "block";
                 document.getElementById("upgradeRibbon").style.display = "block";
