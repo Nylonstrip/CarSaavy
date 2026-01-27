@@ -890,28 +890,46 @@
                         <div class="message error" id="message"></div>
                     </form>
                     <div id="nprResult" style="display:none; margin-top:32px;"></div>
-                    <div id="successState" class="success-state" style="display:none;">
-                        <div id="nprOutput" style="margin-top:24px;display:none;"></div>
-                        <div class="success-icon">✓</div>
-                        <h2>Your Negotiation Positioning Report Is Ready</h2>
-                        <p class="success-body">
-                            We're analyzing your vehicle details and building a tailored negotiation playbook.
-                            It will arrive at <span id="successEmail" class="success-email"></span> momentarily.
-                        </p>
+                    <div id="successState" class="card success-card" style="display: none;">
+                        <div class="card-inner">
+                            <div class="card-header">
+                                <div>
+                                    <div class="section-label">CARSAAVY • NEGOTIATION READINESS</div>
+                                    <h2 class="card-title">Your free report is ready</h2>
+                                </div>
+                                <div class="pill pill-soft">Negotiation Positioning</div>
+                            </div>
+                            <div class="card-body">
+                                <p class="lead">
+                                    Your Negotiation Positioning Report is ready below. A copy has also been emailed to you.
+                                </p>
+                                <p class="muted">
+                                    Sent to <span id="successEmail" class="pill pill-soft"></span>. If you don’t see it,
+                                    check spam or promotions.
+                                </p>
                     
-                        <ul class="success-list">
-                            <li>Leverage positioning and pricing context for your specific vehicle</li>
-                            <li>Dealer pushback scripts you can reuse word-for-word</li>
-                            <li>Recommended buyer posture and walk-away triggers</li>
-                        </ul>
+                                <!-- inline NPR will be injected here -->
+                                <div id="nprResult" style="margin-top: 24px;"></div>
                     
-                        <p class="success-note">
-                            If you don’t see it soon, check your Promotions or Spam folder just in case.
-                        </p>
+                                <div class="upgrade-note">
+                                    <div class="upgrade-text">
+                                        <div class="upgrade-label">Want deeper coverage?</div>
+                                        <p>
+                                            If you like what you see and want a full analyst-built breakdown with inspection
+                                            priorities, pricing targets, and dealer counterplay, consider upgrading to an
+                                            Essential or Comprehensive manual report.
+                                        </p>
+                                    </div>
+                                    <div class="upgrade-actions">
+                                        <a href="/products#manual" class="btn btn-outline">View manual report options</a>
+                                    </div>
+                                </div>
                     
-                        <a href="/manual" class="success-cta">
-                            Upgrade to a Comprehensive Manual Report
-                        </a>
+                                <p class="footer-note">
+                                    Good luck, you’re prepared. Execute the plan — CarSaavy
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1079,221 +1097,117 @@
       </footer>
     </div>
   </div>
-    <script>
-        const form = document.getElementById("vinForm");
-        const messageEl = document.getElementById("message");
-        const toggle = document.getElementById("toggleDetails");
-        const details = document.getElementById("vehicleDetails");
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("vinForm");
+      const messageEl = document.getElementById("formMessage");
+      const submitBtn = document.getElementById("submitBtn");
+      const loadingState = document.getElementById("loadingState");
+      const successState = document.getElementById("successState");
+      const successEmailEl = document.getElementById("successEmail");
+      const nprContainer = document.getElementById("nprResult");
     
-        const vinInput = document.getElementById("vin");
-        const yearInput = document.getElementById("year");
-        const makeInput = document.getElementById("make");
-        const modelInput = document.getElementById("model");
-        const segmentSelect = document.getElementById("segment");
-        const trimSelect = document.getElementById("trimTier");
+      if (!form) return;
     
-        function isValidVIN(v) {
-            return /^[A-HJ-NPR-Z0-9]{17}$/i.test(v);
+      function setMessage(text) {
+        if (!messageEl) return;
+        messageEl.textContent = text;
+        messageEl.style.display = text ? "block" : "none";
+      }
+    
+      function setLoading(isLoading) {
+        if (!submitBtn) return;
+        submitBtn.disabled = isLoading;
+        submitBtn.classList.toggle("loading", isLoading);
+        if (loadingState) {
+          loadingState.style.display = isLoading ? "flex" : "none";
+        }
+      }
+    
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setMessage("");
+    
+        const email = form.email.value.trim();
+        const vin = (form.vin.value || "").trim();
+        const year = form.year.value.trim();
+        const make = form.make.value.trim();
+        const model = form.model.value.trim();
+        const segment = form.segment.value;
+        const trimTier = form.trimTier.value;
+        const askingPriceRaw = form.askingPrice.value.replace(/[^0-9.]/g, "");
+        const askingPrice = askingPriceRaw ? Number(askingPriceRaw) : null;
+    
+        // Basic validation
+        if (!email) {
+          setMessage("Please enter your email so we can send your report.");
+          return;
         }
     
-        function activateVinMode() {
-            [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
-                el.value = "";
-                el.disabled = true;
-            });
-            details.style.display = "none";
-            toggle.textContent = "Don't have a VIN? Enter vehicle details instead →";
+        // Need either VIN or Y/M/M
+        if (!vin && !(year && make && model)) {
+          setMessage("Please provide either a full VIN or year, make, and model.");
+          return;
         }
     
-        function activateDetailsMode() {
-            [yearInput, makeInput, modelInput, segmentSelect, trimSelect].forEach(el => {
-                el.disabled = false;
-            });
-            details.style.display = "block";
-            toggle.textContent = "Have a VIN instead? Switch back →";
+        // Pre-1981 VIN warning
+        if (vin && vin.length > 0 && vin.length < 17) {
+          setMessage(
+            "Older vehicles before 1981 do not use standardized 17-character VINs. Please enter year, make, and model instead."
+          );
+          return;
         }
     
-        function showNPR(html) {
-        document.getElementById('vinForm').style.display = 'none';
-        const r = document.getElementById('nprResult');
-        r.innerHTML = html;
-        r.style.display = 'block';
+        const payload = {
+          email,
+          vin,
+          year,
+          make,
+          model,
+          segment,
+          trimTier,
+          askingPrice,
+        };
+    
+        try {
+          setLoading(true);
+    
+          const res = await fetch("/api/negotiation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+    
+          const data = await res.json().catch(() => ({}));
+    
+          if (!res.ok || (data && data.error)) {
+            console.error("[VIN] negotiation error:", data && data.error);
+            setMessage(data && data.error ? data.error : "Something went wrong. Please try again.");
+            return;
+          }
+    
+          // Success: show success card + inline NPR
+          if (successState) {
+            successState.style.display = "block";
+          }
+    
+          if (successEmailEl) {
+            successEmailEl.textContent = email;
+          }
+    
+          if (nprContainer && data.html) {
+            nprContainer.innerHTML = data.html;
+            nprContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+    
+        } catch (err) {
+          console.error("[VIN] unexpected error:", err);
+          setMessage("Something went wrong. Please try again.");
+        } finally {
+          setLoading(false);
         }
-
-        toggle.addEventListener("click", e => {
-            e.preventDefault();
-            const isHidden = details.style.display === "none" || !details.style.display;
-            if (isHidden) {
-                activateDetailsMode();
-            } else {
-                activateVinMode();
-            }
-        });
-    
-        // Default mode: VIN first
-        activateVinMode();
-    
-        form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            messageEl.style.display = "none";
-            messageEl.textContent = "";
-    
-            const emailInput = document.getElementById("email");
-            const email = emailInput.value.trim();
-            const vin = vinInput.value.trim().toUpperCase();
-            const askingPrice = document.getElementById("askingPrice").value.trim();
-            const year = yearInput.value.trim();
-            const make = makeInput.value.trim();
-            const model = modelInput.value.trim();
-            const segment = segmentSelect.value;
-            const trimTier = trimSelect.value;
-    
-            if (!email) {
-                messageEl.textContent = "Please enter a valid email so we can send your report.";
-                messageEl.style.display = "block";
-                return;
-            }
-    
-            const hasVin = vin && isValidVIN(vin);
-            const hasDetails = year && make && model;
-    
-            if (!hasVin && !hasDetails) {
-                messageEl.textContent = "Please enter a valid VIN or provide your vehicle details.";
-                messageEl.style.display = "block";
-                return;
-            }
-    
-            const payload = {
-                email,
-                vin: hasVin ? vin : null,
-                year: hasDetails ? year : null,
-                make: hasDetails ? make : null,
-                model: hasDetails ? model : null,
-                segment: segment || null,
-                trimTier: trimTier || null,
-                // Asking price is OPTIONAL (your choice B)
-                askingPrice: askingPrice || null
-            };
-            if (vin.length < 11) {
-                message("Invalid VIN. Please check and try again.");
-                return;
-                }
-            try {
-                const res = await fetch("/api/negotiation", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-    
-                if (!res.ok) {
-                    let errorMessage = "Something went wrong. Please try again.";
-                    try {
-                        const data = await res.json();
-                        if (data && data.html) {
-                        showNPR(data.html);
-                        return;
-                        }
-                        if (data && data.error) errorMessage = data.error;
-                    } catch (_) {
-                        // ignore JSON errors, keep generic message
-                    }
-                    messageEl.textContent = errorMessage;
-                    messageEl.style.display = "block";
-                    return;
-                }
-    
-                // Success → hide form, show success state
-                const formCard = document.getElementById("formCard");
-                const successState = document.getElementById("successState");
-                if (formCard && successState) {
-                    formCard.querySelector("form").style.display = "none";
-                    successState.style.display = "block";
-    
-                    const confirmEmailEl = document.getElementById("successEmail");
-                    if (confirmEmailEl) confirmEmailEl.textContent = email;
-                }
-                // --- NPR inline rendering ---
-                const data = await res.json();
-                if (data && data.html) {
-                // send to inline renderer
-                }
-                document.getElementById("upgradeSection").style.display = "block";
-                document.getElementById("upgradeRibbon").style.display = "block";
-
-            } catch (err) {
-                console.error("Negotiation report error:", err);
-                messageEl.textContent = "Something went wrong. Please try again.";
-                messageEl.style.display = "block";
-            }
-        });
-    
-        window.addEventListener("load", () => {
-            document.querySelector(".steps").classList.add("visible");
-            document.querySelector(".form-card").classList.add("visible");
-        });
-
-        // Upgrade modal wiring
-        (function () {
-        const backdrop = document.getElementById("upgradeModalBackdrop");
-        const closeBtn = document.getElementById("upgradeModalClose");
-        const maybeLaterBtn = document.getElementById("upgradeModalMaybeLater");
-        const inlineTrigger = document.getElementById("inlineUpgradeTrigger");
-        const sectionTrigger = document.getElementById("openUpgradeModalFromSection");
-        const ribbonTrigger = document.getElementById("openUpgradeModalFromRibbon");
-
-        function openModal() {
-            if (!backdrop) return;
-            backdrop.style.display = "flex";
-            document.body.classList.add("modal-open");
-        }
-
-        function closeModal() {
-            if (!backdrop) return;
-            backdrop.style.display = "none";
-            document.body.classList.remove("modal-open");
-        }
-
-        [inlineTrigger, sectionTrigger, ribbonTrigger].forEach((btn) => {
-            if (btn) btn.addEventListener("click", (e) => {
-            e.preventDefault();
-            openModal();
-            });
-        });
-
-        if (closeBtn) closeBtn.addEventListener("click", closeModal);
-        if (maybeLaterBtn) maybeLaterBtn.addEventListener("click", closeModal);
-
-        if (backdrop) {
-            backdrop.addEventListener("click", (e) => {
-            if (e.target === backdrop) {
-                closeModal();
-            }
-            });
-        }
-
-        // Plan selection → route to manual intake with lookup_key, tier, sla, rush
-        const planButtons = backdrop
-            ? backdrop.querySelectorAll(".plan-btn")
-            : [];
-
-        planButtons.forEach((btn) => {
-            btn.addEventListener("click", () => {
-            const lookup = btn.getAttribute("data-lookup");
-            const tier = btn.getAttribute("data-tier");
-            const sla = btn.getAttribute("data-sla");
-            const rush = btn.getAttribute("data-rush");
-
-            const params = new URLSearchParams({
-                lookup_key: lookup,
-                tier,
-                slaHours: sla,
-                rush
-            });
-
-            window.location.href = `/manual.html?${params.toString()}`;
-            });
-        });
-        })();
+      });
+    });
     </script>
     
 </body>
