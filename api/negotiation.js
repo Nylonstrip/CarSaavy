@@ -6,6 +6,7 @@ const { createClient } = require("@supabase/supabase-js");
 // Reuse your NIC core
 const { getAllVehicleData } = require("./services/vehicleData");
 const { buildMvpAnalysis } = require("./mvpEngine");
+const { sendNprInlineEmail } = require("./services/emailService");
 
 // -----------------------------
 // Helpers
@@ -179,6 +180,7 @@ function buildEmailHtml(vehicleLabel, analysis) {
   `;
 }
 
+
 // -----------------------------
 // Main handler
 // -----------------------------
@@ -258,6 +260,7 @@ module.exports = async (req, res) => {
     const analysis = buildMvpAnalysis(analysisInput);
     const vehicleLabel = buildVehicleLabel(vp);
     const html = buildEmailHtml(vehicleLabel, analysis);
+    await sendNprInlineEmail(email, vin, reportHtml);
 
     // -----------------------------
     // Save lead to Supabase
@@ -309,7 +312,7 @@ module.exports = async (req, res) => {
       // We still return success since the lead is stored; but you can flip this if you prefer
     }
 
-    return res.status(200).json({ success: true, html });
+    return res.status(200).json({ success: true, html: reportHtml });
   } catch (err) {
     console.error("[Negotiation] Unexpected error:", err);
     return res.status(500).json({

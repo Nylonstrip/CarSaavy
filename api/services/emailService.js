@@ -26,6 +26,7 @@ async function sendViaResend(to, vin, reportUrl) {
   console.log("[EmailService] Resend email request succeeded.");
 }
 
+
 //--------------------------
 // Fallback Sender (Postmark)
 //--------------------------
@@ -135,6 +136,25 @@ async function sendCustomerAutoReply(name, toEmail) {
   }
 }
 
+  async function sendNprInlineEmail(to, vin, html) {
+    try {
+      await resend.emails.send({
+        from: "CarSaavy <noreply@carsaavy.com>",
+        to,
+        subject: `Your Negotiation Positioning Report for VIN ${vin.toUpperCase()}`,
+        html
+      });
+    } catch (e) {
+      console.error("[NPR Email] Resend failed → trying Postmark", e);
+      await postmarkClient.sendEmail({
+        From: "noreply@carsaavy.com",
+        To: to,
+        Subject: `Your Negotiation Positioning Report for VIN ${vin.toUpperCase()}`,
+        HtmlBody: html,
+        MessageStream: "outbound",
+      });
+    }
+  }
 
 //--------------------------
 // Admin Alerts (unchanged)
@@ -172,5 +192,6 @@ module.exports = {
   sendVehicleReportEmail,
   sendAdminAlert,
   sendSupportEmail,
-  sendCustomerAutoReply
+  sendCustomerAutoReply,
+  sendNprInlineEmail
 };
