@@ -1106,7 +1106,12 @@
       const successState = document.getElementById("successState");
       const successEmailEl = document.getElementById("successEmail");
       const nprContainer = document.getElementById("nprResult");
+      const stepsEl = document.querySelector(".steps");
+      const formCardEl = document.querySelector(".form-card");
     
+
+      if (stepsEl) stepsEl.classList.add("visible");
+      if (formCardEl) formCardEl.classList.add("visible");
       if (!form) return;
     
       function setMessage(text) {
