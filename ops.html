@@ -107,6 +107,17 @@
     #panelView.active {
       display: block;
     }
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #1f2933;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+      min-height: 110px;
+      resize: vertical;
+    }
   </style>
 </head>
 <body>
@@ -205,6 +216,39 @@
       <button type="submit" id="sendBtn">Send via Resend</button>
       <div id="status" class="status"></div>
       <button type="button" id="startWorkBtn">Start Work</button>
+
+      <div style="margin-top:24px; border-top:1px solid #1e293b; padding-top:16px;">
+        <h3 style="margin:0 0 8px 0; font-size:0.95rem;">Request additional information</h3>
+        <small>
+          Use this when the intake is missing details (screenshots, fee breakdowns, updated quotes, etc.).
+        </small>
+
+        <button type="button" id="toggleInquiryBtn" style="margin-top:12px;">
+          Toggle inquiry panel
+        </button>
+
+        <div id="inquiryPanel" style="display:none; margin-top:12px;">
+          <label>
+            Subject
+            <input type="text" id="inquirySubject" />
+          </label>
+
+          <label>
+            Message to customer
+            <textarea
+              id="inquiryMessage"
+              placeholder="Ask for missing screenshots, fee breakdowns, updated quotes, or anything else you need."
+            ></textarea>
+          </label>
+
+          <small>
+            Inquiries are sent from <code>support@carsaavy.com</code>. Customers can reply directly to this email.
+          </small>
+
+          <button type="button" id="sendInquiryBtn">Send Inquiry</button>
+          <div id="inquiryStatus" class="status"></div>
+        </div>
+      </div>
     </form>
   </div>
 
@@ -221,6 +265,12 @@
     const fulfillForm = document.getElementById('fulfillForm');
     const statusEl = document.getElementById('status');
     const sendBtn = document.getElementById('sendBtn');
+    const toggleInquiryBtn = document.getElementById('toggleInquiryBtn');
+    const inquiryPanel = document.getElementById('inquiryPanel');
+    const inquirySubjectInput = document.getElementById('inquirySubject');
+    const inquiryMessageInput = document.getElementById('inquiryMessage');
+    const inquiryStatusEl = document.getElementById('inquiryStatus');
+    const sendInquiryBtn = document.getElementById('sendInquiryBtn');
 
     // Simple login: test the password by calling /api/ops?action=list
     loginForm.addEventListener('submit', async (e) => {
@@ -282,6 +332,27 @@
           return;
         }
 
+        const order = json.order || {};
+
+        // Auto-fill customer fields from the order, if present
+        if (order.email) {
+          document.getElementById('email').value = order.email;
+        }
+        if (order.full_name) {
+          document.getElementById('fullName').value = order.full_name;
+        }
+        if (order.tier) {
+          document.getElementById('tier').value = order.tier;
+        }
+        if (order.sla_hours) {
+          document.getElementById('slaHours').value = String(order.sla_hours);
+        }
+
+        // Pre-fill a default subject for the inquiry panel
+        if (inquirySubjectInput) {
+          inquirySubjectInput.value = `Additional info requested — Order ${sku}`;
+        }
+
         alert(`Order ${sku} → working`);
       });
 
@@ -302,6 +373,75 @@
         loginBtn.disabled = false;
       }
     });
+
+        // Toggle inquiry panel visibility
+        if (toggleInquiryBtn && inquiryPanel) {
+      inquiryPanel.style.display = 'none';
+
+      toggleInquiryBtn.addEventListener('click', () => {
+        const isHidden =
+          inquiryPanel.style.display === 'none' ||
+          inquiryPanel.style.display === '';
+        inquiryPanel.style.display = isHidden ? 'block' : 'none';
+      });
+    }
+
+    // Send inquiry to customer via /api/ops?action=inquiry
+    if (sendInquiryBtn) {
+      sendInquiryBtn.addEventListener('click', async () => {
+        if (!opsPassword) {
+          alert('Login required');
+          return;
+        }
+
+        const sku = document.getElementById('sku').value.trim();
+        if (!sku) {
+          alert('Enter SKU first');
+          return;
+        }
+
+        const subject = (inquirySubjectInput?.value || '').trim();
+        const message = (inquiryMessageInput?.value || '').trim();
+
+        inquiryStatusEl.textContent = '';
+        inquiryStatusEl.className = 'status';
+
+        if (!message) {
+          alert('Please enter a message for the customer.');
+          return;
+        }
+
+        sendInquiryBtn.disabled = true;
+
+        try {
+          const resp = await fetch('/api/ops', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'inquiry',
+              opsPassword,
+              sku,
+              subject,
+              message
+            })
+          });
+
+          const json = await resp.json();
+          if (!resp.ok) {
+            throw new Error(json.error || 'Unknown error from API');
+          }
+
+          inquiryStatusEl.textContent = 'Inquiry sent ✅';
+          inquiryStatusEl.className = 'status ok';
+        } catch (err) {
+          console.error(err);
+          inquiryStatusEl.textContent = 'Error: ' + err.message;
+          inquiryStatusEl.className = 'status err';
+        } finally {
+          sendInquiryBtn.disabled = false;
+        }
+      });
+    }
 
     // Fulfillment form
     fulfillForm.addEventListener('submit', async (e) => {

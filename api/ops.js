@@ -379,7 +379,86 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, order: data });
     }
 
+        // -----------------------
+      // ACTION: SEND CUSTOMER INQUIRY
+      // -----------------------
+      if (action === 'inquiry') {
+        const { sku, subject, message } = body;
 
+        if (!sku || !message) {
+          return res.status(400).json({ error: 'Missing sku or message' });
+        }
+
+        // Look up the latest order by SKU
+        const { data: order, error } = await supabase
+          .from('orders')
+          .select('email, full_name, tier')
+          .eq('sku', sku)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (error || !order) {
+          console.error('[OPS] inquiry: order lookup error', error?.message);
+          return res.status(404).json({ error: 'Order not found for that SKU' });
+        }
+
+        if (!order.email) {
+          return res.status(400).json({ error: 'Order missing customer email' });
+        }
+
+        const displayName = deriveDisplayName(order.full_name, order.email);
+        const tierLabel =
+          order.tier === 'comprehensive'
+            ? 'Comprehensive'
+            : 'Essential';
+
+        const safeSubject =
+          subject && subject.trim().length > 0
+            ? subject.trim()
+            : `Additional info requested — Order ${sku}`;
+
+        const introText =
+          `Hi ${displayName},\n\n` +
+          `We’re preparing your CarSaavy ${tierLabel} report (order ${sku}) and we need a bit more information to complete it:\n\n`;
+
+        const footerText =
+          `\n\nIf we do not receive a response soon, we may either continue preparing your report with the information provided ` +
+          `or issue a refund if fulfillment is not possible.\n\n` +
+          `Just reply directly to this email with the requested details.\n\n` +
+          `CarSaavy Support`;
+
+        const textBody = introText + message + footerText;
+
+        const htmlBody = `
+          <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.5;color:#0f172a;">
+            <p>Hi ${displayName},</p>
+            <p>
+              We’re preparing your CarSaavy <strong>${tierLabel}</strong> report for order
+              <strong>${sku}</strong> and we need a bit more information to complete it:
+            </p>
+            <p style="white-space:pre-line;">${message}</p>
+            <p style="margin-top:16px;font-size:0.9rem;color:#4b5563;">
+              If we do not receive a response soon, we may either continue preparing your report with the information provided
+              or issue a refund if fulfillment is not possible.
+            </p>
+            <p style="margin-top:16px;">
+              Just reply directly to this email with the requested details.
+            </p>
+            <p style="margin-top:24px;">CarSaavy Support</p>
+          </div>
+        `;
+
+        await resend.emails.send({
+          from: 'CarSaavy Support <support@carsaavy.com>',
+          to: order.email,
+          subject: safeSubject,
+          text: textBody,
+          html: htmlBody,
+        });
+
+        return res.status(200).json({ ok: true });
+      }
     // -----------------------
     // UNKNOWN ACTION
     // -----------------------
