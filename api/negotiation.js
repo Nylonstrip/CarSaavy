@@ -1,11 +1,9 @@
 const { Resend } = require("resend");
 const { put } = require("@vercel/blob");
-const OpenAI = require("openai");
 const { createClient } = require("@supabase/supabase-js");
 const { getAllVehicleData, buildMvpAnalysis } = require("../mvpEngine");
 
 const {
-  OPENAI_API_KEY,
   RESEND_API_KEY,
   FROM_EMAIL,
   SUPABASE_URL,
