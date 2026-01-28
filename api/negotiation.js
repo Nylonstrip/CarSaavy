@@ -1,277 +1,482 @@
-// api/negotiation.js
-
 const { Resend } = require("resend");
+const { put } = require("@vercel/blob");
+const OpenAI = require("openai");
 const { createClient } = require("@supabase/supabase-js");
+const { getAllVehicleData, buildMvpAnalysis } = require("../mvpEngine");
 
-// Reuse your NIC core
-const { getAllVehicleData } = require("./services/vehicleData");
-const { buildMvpAnalysis } = require("./mvpEngine");
-const { sendNprInlineEmail } = require("./services/emailService");
+const {
+  OPENAI_API_KEY,
+  RESEND_API_KEY,
+  FROM_EMAIL,
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+} = process.env;
 
 // -----------------------------
-// Helpers
+// Build the branded NPR HTML (for blob + optional inline use)
 // -----------------------------
-function isValidEmail(email) {
-  if (!email) return false;
-  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email).trim());
-}
-
-function normalizeStr(v) {
-  if (v === undefined || v === null) return null;
-  const s = String(v).trim();
-  return s === "" ? null : s;
-}
-
-function toNumberOrNull(v) {
-  if (v === undefined || v === null) return null;
-  const s = String(v).trim().replace(/[$,]/g, "");
-  if (!s) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
-
-// Build a human-friendly title for subject/body
-function buildVehicleLabel(vp) {
-  if (!vp) return "your vehicle";
-  const parts = [vp.year, vp.make, vp.model]
-    .map(p => (p ? String(p).trim() : ""))
-    .filter(Boolean);
-  return parts.length ? parts.join(" ") : "your vehicle";
-}
-
-// Very lightweight HTML email using analysis output
 function buildEmailHtml(vehicleLabel, analysis) {
-  const stance = analysis?.summary?.stance || "Neutral";
-  const posture = analysis?.summary?.postureSummary || "";
-  const keyAngles = analysis?.leverage?.keyAngles || [];
-  const buyerScripts = analysis?.tactics?.openingScripts || [];
-  const dealerCounters = analysis?.tactics?.dealerCounters || [];
-  const riskNotes = analysis?.risk?.headlineRisks || [];
+  const primary = analysis.primaryVehicle;
+  const anchors = analysis.anchors;
+  const risks = analysis.risks;
+  const narrative = analysis.narrative;
 
-  // CTA URL placeholder – adjust to match your real manual URL
-  const ctaUrl = "https://carsaavy.com/manual"; // update if needed
+  const moneyBullets = anchors
+    .filter((a) => a.type === "money")
+    .map((a) => `<li>${a.label}</li>`)
+    .join("");
+
+  const leverageBullets = anchors
+    .filter((a) => a.type === "leverage")
+    .map((a) => `<li>${a.label}</li>`)
+    .join("");
+
+  const riskBullets = risks
+    .map((r) => `<li><strong>${r.severity}:</strong> ${r.label}</li>`)
+    .join("");
+
+  const quickMoves = analysis.quickMoves
+    .map((m) => `<li>${m}</li>`)
+    .join("");
+
+  const tone = narrative.tone;
+  const summary = narrative.summary;
+  const openers = narrative.openers.map((o) => `<li>${o}</li>`).join("");
+  const counters = narrative.counters.map((c) => `<li>${c}</li>`).join("");
+
+  const headerLine = `${primary.year} ${primary.make} ${primary.model}${
+    primary.trim ? " • " + primary.trim : ""
+  }`;
 
   return `
 <!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Negotiation Readiness Report — ${vehicleLabel}</title>
-  </head>
-  <body style="margin:0;padding:0;background:#020617;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:#e5e7eb;">
-    <div style="max-width:640px;margin:0 auto;padding:24px 16px 40px;">
-      <!-- Header -->
-      <div style="border-radius:16px;border:1px solid #1f2937;background:
-          radial-gradient(circle at top left,rgba(56,189,248,0.18),transparent 55%),
-          radial-gradient(circle at bottom right,rgba(52,211,153,0.15),transparent 55%),
-          linear-gradient(135deg,#020617,#020617);padding:20px 18px 18px;">
-        <div style="font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:#a5b4fc;margin-bottom:4px;">
-          CarSaavy · Negotiation Readiness
-        </div>
-        <div style="font-size:18px;font-weight:600;color:#f9fafb;margin-bottom:4px;">
-          ${vehicleLabel}
-        </div>
-        <div style="font-size:13px;color:#9ca3af;">
-          Your negotiation positioning snapshot, based on vehicle identity and typical dealer behavior for this segment.
-        </div>
-      </div>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CarSaavy Negotiation Positioning Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #020617;
+      --card: #020617;
+      --card-soft: #020617;
+      --border-subtle: rgba(148, 163, 184, 0.35);
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.08);
+      --accent-strong: rgba(56, 189, 248, 0.16);
+      --text-primary: #e5e7eb;
+      --text-muted: #9ca3af;
+      --text-soft: #64748b;
+      --pill-bg: rgba(15, 23, 42, 0.9);
+      --danger: #f97373;
+      --danger-soft: rgba(239, 68, 68, 0.08);
+      --danger-border: rgba(239, 68, 68, 0.35);
+      --good: #4ade80;
+      --good-soft: rgba(34, 197, 94, 0.08);
+      --good-border: rgba(34, 197, 94, 0.35);
+    }
 
-      <!-- Stance -->
-      <div style="margin-top:18px;border-radius:12px;border:1px solid #1f2937;padding:16px 16px 14px;background:linear-gradient(145deg,rgba(15,23,42,0.95),rgba(15,23,42,1));">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;color:#9ca3af;margin-bottom:4px;">
-          Overall stance
-        </div>
-        <div style="font-size:15px;font-weight:600;color:#e5e7eb;margin-bottom:4px;">
-          ${stance}
-        </div>
-        ${
-          posture
-            ? `<div style="font-size:13px;line-height:1.6;color:#9ca3af;">${posture}</div>`
-            : ""
-        }
-      </div>
+    * {
+      box-sizing: border-box;
+    }
 
-      <!-- Leverage angles -->
-      ${
-        keyAngles && keyAngles.length
-          ? `
-      <div style="margin-top:16px;border-radius:12px;border:1px solid #1f2937;padding:14px 16px;background:#020617;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;color:#9ca3af;margin-bottom:6px;">
-          Primary leverage angles
-        </div>
-        <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#cbd5f5;">
-          ${keyAngles.map(a => `<li>${a}</li>`).join("")}
-        </ul>
-      </div>
-      `
-          : ""
+    body {
+      margin: 0;
+      padding: 24px 12px;
+      background: radial-gradient(circle at top, #0b1120, #020617);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-primary);
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: radial-gradient(circle at top left, #020617 0, #020617 40%, #020617 100%);
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow:
+        0 18px 45px rgba(15, 23, 42, 0.85),
+        0 0 0 1px rgba(15, 23, 42, 0.9);
+      padding: 20px 18px;
+      margin-bottom: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .card-header-main {
+      flex: 1;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-soft);
+      margin-bottom: 10px;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #38bdf8;
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.3);
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 4px;
+      letter-spacing: 0.02em;
+    }
+
+    .vehicle-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
+    .pill-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25);
+    }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-soft);
+      margin-bottom: 6px;
+    }
+
+    .section-heading {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 6px;
+    }
+
+    .muted {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0 0 12px;
+    }
+
+    .gradient-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #334155, transparent);
+      margin: 12px 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+    }
+
+    .bubble {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), #020617);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .bubble strong {
+      color: var(--text-primary);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .chip {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .stacked {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 16px;
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .list li + li {
+      margin-top: 4px;
+    }
+
+    .list strong {
+      color: var(--text-primary);
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    @media (max-width: 640px) {
+      .card {
+        padding: 16px 14px;
       }
-
-      <!-- Buyer scripts -->
-      ${
-        buyerScripts && buyerScripts.length
-          ? `
-      <div style="margin-top:16px;border-radius:12px;border:1px solid #1f2937;padding:14px 16px;background:#020617;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;color:#9ca3af;margin-bottom:6px;">
-          Opening negotiation scripts
-        </div>
-        <ol style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#cbd5f5;">
-          ${buyerScripts.map(s => `<li style="margin-top:4px;">${s}</li>`).join("")}
-        </ol>
-      </div>
-      `
-          : ""
+      .grid {
+        grid-template-columns: 1fr;
       }
-
-      <!-- Dealer pushback handling -->
-      ${
-        dealerCounters && dealerCounters.length
-          ? `
-      <div style="margin-top:16px;border-radius:12px;border:1px solid #1f2937;padding:14px 16px;background:#020617;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;color:#9ca3af;margin-bottom:6px;">
-          If the dealer pushes back
-        </div>
-        <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#cbd5f5;">
-          ${dealerCounters.map(s => `<li style="margin-top:4px;">${s}</li>`).join("")}
-        </ul>
-      </div>
-      `
-          : ""
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
       }
-
-      <!-- Risk notes -->
-      ${
-        riskNotes && riskNotes.length
-          ? `
-      <div style="margin-top:16px;border-radius:12px;border:1px solid #1f2937;padding:14px 16px;background:#020617;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;color:#9ca3af;margin-bottom:6px;">
-          Key risk checks before committing
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-main">
+          <div class="badge">
+            <span class="badge-dot"></span>
+            CARSAAVY • NEGOTIATION POSITIONING REPORT
+          </div>
+          <h1>${headerLine}</h1>
+          <div class="vehicle-subtitle">
+            ${primary.drivetrain || "Drivetrain unknown"} • ${
+    primary.transmission || "Transmission unknown"
+  }${primary.mileage ? ` • ${primary.mileage.toLocaleString()} miles` : ""}
+          </div>
         </div>
-        <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#fca5a5;">
-          ${riskNotes.map(r => `<li style="margin-top:4px;">${r}</li>`).join("")}
-        </ul>
-      </div>
-      `
-          : ""
-      }
-
-      <!-- CTA -->
-      <div style="margin-top:20px;border-radius:12px;border:1px solid #1f2937;padding:14px 16px;background:radial-gradient(circle at top left,rgba(56,189,248,0.2),transparent 55%),#020617;">
-        <div style="font-size:13px;color:#e5e7eb;margin-bottom:8px;">
-          Want a deeper, analyst-built plan specific to your deal, fees, and dealer behavior?
-        </div>
-        <a href="${ctaUrl}"
-           style="display:inline-block;padding:9px 16px;border-radius:999px;border:1px solid rgba(148,163,184,0.9);font-size:13px;font-weight:500;color:#f9fafb;text-decoration:none;">
-          Upgrade to a Full Manual Evaluation (48h)
-        </a>
-        <div style="font-size:11px;color:#6b7280;margin-top:6px;">
-          Includes detailed inspection focus points, fee audit, and tailored walk-away triggers.
+        <div class="card-header-side">
+          <div class="pill">
+            <span class="pill-dot"></span>
+            Free NPR
+          </div>
         </div>
       </div>
 
-      <!-- Footer -->
-      <div style="margin-top:30px;font-size:11px;color:#6b7280;text-align:center;line-height:1.6;">
-        You’re more prepared than most people who walk into the dealership.<br/>
-        Good luck, you’re prepared. Execute the plan. — CarSaavy
+      <div class="section">
+        <div class="section-label">Overall Position</div>
+        <p class="muted">${summary}</p>
       </div>
+
+      <div class="gradient-divider"></div>
+
+      <div class="grid">
+        <div class="stacked">
+          <div>
+            <div class="section-label">Money Anchors</div>
+            <div class="bubble">
+              <strong>Where your leverage lives in the numbers.</strong>
+              <ul class="list">
+                ${moneyBullets}
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-label">Leverage Anchors</div>
+            <div class="bubble">
+              <strong>Angles that make the deal tilt toward you.</strong>
+              <ul class="list">
+                ${leverageBullets}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="stacked">
+          <div>
+            <div class="section-label">Risk / Exposure</div>
+            <div class="bubble">
+              <strong>What can hurt you if ignored.</strong>
+              <ul class="list">
+                ${riskBullets}
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-label">Quick Moves</div>
+            <ul class="list">
+              ${quickMoves}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="gradient-divider"></div>
+
+      <div class="section">
+        <div class="section-label">How to Sound at the Table</div>
+        <p class="muted">
+          General tone guidance: <strong>${tone}</strong>
+        </p>
+        <div class="grid">
+          <div>
+            <div class="section-heading">Openers</div>
+            <ul class="list">
+              ${openers}
+            </ul>
+          </div>
+          <div>
+            <div class="section-heading">Counterplay</div>
+            <ul class="list">
+              ${counters}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="footer-note">
+        Good luck — you’re more prepared than the average buyer walking into that store. Use this as a script, not a script you must obey.
+      </p>
     </div>
-  </body>
+  </div>
+</body>
 </html>
   `;
 }
 
+// -----------------------------
+// Helper for the outbound email shell
+// -----------------------------
+function buildNprEmailShell(vehicleLabel, reportUrl) {
+  const safeLabel = vehicleLabel || "your vehicle";
+
+  // If we have a hosted HTML URL, keep the email light and link out.
+  if (reportUrl) {
+    return `
+      <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #0f172a;">
+        <h1 style="font-size: 20px; margin-bottom: 12px;">Your free Negotiation Positioning Report is ready</h1>
+        <p style="margin: 0 0 12px;">
+          Vehicle: <strong>${safeLabel}</strong>
+        </p>
+        <p style="margin: 0 0 16px;">
+          Tap the button below to open your report in your browser. You can download or print it from there.
+        </p>
+        <p style="margin: 0 0 24px;">
+          <a href="${reportUrl}" style="display: inline-block; padding: 10px 18px; background:#0f172a; color:#ffffff; text-decoration:none; border-radius:999px; font-weight:600;">
+            View your free report
+          </a>
+        </p>
+        <p style="font-size: 12px; color:#64748b; margin-top:24px;">
+          If the button doesn’t work, copy and paste this link into your browser:<br />
+          <span style="word-break: break-all;">${reportUrl}</span>
+        </p>
+        <p style="font-size: 12px; color:#64748b; margin-top:16px;">
+          – CarSaavy
+        </p>
+      </div>
+    `;
+  }
+
+  // Fallback if blob upload failed: small inline message.
+  return `
+    <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #0f172a;">
+      <p>Your free Negotiation Positioning Report for <strong>${safeLabel}</strong> is ready.</p>
+      <p>If you have trouble viewing this email, reply and we’ll resend it another way.</p>
+      <p style="font-size: 12px; color:#64748b; margin-top:16px;">– CarSaavy</p>
+    </div>
+  `;
+}
 
 // -----------------------------
 // Main handler
 // -----------------------------
-module.exports = async (req, res) => {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const { vin, email, year, make, model } = req.body || {};
+
+  if (!vin || !email) {
+    return res
+      .status(400)
+      .json({ error: "VIN and email are required to generate a report." });
+  }
+
   try {
-    const body = req.body || {};
+    // 1) Get vehicle data from our MVP engine
+    const vehicleData = await getAllVehicleData({ vin, year, make, model });
 
-    const email = normalizeStr(body.email);
-    const vin = normalizeStr(body.vin);
-    const year = normalizeStr(body.year);
-    const make = normalizeStr(body.make);
-    const model = normalizeStr(body.model);
-    const segment = normalizeStr(body.segment);
-    const trimTier = normalizeStr(body.trimTier);
-    const askingPrice = toNumberOrNull(body.askingPrice);
-
-    if (!isValidEmail(email)) {
-      return res.status(400).json({ error: "Valid email is required" });
-    }
-
-    const hasVin = !!vin;
-    const hasYmm = !!(year && make && model);
-
-    if (!hasVin && !hasYmm) {
+    if (!vehicleData || !vehicleData.primaryVehicle) {
       return res.status(400).json({
-        error: "Please provide either a valid VIN or Year/Make/Model.",
+        error:
+          "We couldn’t build a reliable profile for this vehicle yet. Please double-check the VIN.",
       });
     }
 
-    if (hasVin && hasYmm) {
-      return res.status(400).json({
-        error: "Conflicting vehicle identifiers. Use VIN or Year/Make/Model, not both.",
-      });
-    }
+    const vp = vehicleData.primaryVehicle;
+    const vehicleLabel = `${vp.year} ${vp.make} ${vp.model}`;
 
-    if (year && year < 1981) {
-      return res.status(400).json({ error: "VINs before 1981 are not supported." });
-      }
-    // -----------------------------
-    // Resolve vehicle profile
-    // -----------------------------
-    const vehicleInput = hasVin
-      ? { vin, year, make, model, segment, trimTier }
-      : { year, make, model, segment, trimTier };
+    // 2) Build NPR-style analysis (no extra OpenAI calls)
+    const analysis = buildMvpAnalysis(vehicleData);
 
-    const { vehicleProfile, error: vpError } = await getAllVehicleData(vehicleInput);
-
-    if (!vehicleProfile && vpError) {
-      console.warn("[Negotiation] Vehicle resolution failed:", vpError);
-    }
-
-    const vp = vehicleProfile || {
-      year: year ? Number(year) : null,
-      make: make || null,
-      model: model || null,
-      segment: segment || "general",
-      trimTier: trimTier || null,
-      vin: vin || null,
-      mileage: null,
-    };
-
-    const analysisInput = {
-      year: vp.year,
-      make: vp.make,
-      model: vp.model,
-      segment: vp.segment,
-      trimTier: vp.trimTier,
-      vin: vp.vin,
-      mileage: vp.mileage,
-      askingPrice,
-    };
-
-    const analysis = buildMvpAnalysis(analysisInput);
-    const vehicleLabel = buildVehicleLabel(vp);
+    // 3) Build full HTML for the NPR (used both for blob + fallback email)
     const html = buildEmailHtml(vehicleLabel, analysis);
-    await sendNprInlineEmail(email, vin, html);
 
-    // -----------------------------
-    // Save lead to Supabase
-    // -----------------------------
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // 4) Optionally push that HTML to Vercel Blob for a shareable link
+    let reportUrl;
+    try {
+      const safeVin = (vin || "novin").replace(/[^a-zA-Z0-9]/g, "");
+      const fileName = `npr/${safeVin || "vehicle"}-${Date.now()}.html`;
+      const blob = await put(fileName, html, { access: "public" });
+      reportUrl = blob.url;
+    } catch (blobErr) {
+      console.error("[Negotiation] Failed to upload NPR HTML to blob:", blobErr);
+      // Not fatal for the user; email will still contain the inline content
+    }
 
-    if (!supabaseUrl || !supabaseKey) {
+    // 5) Save a copy in Supabase (same structure as before)
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       console.error("[Negotiation] Missing Supabase env vars");
     } else {
-      const supabase = createClient(supabaseUrl, supabaseKey, {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false },
       });
 
@@ -293,30 +498,29 @@ module.exports = async (req, res) => {
       }
     }
 
-    // -----------------------------
-    // Send email to customer
-    // -----------------------------
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    const subject = `Negotiation Readiness Report — ${vehicleLabel}`;
+    // 6) Send email via Resend — simple shell with CTA link to hosted HTML
+    const resend = new Resend(RESEND_API_KEY);
+    const subject = `Your free Negotiation Positioning Report — ${vehicleLabel}`;
+    const emailHtml = buildNprEmailShell(vehicleLabel, reportUrl || null);
 
     try {
       await resend.emails.send({
-        from: "CarSaavy Reports <reports@carsaavy.com>",
+        from: FROM_EMAIL || "CarSaavy Reports <reports@carsaavy.com>",
         to: [email],
         subject,
-        html,
+        html: emailHtml || html,
       });
     } catch (err) {
       console.error("[Negotiation] Failed to send email:", err);
-      // We still return success since the lead is stored; but you can flip this if you prefer
+      // Report + lead exist; you can always recover from Supabase if needed
     }
 
-    return res.status(200).json({ success: true, html });
+    // Front-end only cares that this returns success
+    return res.status(200).json({ success: true });
   } catch (err) {
     console.error("[Negotiation] Unexpected error:", err);
-    return res.status(500).json({
-      error: "Failed to generate negotiation report.",
-    });
+    return res
+      .status(500)
+      .json({ error: "Something went wrong generating your report." });
   }
 };
